@@ -94,3 +94,7 @@ body, html {
     border-radius: 10px;
 }
 
+.leaflet-control-attribution .leaflet-control {
+    display: none;
+}
+
