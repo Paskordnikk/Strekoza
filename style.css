@@ -82,6 +82,6 @@ body, html {
 
 @media (min-width: 1401px) {
     #side-menu {
-        width: 180px;
+        width: 400px;
     }
 }
