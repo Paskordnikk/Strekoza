@@ -38,11 +38,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function closeMenu() {
         sideMenu.classList.remove('open');
+        hamburgerMenu.classList.remove('hidden');
     }
 
     hamburgerMenu.addEventListener('click', function (e) {
         e.stopPropagation(); // Prevent click from bubbling to the map
         sideMenu.classList.toggle('open');
+        hamburgerMenu.classList.toggle('hidden');
     });
 
     closeMenuBtn.addEventListener('click', closeMenu);

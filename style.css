@@ -22,6 +22,11 @@ body, html {
     background-color: #32333d;
     padding: 10px 10px 6px 10px;
     border-radius: 5px; /* Added for consistency */
+    transition: left 0.3s ease-in-out;
+}
+
+#hamburger-menu.hidden {
+    left: -100px;
 }
 
 #hamburger-menu span {
