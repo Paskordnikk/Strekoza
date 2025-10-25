@@ -86,6 +86,8 @@ body, html {
     }
 }
 
-.leaflet-control-zoom-out {
+.leaflet-control-zoom .leaflet-bar .leaflet-control {
     border: none;
+    border-radius: 10px;
 }
+
