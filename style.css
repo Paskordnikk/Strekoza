@@ -76,7 +76,7 @@ body, html {
 
 .leaflet-control-zoom a {
     border-radius: 10px;
-    background-color: darkgray;
+    background-color: #32333d;
     color: darkorange;
 }
 
@@ -84,4 +84,8 @@ body, html {
     #side-menu {
         width: 400px;
     }
+}
+
+.leaflet-control-zoom-out {
+    border: none;
 }
