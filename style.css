@@ -112,7 +112,7 @@ body, html {
     display: none;
 }
 
-.leaflet-touch .leaflet-control-layers, .leaflet-touch .leaflet-bar {
+.leaflet-touch, .leaflet-control-layers, .leaflet-touch, .leaflet-bar {
     background-clip: padding-box;
     border-radius: 10px;
 }
