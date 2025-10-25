@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function () {
+window.onload = function () {
     const map = L.map('map', { zoomControl: false }).setView([55.751244, 37.618423], 10); // Default to Moscow
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
@@ -125,5 +125,4 @@ document.addEventListener('DOMContentLoaded', function () {
         tg.ready();
     } catch (e) {
         console.error("Telegram WebApp is not available.", e);
-    }
-});
+};
