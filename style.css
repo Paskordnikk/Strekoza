@@ -53,11 +53,20 @@ body, html {
 }
 
 .menu-item label {
-    display: block;
     margin-bottom: 5px;
     font: 12;
     font-family: sans-serif;
     color: darkorange;
+}
+
+.radio-option {
+    display: flex;
+    align-items: center;
+}
+
+.radio-option label {
+    margin-left: 10px;
+    margin-bottom: 0;
 }
 
 .menu-item input[type="range"] {
