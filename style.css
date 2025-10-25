@@ -186,3 +186,20 @@ body, html {
         transform: scale(0.2);
     }
 }
+
+/* Measure Control Button */
+.leaflet-control-measure {
+    border-radius: 10px !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+.leaflet-control-measure .leaflet-control-measure-toggle, 
+.leaflet-control-measure .leaflet-control-measure-toggle:hover {
+    border-radius: 10px !important;
+    background-color: #32333d !important;
+}
+
+.leaflet-control-measure .leaflet-control-measure-toggle-icon {
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg width='512' height='512' viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M256 32L20 128v256l236 96 236-96V128zm0 448l-200-80V160l200 80zm0-368L80 128l176-72 176 72z' fill='%23FF8C00'/%3E%3C/svg%3E") !important;
+}

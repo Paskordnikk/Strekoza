@@ -2,8 +2,23 @@ window.onload = function () {
     const map = L.map('map', { zoomControl: false }).setView([55.751244, 37.618423], 10); // Default to Moscow
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    // --- Polyline Measure Control (Basic) ---
-    L.control.polylineMeasure({ position: 'topright' }).addTo(map);
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    // --- Measure Control ---
+    const measureControl = new L.Control.Measure({
+        position: 'topright',
+        primaryLengthUnit: 'meters',
+        secondaryLengthUnit: undefined,
+        localization: 'ru',
+        activeColor: '#FF8C00',
+        completedColor: '#FF8C00',
+        lineStyle: {
+            color: 'black',
+            dashArray: '5, 10',
+            weight: 3
+        }
+    });
+    measureControl.addTo(map);
 
     const tileLayers = {
         opentopomap: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
