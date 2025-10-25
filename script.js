@@ -29,7 +29,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }),
         esriocean: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}', {
             attribution: 'Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri',
-            maxZoom: 13
+            maxNativeZoom: 13,
+            maxZoom: 20
         }),
     };
 
