@@ -79,3 +79,9 @@ body, html {
     background-color: darkgray;
     color: darkorange;
 }
+
+@media (min-width: 1401px) {
+    #side-menu {
+        width: 180px;
+    }
+}
