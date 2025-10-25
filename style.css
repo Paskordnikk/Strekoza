@@ -1,0 +1,62 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
+#map {
+    height: 100%;
+    width: 100%;
+    transition: filter 0.2s;
+}
+
+#hamburger-menu {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 1000;
+    cursor: pointer;
+}
+
+#hamburger-menu span {
+    display: block;
+    width: 33px;
+    height: 4px;
+    margin-bottom: 5px;
+    position: relative;
+    background: #333;
+    border-radius: 3px;
+    z-index: 1;
+}
+
+#side-menu {
+    position: absolute;
+    top: 0;
+    left: -100%; 
+    width: calc(100% - 70px);
+    height: 100%;
+    background-color: rgba(128, 128, 128, 0.8);
+    padding-top: 60px;
+    transition: left 0.3s ease-in-out;
+    z-index: 999;
+}
+
+#side-menu.open {
+    left: 0;
+}
+
+.menu-item {
+    padding: 10px 20px;
+    color: white;
+}
+
+.menu-item label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.menu-item input[type="range"] {
+    width: 100%;
+}
