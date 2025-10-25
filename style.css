@@ -97,18 +97,20 @@ body, html {
     right: 10px;
 }
 
-.leaflet-control-zoom-in, .leaflet-control-zoom-out {
+.leaflet-bar {
+    border: none !important;
+    box-shadow: none !important;
+}
+
+.leaflet-bar a, .leaflet-bar a:hover {
+    border-radius: 10px !important;
+    background-color: #32333d !important;
+    color: darkorange !important;
+    border: none !important;
+}
+
+.leaflet-control-zoom-in {
     margin-bottom: 10px;
-}
-
-.leaflet-control-zoom {
-    border: none;
-}
-
-.leaflet-control-zoom a {
-    border-radius: 10px;
-    background-color: #32333d;
-    color: darkorange;
 }
 
 @media (min-width: 1401px) {
