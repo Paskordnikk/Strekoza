@@ -125,4 +125,5 @@ window.onload = function () {
         tg.ready();
     } catch (e) {
         console.error("Telegram WebApp is not available.", e);
-};
+    }
+}
