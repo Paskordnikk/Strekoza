@@ -19,10 +19,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const hamburgerMenu = document.getElementById('hamburger-menu');
     const sideMenu = document.getElementById('side-menu');
+    const closeMenuBtn = document.getElementById('close-menu-btn');
 
-    hamburgerMenu.addEventListener('click', function () {
+    function closeMenu() {
+        sideMenu.classList.remove('open');
+    }
+
+    hamburgerMenu.addEventListener('click', function (e) {
+        e.stopPropagation(); // Prevent click from bubbling to the map
         sideMenu.classList.toggle('open');
     });
+
+    closeMenuBtn.addEventListener('click', closeMenu);
+    map.on('click', closeMenu);
 
     const brightnessSlider = document.getElementById('brightness-slider');
     brightnessSlider.addEventListener('input', function (e) {
