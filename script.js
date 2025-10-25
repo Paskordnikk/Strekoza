@@ -2,32 +2,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const map = L.map('map', { zoomControl: false }).setView([55.751244, 37.618423], 10); // Default to Moscow
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    // --- Polyline Measure Control ---
-    const polylineMeasureControl = L.control.polylineMeasure({
-        position: 'topright',
-        unit: 'metres',
-        measureControlTitle: 'Измерить расстояние',
-        startmeasuring_text: 'Укажите начальную точку',
-        continuemeasuring_text: 'Укажите следующую точку',
-        endmeasuring_text: 'Нажмите на последнюю точку, чтобы закончить',
-        clearmeasuring_text: 'Очистить',
-        showBearings: false,
-        tempLine: {
-            color: 'black',
-            weight: 3,
-            dashArray: '5, 8'
-        },
-        fixedLine: {
-            color: 'black',
-            weight: 3,
-            dashArray: '5, 8'
-        },
-        startCircle: { color: 'black', weight: 1, fillColor: 'white', fillOpacity: 1, radius: 3 },
-        intermedCircle: { color: 'black', weight: 1, fillColor: 'white', fillOpacity: 1, radius: 3 },
-        currentCircle: { color: 'black', weight: 1, fillColor: 'white', fillOpacity: 1, radius: 3 },
-        endCircle: { color: 'black', weight: 1, fillColor: 'red', fillOpacity: 1, radius: 3 }
-    });
-    polylineMeasureControl.addTo(map);
+    // --- Polyline Measure Control (Basic) ---
+    L.control.polylineMeasure({ position: 'topright' }).addTo(map);
 
     const tileLayers = {
         opentopomap: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
