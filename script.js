@@ -92,8 +92,7 @@ document.addEventListener('DOMContentLoaded', function () {
             iconSize: [14, 14]
         });
 
-        L.marker(e.latlng, { icon: userIcon }).addTo(map)
-            .bindPopup("You are within " + radius + " meters from this point").openPopup();
+        L.marker(e.latlng, { icon: userIcon }).addTo(map);
     }
 
     function onLocationError(e) {
