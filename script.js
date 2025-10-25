@@ -74,6 +74,50 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    // --- Geolocation Logic ---
+    const geoErrorModal = document.getElementById('geo-error-modal');
+    const geoErrorCancelBtn = document.getElementById('geo-error-cancel');
+    const geoErrorDontShowCheckbox = document.getElementById('geo-error-dont-show');
+
+    function locateUser() {
+        map.locate({ setView: true, maxZoom: 16 });
+    }
+
+    function onLocationFound(e) {
+        const radius = e.accuracy / 2;
+
+        const userIcon = L.divIcon({
+            className: 'user-location-marker',
+            html: '<div class="pulse"></div>',
+            iconSize: [14, 14]
+        });
+
+        L.marker(e.latlng, { icon: userIcon }).addTo(map)
+            .bindPopup("You are within " + radius + " meters from this point").openPopup();
+    }
+
+    function onLocationError(e) {
+        if (localStorage.getItem('hideGeoError') !== 'true') {
+            geoErrorModal.classList.remove('hidden');
+        }
+    }
+
+    geoErrorCancelBtn.addEventListener('click', () => {
+        geoErrorModal.classList.add('hidden');
+    });
+
+    geoErrorDontShowCheckbox.addEventListener('change', (e) => {
+        localStorage.setItem('hideGeoError', e.target.checked);
+    });
+
+    map.on('locationfound', onLocationFound);
+    map.on('locationerror', onLocationError);
+
+    // Initial call to locate user
+    if (localStorage.getItem('hideGeoError') !== 'true') {
+        locateUser();
+    }
+
     try {
         let tg = window.Telegram.WebApp;
         tg.ready();

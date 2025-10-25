@@ -62,5 +62,14 @@
      crossorigin=""></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="script.js"></script>
+
+    <div id="geo-error-modal" class="hidden">
+        <p>Не удалось определить ваше местоположение. Пожалуйста, включите определение местоположения в настройках геолокации.</p>
+        <button id="geo-error-cancel">Отмена</button>
+        <div>
+            <input type="checkbox" id="geo-error-dont-show">
+            <label for="geo-error-dont-show">Больше не показывать</label>
+        </div>
+    </div>
 </body>
 </html>
