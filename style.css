@@ -60,3 +60,12 @@ body, html {
 .menu-item input[type="range"] {
     width: 100%;
 }
+
+.leaflet-bottom.leaflet-right {
+    bottom: 10px;
+    right: 10px;
+}
+
+.leaflet-control-zoom-in, .leaflet-control-zoom-out {
+    margin-bottom: 10px;
+}

@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', function () {
-    const map = L.map('map').setView([55.751244, 37.618423], 10); // Default to Moscow
+    const map = L.map('map', { zoomControl: false }).setView([55.751244, 37.618423], 10); // Default to Moscow
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     const tileLayers = {
         opentopomap: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
