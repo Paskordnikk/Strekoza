@@ -32,6 +32,11 @@ document.addEventListener('DOMContentLoaded', function () {
             maxNativeZoom: 13,
             maxZoom: 20
         }),
+        jawgdark: L.tileLayer('https://tile.jawg.io/jawg-matrix/{z}/{x}/{y}{r}.png?access-token=hqhKonehBnQndr33yLl8cxfqGBr6JCJt6daPEBohzFSyGcJViFHdYRNWFNQOb1jf', {
+            attribution: '<a href="https://jawg.io" title="Tiles Courtesy of Jawg Maps" target="_blank">&copy; <b>Jawg</b>Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            minZoom: 0,
+            maxZoom: 22
+        }),
     };
 
     let currentTileLayer = tileLayers.opentopomap;
