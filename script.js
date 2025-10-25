@@ -10,6 +10,10 @@ document.addEventListener('DOMContentLoaded', function () {
             attribution: 'Tiles &copy; Esri &mdash; Source: Esri',
             maxZoom: 13
         }),
+        thunderforestlandscape: L.tileLayer('https://{s}.tile.thunderforest.com/landscape/{z}/{x}/{y}.png?apikey=86dc7e1b09ba4c8d8d295be536865e6b', {
+            attribution: '&copy; <a href="http://www.thunderforest.com/">Thunderforest</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 22
+        }),
         openstreetmap: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }),
