@@ -2,33 +2,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const map = L.map('map', { zoomControl: false }).setView([55.751244, 37.618423], 10); // Default to Moscow
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    // --- Polyline Measure Control ---
-    const polylineMeasureControl = L.control.polylineMeasure({
-        position: 'topright',
-        unit: 'metres',
-        measureControlTitle: 'Измерить расстояние',
-        startmeasuring_text: 'Укажите начальную точку',
-        continuemeasuring_text: 'Укажите следующую точку',
-        endmeasuring_text: 'Нажмите на последнюю точку, чтобы закончить',
-        clearmeasuring_text: 'Очистить',
-        showBearings: false,
-        tempLine: {
-            color: 'black',
-            weight: 3,
-            dashArray: '5, 8'
-        },
-        fixedLine: {
-            color: 'black',
-            weight: 3,
-            dashArray: '5, 8'
-        },
-        startCircle: { color: 'black', weight: 1, fillColor: 'white', fillOpacity: 1, radius: 3 },
-        intermedCircle: { color: 'black', weight: 1, fillColor: 'white', fillOpacity: 1, radius: 3 },
-        currentCircle: { color: 'black', weight: 1, fillColor: 'white', fillOpacity: 1, radius: 3 },
-        endCircle: { color: 'black', weight: 1, fillColor: 'red', fillOpacity: 1, radius: 3 }
-    });
-    polylineMeasureControl.addTo(map);
-
     const tileLayers = {
         opentopomap: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
             attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
@@ -119,7 +92,8 @@ document.addEventListener('DOMContentLoaded', function () {
             iconSize: [14, 14]
         });
 
-        L.marker(e.latlng, { icon: userIcon }).addTo(map);
+        L.marker(e.latlng, { icon: userIcon }).addTo(map)
+            .bindPopup("You are within " + radius + " meters from this point").openPopup();
     }
 
     function onLocationError(e) {
