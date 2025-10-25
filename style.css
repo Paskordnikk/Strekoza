@@ -66,6 +66,8 @@ body, html {
 .radio-option {
     display: flex;
     align-items: center;
+    padding-top: 5px;
+    padding-bottom: 5px;
 }
 
 .radio-option label {
@@ -109,5 +111,10 @@ body, html {
 
 .leaflet-control-attribution {
     display: none;
+}
+
+.leaflet-touch .leaflet-control-layers, .leaflet-touch .leaflet-bar {
+    background-clip: padding-box;
+    border-radius: 10px;
 }
 
