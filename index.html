@@ -33,41 +33,124 @@
     </div>
     <div id="side-menu">
         <div id="close-menu-btn">&times;</div>
-        <div class="menu-item">
-            <label for="brightness-slider">Яркость карты</label>
-            <input type="range" id="brightness-slider" min="0" max="100" value="100">
+        
+        <!-- Основная карта -->
+        <div class="menu-section">
+            <div class="menu-section-title">Основная карта</div>
+            <div class="menu-item">
+                <label for="brightness-slider">Яркость основной карты</label>
+                <input type="range" id="brightness-slider" min="0" max="100" value="100">
+            </div>
+            <div class="menu-item radio-option">
+                <input type="radio" id="base-opentopomap" name="base-map-type" value="opentopomap" checked>
+                <label for="base-opentopomap">OpenTopoMap (с высотами)</label>
+            </div>
+            <div class="menu-item radio-option">
+                <input type="radio" id="base-thunderforestlandscape" name="base-map-type" value="thunderforestlandscape">
+                <label for="base-thunderforestlandscape">Карта рельефа с высотами</label>
+            </div>
+            <div class="menu-item radio-option">
+                <input type="radio" id="base-cyclosm" name="base-map-type" value="cyclosm">
+                <label for="base-cyclosm">Тропинки, дорожки, высоты</label>
+            </div>
+            <div class="menu-item radio-option">
+                <input type="radio" id="base-monochrome" name="base-map-type" value="monochrome">
+                <label for="base-monochrome">Монохромная карта рельефа</label>
+            </div>
+            <div class="menu-item radio-option">
+                <input type="radio" id="base-esriworldimagery" name="base-map-type" value="esriworldimagery">
+                <label for="base-esriworldimagery">Спутник</label>
+            </div>
+            <div class="menu-item radio-option">
+                <input type="radio" id="base-openstreetmap" name="base-map-type" value="openstreetmap">
+                <label for="base-openstreetmap">OpenStreetMap</label>
+            </div>
+            <div class="menu-item radio-option">
+                <input type="radio" id="base-cartovoyager" name="base-map-type" value="cartovoyager">
+                <label for="base-cartovoyager">Светлая карта-подложка</label>
+            </div>
+            <div class="menu-item radio-option">
+                <input type="radio" id="base-esriocean" name="base-map-type" value="esriocean">
+                <label for="base-esriocean">Карта рек и озер</label>
+            </div>
+            <div class="menu-item radio-option">
+                <input type="radio" id="base-nasanight" name="base-map-type" value="nasanight">
+                <label for="base-nasanight">Ночное время суток</label>
+            </div>
+            <div class="menu-item radio-option">
+                <input type="radio" id="base-jawgdark" name="base-map-type" value="jawgdark">
+                <label for="base-jawgdark">Dark</label>
+            </div>
         </div>
-        <div class="menu-item radio-option">
-            <input type="radio" id="opentopomap" name="map-type" value="opentopomap" checked>
-            <label for="opentopomap">OpenTopoMap (с высотами)</label>
+
+        <!-- Верхняя карта -->
+        <div class="menu-section">
+            <div class="menu-section-title">Верхняя карта</div>
+            <div class="menu-item checkbox-option">
+                <input type="checkbox" id="enable-overlay-map">
+                <label for="enable-overlay-map">Включить верхнюю карту</label>
+            </div>
+            <div id="overlay-map-controls" style="display: none;">
+                <div class="menu-item">
+                    <label for="overlay-opacity-slider">Прозрачность верхней карты</label>
+                    <input type="range" id="overlay-opacity-slider" min="0" max="100" value="50">
+                </div>
+                <div class="menu-item radio-option">
+                    <input type="radio" id="overlay-opentopomap" name="overlay-map-type" value="opentopomap" checked>
+                    <label for="overlay-opentopomap">OpenTopoMap (с высотами)</label>
+                </div>
+                <div class="menu-item radio-option">
+                    <input type="radio" id="overlay-thunderforestlandscape" name="overlay-map-type" value="thunderforestlandscape">
+                    <label for="overlay-thunderforestlandscape">Карта рельефа с высотами</label>
+                </div>
+                <div class="menu-item radio-option">
+                    <input type="radio" id="overlay-cyclosm" name="overlay-map-type" value="cyclosm">
+                    <label for="overlay-cyclosm">Тропинки, дорожки, высоты</label>
+                </div>
+                <div class="menu-item radio-option">
+                    <input type="radio" id="overlay-monochrome" name="overlay-map-type" value="monochrome">
+                    <label for="overlay-monochrome">Монохромная карта рельефа</label>
+                </div>
+                <div class="menu-item radio-option">
+                    <input type="radio" id="overlay-esriworldimagery" name="overlay-map-type" value="esriworldimagery">
+                    <label for="overlay-esriworldimagery">Спутник</label>
+                </div>
+                <div class="menu-item radio-option">
+                    <input type="radio" id="overlay-openstreetmap" name="overlay-map-type" value="openstreetmap">
+                    <label for="overlay-openstreetmap">OpenStreetMap</label>
+                </div>
+                <div class="menu-item radio-option">
+                    <input type="radio" id="overlay-cartovoyager" name="overlay-map-type" value="cartovoyager">
+                    <label for="overlay-cartovoyager">Светлая карта-подложка</label>
+                </div>
+                <div class="menu-item radio-option">
+                    <input type="radio" id="overlay-esriocean" name="overlay-map-type" value="esriocean">
+                    <label for="overlay-esriocean">Карта рек и озер</label>
+                </div>
+                <div class="menu-item radio-option">
+                    <input type="radio" id="overlay-nasanight" name="overlay-map-type" value="nasanight">
+                    <label for="overlay-nasanight">Ночное время суток</label>
+                </div>
+                <div class="menu-item radio-option">
+                    <input type="radio" id="overlay-jawgdark" name="overlay-map-type" value="jawgdark">
+                    <label for="overlay-jawgdark">Dark</label>
+                </div>
+            </div>
         </div>
-        <div class="menu-item radio-option">
-            <input type="radio" id="thunderforestlandscape" name="map-type" value="thunderforestlandscape">
-            <label for="thunderforestlandscape">Карта рельефа с высотами</label>
-        </div>
-        <div class="menu-item radio-option">
-            <input type="radio" id="cyclosm" name="map-type" value="cyclosm">
-            <label for="cyclosm">Тропинки, дорожки, высоты</label>
-        </div>
-        <div class="menu-item radio-option">
-            <input type="radio" id="monochrome" name="map-type" value="monochrome">
-            <label for="monochrome">Монохромная карта рельефа</label>
-        </div>
-        <div class="menu-item radio-option">
-            <input type="radio" id="openstreetmap" name="map-type" value="openstreetmap">
-            <label for="openstreetmap">OpenStreetMap</label>
-        </div>
-        <div class="menu-item radio-option">
-            <input type="radio" id="cartovoyager" name="map-type" value="cartovoyager">
-            <label for="cartovoyager">Светлая карта-подложка</label>
-        </div>
-        <div class="menu-item radio-option">
-            <input type="radio" id="esriocean" name="map-type" value="esriocean">
-            <label for="esriocean">Карта рек и озер</label>
-        </div>
-        <div class="menu-item radio-option">
-            <input type="radio" id="jawgdark" name="map-type" value="jawgdark">
-            <label for="jawgdark">Dark</label>
+
+        <!-- Слой дорог -->
+        <div class="menu-section">
+            <div class="menu-section-title">Слой дорог</div>
+            <div class="menu-item checkbox-option">
+                <input type="checkbox" id="enable-roads-layer">
+                <label for="enable-roads-layer">Показать железные дороги</label>
+            </div>
+            <div id="roads-layer-controls" style="display: none;">
+                <div class="menu-item">
+                    <label for="roads-opacity-slider">Прозрачность слоя дорог</label>
+                    <input type="range" id="roads-opacity-slider" min="0" max="100" value="100">
+                </div>
+            </div>
         </div>
 
     </div>
@@ -75,8 +158,13 @@
     <!-- Контейнер для графика профиля высоты -->
     <div id="elevation-profile" style="display: none; position: absolute; bottom: 10px; left: 10px; right: 10px; height: 25vh; background-color: rgba(50, 51, 61, 0.9); padding: 10px; border-radius: 10px; z-index: 1000;">
         <div id="profile-content" style="width: 100%; height: 100%;"></div>
-                <button id="export-route-btn" style="position: absolute; top: 10px; right: 105px; background: #4CAF50; color: white; border: none; border-radius: 5px; padding: 5px 10px; cursor: pointer;">Выгрузить</button>
-        <button id="finish-route-btn" style="position: absolute; top: 10px; right: 10px; background: darkorange; color: #32333d; border: none; border-radius: 5px; padding: 5px 10px; cursor: pointer;">Закончить</button>
+        <div id="profile-buttons-container">
+            <button id="step-25-btn" class="step-btn" data-step="25">Шаг 25м</button>
+            <button id="step-50-btn" class="step-btn active" data-step="50">Шаг 50м</button>
+            <button id="step-100-btn" class="step-btn step-btn-last" data-step="100">Шаг 100м</button>
+            <button id="export-route-btn" class="profile-action-btn export-btn">Выгрузить</button>
+            <button id="finish-route-btn" class="profile-action-btn">Закончить</button>
+        </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"

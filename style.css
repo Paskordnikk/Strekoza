@@ -22,7 +22,7 @@ body, html {
     background-color: #32333d;
     padding: 10px 10px 6px 10px;
     border-radius: 10px;
-    transition: left 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55); /* Changed transition */
+    transition: left 0.3s ease-in-out;
 }
 
 #hamburger-menu:hover {
@@ -64,15 +64,39 @@ body, html {
     top: 0;
     left: -100%; 
     width: calc(100% - 70px);
-    height: 100%;
+    height: 100vh;
+    max-height: 100vh;
     background-color: rgba(50, 51, 61, 0.8);
     padding-top: 60px;
-    transition: left 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55); /* Changed transition */
+    padding-bottom: 20px;
+    transition: left 0.3s ease-in-out;
     z-index: 999;
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-sizing: border-box;
 }
 
 #side-menu.open {
     left: 0;
+}
+
+.menu-section {
+    margin-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 140, 0, 0.3);
+    padding-bottom: 15px;
+}
+
+.menu-section:last-child {
+    border-bottom: none;
+}
+
+.menu-section-title {
+    padding: 10px 20px;
+    font-family: sans-serif;
+    font-size: 16px;
+    font-weight: bold;
+    color: darkorange;
+    margin-bottom: 5px;
 }
 
 .menu-item {
@@ -137,6 +161,62 @@ body, html {
     background: #32333d;
 }
 
+/* Стилизация чекбоксов */
+.checkbox-option {
+    display: flex;
+    align-items: center;
+    padding: 6px 20px;
+}
+
+.checkbox-option label {
+    margin-left: 10px;
+    margin-bottom: 0;
+}
+
+.checkbox-option input[type="checkbox"] {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border: 2px solid darkorange;
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+    position: relative;
+    background: #32333d;
+    margin: 0 5px 0 0;
+}
+
+.checkbox-option input[type="checkbox"]:checked {
+    background: darkorange;
+}
+
+.checkbox-option input[type="checkbox"]:checked::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 5px;
+    width: 4px;
+    height: 8px;
+    border: solid #32333d;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.checkbox-option:hover input[type="checkbox"] {
+    background: darkorange;
+}
+
+.checkbox-option:hover input[type="checkbox"]:checked {
+    background: #32333d;
+    border-color: darkorange;
+}
+
+.checkbox-option:hover input[type="checkbox"]:checked::after {
+    border-color: darkorange;
+}
+
 /* Стили для кнопок маршрута */
 .map-control-btn.route-btn {
     background-color: #32333d;
@@ -167,6 +247,7 @@ body, html {
 .menu-item input[type="range"] {
     width: 100%;
     -webkit-appearance: none;
+    appearance: none;
     height: 20px;
     border-radius: 10px;
     background: #32333d;
@@ -344,4 +425,69 @@ body, html {
 .map-control-btn.active {
     background-color: darkorange;
     color: #32333d;
+}
+
+/* Profile buttons container */
+#profile-buttons-container {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    align-items: center;
+    border: none;
+    border-radius: 5px;
+}
+
+/* Step buttons - Group 1 */
+.step-btn {
+    background: #32333d;
+    color: darkorange;
+    border: 1px solid darkorange;
+    border-radius: 5px;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-family: sans-serif;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    margin-right: 5px;
+}
+
+.step-btn-last {
+    margin-right: 15px;
+}
+
+.step-btn:hover {
+    background: darkorange;
+    color: #32333d;
+    border-color: #32333d;
+}
+
+.step-btn.active {
+    background: darkorange;
+    color: #32333d;
+    border-color: #32333d;
+    font-weight: bold;
+}
+
+/* Profile action buttons - Groups 2 and 3 */
+.profile-action-btn {
+    background: #32333d;
+    color: darkorange;
+    border: 1px solid darkorange;
+    border-radius: 5px;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-family: sans-serif;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.export-btn {
+    margin-right: 15px;
+}
+
+.profile-action-btn:hover {
+    background: darkorange;
+    color: #32333d;
+    border-color: #32333d;
 }

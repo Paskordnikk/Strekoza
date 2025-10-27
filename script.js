@@ -137,45 +137,74 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    const tileLayers = {
-        opentopomap: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-            attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
-        }),
-        monochrome: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Tiles &copy; Esri &mdash; Source: Esri',
-            maxZoom: 13
-        }),
-        thunderforestlandscape: L.tileLayer('https://{s}.tile.thunderforest.com/landscape/{z}/{x}/{y}.png?apikey=86dc7e1b09ba4c8d8d295be536865e6b', {
-            attribution: '&copy; <a href="http://www.thunderforest.com/">Thunderforest</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            maxZoom: 22
-        }),
-        openstreetmap: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }),
-        cyclosm: L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
-            maxZoom: 20,
-            attribution: '<a href="https://github.com/cyclosm/cyclosm-cartocss-style/releases" title="CyclOSM - Open Bicycle render">CyclOSM</a> | Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }),
-        
-        cartovoyager: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-            subdomains: 'abcd',
-            maxZoom: 20
-        }),
-        esriocean: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri',
-            maxNativeZoom: 13,
-            maxZoom: 20
-        }),
-        jawgdark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-            subdomains: 'abcd',
-            maxZoom: 20
-        }),
+    // Function to create tile layer
+    const createTileLayer = (type) => {
+        const layers = {
+            opentopomap: () => L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+            }),
+            monochrome: () => L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri &mdash; Source: Esri',
+                maxZoom: 13
+            }),
+            esriworldimagery: () => L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+            }),
+            thunderforestlandscape: () => L.tileLayer('https://{s}.tile.thunderforest.com/landscape/{z}/{x}/{y}.png?apikey=86dc7e1b09ba4c8d8d295be536865e6b', {
+                attribution: '&copy; <a href="http://www.thunderforest.com/">Thunderforest</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 22
+            }),
+            openstreetmap: () => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }),
+            cyclosm: () => L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
+                maxZoom: 20,
+                attribution: '<a href="https://github.com/cyclosm/cyclosm-cartocss-style/releases" title="CyclOSM - Open Bicycle render">CyclOSM</a> | Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }),
+            cartovoyager: () => L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                subdomains: 'abcd',
+                maxZoom: 20
+            }),
+            esriocean: () => L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri',
+                maxNativeZoom: 13,
+                maxZoom: 20
+            }),
+            nasanight: () => L.tileLayer('https://map1.vis.earthdata.nasa.gov/wmts-webmerc/VIIRS_CityLights_2012/default/{time}/{tilematrixset}{maxZoom}/{z}/{y}/{x}.{format}', {
+                attribution: 'Imagery provided by services from the Global Imagery Browse Services (GIBS), operated by the NASA/GSFC/Earth Science Data and Information System (<a href="https://earthdata.nasa.gov">ESDIS</a>) with funding provided by NASA/HQ.',
+                bounds: [[-85.0511287776, -179.999999975], [85.0511287776, 179.999999975]],
+                minZoom: 1,
+                maxZoom: 8,
+                format: 'jpg',
+                time: '',
+                tilematrixset: 'GoogleMapsCompatible_Level'
+            }),
+            jawgdark: () => L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                subdomains: 'abcd',
+                maxZoom: 20
+            }),
+        };
+        return layers[type] ? layers[type]() : layers.opentopomap();
     };
 
-    let currentTileLayer = tileLayers.opentopomap;
-    currentTileLayer.addTo(map);
+    // Create custom panes for layer control
+    map.createPane('basePane');
+    map.getPane('basePane').style.zIndex = 200;
+    
+    map.createPane('roadsPane');
+    map.getPane('roadsPane').style.zIndex = 250;
+    
+    map.createPane('overlayPane');
+    map.getPane('overlayPane').style.zIndex = 300;
+
+    let baseLayer = createTileLayer('opentopomap');
+    baseLayer.options.pane = 'basePane';
+    baseLayer.addTo(map);
+    
+    let roadsLayer = null;
+    let overlayLayer = null;
 
     const hamburgerMenu = document.getElementById('hamburger-menu');
     const sideMenu = document.getElementById('side-menu');
@@ -195,52 +224,196 @@ document.addEventListener('DOMContentLoaded', function () {
     closeMenuBtn.addEventListener('click', closeMenu);
     map.on('click', closeMenu);
 
+    // Brightness control for base layer
     const brightnessSlider = document.getElementById('brightness-slider');
     brightnessSlider.addEventListener('input', function (e) {
-        map.getPane('tilePane').style.opacity = e.target.value / 100;
+        map.getPane('basePane').style.opacity = e.target.value / 100;
     });
 
-    // Load previously selected map type and zoom level
-    const lastSelectedMap = localStorage.getItem('selectedMapType');
+    // Overlay controls
+    const enableOverlayCheckbox = document.getElementById('enable-overlay-map');
+    const overlayControls = document.getElementById('overlay-map-controls');
+    const overlayOpacitySlider = document.getElementById('overlay-opacity-slider');
+
+    // Load saved settings
+    const lastBaseMapType = localStorage.getItem('baseMapType') || 'opentopomap';
+    const lastOverlayMapType = localStorage.getItem('overlayMapType') || 'opentopomap';
+    const lastOverlayEnabled = localStorage.getItem('overlayEnabled') === 'true';
+    const lastOverlayOpacity = parseInt(localStorage.getItem('overlayOpacity') || '50');
+    const lastRoadsEnabled = localStorage.getItem('roadsEnabled') === 'true';
+    const lastRoadsOpacity = parseInt(localStorage.getItem('roadsOpacity') || '100');
     const lastZoomLevel = localStorage.getItem('mapZoomLevel');
-    
-    // Set the last selected map if it exists
-    if (lastSelectedMap && tileLayers[lastSelectedMap]) {
-        map.removeLayer(currentTileLayer);
-        currentTileLayer = tileLayers[lastSelectedMap];
-        currentTileLayer.addTo(map);
-        
-        // Check the corresponding radio button
-        const selectedRadio = document.querySelector(`input[name="map-type"][value="${lastSelectedMap}"]`);
-        if (selectedRadio) {
-            selectedRadio.checked = true;
-        }
+    const lastBaseBrightness = parseInt(localStorage.getItem('baseBrightness') || '100');
+
+    // Apply saved base map
+    if (lastBaseMapType !== 'opentopomap') {
+        map.removeLayer(baseLayer);
+        baseLayer = createTileLayer(lastBaseMapType);
+        baseLayer.options.pane = 'basePane';
+        baseLayer.addTo(map);
     }
     
+    // Check the corresponding base map radio button
+    const selectedBaseRadio = document.querySelector(`input[name="base-map-type"][value="${lastBaseMapType}"]`);
+    if (selectedBaseRadio) {
+        selectedBaseRadio.checked = true;
+    }
+
+    // Apply saved base brightness
+    brightnessSlider.value = lastBaseBrightness;
+    map.getPane('basePane').style.opacity = lastBaseBrightness / 100;
+
+    // Apply saved roads layer settings
+    const enableRoadsCheckbox = document.getElementById('enable-roads-layer');
+    const roadsControls = document.getElementById('roads-layer-controls');
+    const roadsOpacitySlider = document.getElementById('roads-opacity-slider');
+    
+    if (lastRoadsEnabled) {
+        enableRoadsCheckbox.checked = true;
+        roadsControls.style.display = 'block';
+        
+        roadsLayer = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Map style: &copy; <a href="https://www.OpenRailwayMap.org">OpenRailwayMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
+            pane: 'roadsPane'
+        });
+        roadsLayer.setOpacity(lastRoadsOpacity / 100);
+        roadsLayer.addTo(map);
+        
+        roadsOpacitySlider.value = lastRoadsOpacity;
+    }
+
+    // Apply saved overlay settings
+    if (lastOverlayEnabled) {
+        enableOverlayCheckbox.checked = true;
+        overlayControls.style.display = 'block';
+        
+        overlayLayer = createTileLayer(lastOverlayMapType);
+        overlayLayer.options.pane = 'overlayPane';
+        overlayLayer.setOpacity(lastOverlayOpacity / 100);
+        overlayLayer.addTo(map);
+        
+        const selectedOverlayRadio = document.querySelector(`input[name="overlay-map-type"][value="${lastOverlayMapType}"]`);
+        if (selectedOverlayRadio) {
+            selectedOverlayRadio.checked = true;
+        }
+        
+        overlayOpacitySlider.value = lastOverlayOpacity;
+    }
+
     // Update map zoom if it was saved
     if (lastZoomLevel) {
         map.setZoom(parseInt(lastZoomLevel));
     }
-    
-    // Function to save zoom level to localStorage
-    function saveZoomLevel() {
+
+    // Save zoom level
+    const saveZoomLevel = () => {
         localStorage.setItem('mapZoomLevel', map.getZoom());
-    }
-    
-    // Add event listener to save zoom level when it changes
+    };
     map.on('zoomend', saveZoomLevel);
 
-    
-    const mapTypeRadios = document.querySelectorAll('input[name="map-type"]');
-    mapTypeRadios.forEach(radio => {
+    // Base map type change handler
+    const baseMapTypeRadios = document.querySelectorAll('input[name="base-map-type"]');
+    baseMapTypeRadios.forEach(radio => {
         radio.addEventListener('change', function (e) {
-            map.removeLayer(currentTileLayer);
-            currentTileLayer = tileLayers[e.target.value];
-            currentTileLayer.addTo(map);
+            map.removeLayer(baseLayer);
+            baseLayer = createTileLayer(e.target.value);
+            baseLayer.options.pane = 'basePane';
+            baseLayer.addTo(map);
             
-            // Save the selected map type to localStorage
-            localStorage.setItem('selectedMapType', e.target.value);
+            // Reapply brightness
+            map.getPane('basePane').style.opacity = brightnessSlider.value / 100;
+            
+            localStorage.setItem('baseMapType', e.target.value);
         });
+    });
+
+    // Overlay map type change handler
+    const overlayMapTypeRadios = document.querySelectorAll('input[name="overlay-map-type"]');
+    overlayMapTypeRadios.forEach(radio => {
+        radio.addEventListener('change', function (e) {
+            if (overlayLayer) {
+                map.removeLayer(overlayLayer);
+            }
+            
+            overlayLayer = createTileLayer(e.target.value);
+            overlayLayer.options.pane = 'overlayPane';
+            overlayLayer.setOpacity(overlayOpacitySlider.value / 100);
+            overlayLayer.addTo(map);
+            
+            localStorage.setItem('overlayMapType', e.target.value);
+        });
+    });
+
+    // Enable/disable overlay map
+    enableOverlayCheckbox.addEventListener('change', function (e) {
+        if (e.target.checked) {
+            overlayControls.style.display = 'block';
+            
+            const selectedOverlayType = document.querySelector('input[name="overlay-map-type"]:checked').value;
+            overlayLayer = createTileLayer(selectedOverlayType);
+            overlayLayer.options.pane = 'overlayPane';
+            overlayLayer.setOpacity(overlayOpacitySlider.value / 100);
+            overlayLayer.addTo(map);
+            
+            localStorage.setItem('overlayEnabled', 'true');
+        } else {
+            overlayControls.style.display = 'none';
+            
+            if (overlayLayer) {
+                map.removeLayer(overlayLayer);
+                overlayLayer = null;
+            }
+            
+            localStorage.setItem('overlayEnabled', 'false');
+        }
+    });
+
+    // Overlay opacity control
+    overlayOpacitySlider.addEventListener('input', function (e) {
+        if (overlayLayer) {
+            overlayLayer.setOpacity(e.target.value / 100);
+            localStorage.setItem('overlayOpacity', e.target.value);
+        }
+    });
+
+    // Enable/disable roads layer
+    enableRoadsCheckbox.addEventListener('change', function (e) {
+        if (e.target.checked) {
+            roadsControls.style.display = 'block';
+            
+            roadsLayer = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Map style: &copy; <a href="https://www.OpenRailwayMap.org">OpenRailwayMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
+                pane: 'roadsPane'
+            });
+            roadsLayer.setOpacity(roadsOpacitySlider.value / 100);
+            roadsLayer.addTo(map);
+            
+            localStorage.setItem('roadsEnabled', 'true');
+        } else {
+            roadsControls.style.display = 'none';
+            
+            if (roadsLayer) {
+                map.removeLayer(roadsLayer);
+                roadsLayer = null;
+            }
+            
+            localStorage.setItem('roadsEnabled', 'false');
+        }
+    });
+
+    // Roads opacity control
+    roadsOpacitySlider.addEventListener('input', function (e) {
+        if (roadsLayer) {
+            roadsLayer.setOpacity(e.target.value / 100);
+            localStorage.setItem('roadsOpacity', e.target.value);
+        }
+    });
+
+    // Save base brightness
+    brightnessSlider.addEventListener('change', function (e) {
+        localStorage.setItem('baseBrightness', e.target.value);
     });
 
     // --- Geolocation Logic ---
@@ -305,6 +478,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let isCalculatingRoute = false;
     let routeHoverMarker = null; // Marker for map hover sync
     let currentRouteData = []; // To store data for export
+    let currentSampleStep = 50; // Default step in meters
     
     // Get DOM elements
     const buildRouteBtn = document.getElementById('build-route-btn');
@@ -316,12 +490,32 @@ document.addEventListener('DOMContentLoaded', function () {
     const exportRouteBtn = document.getElementById('export-route-btn');
     const importRouteBtn = document.getElementById('import-route-btn');
     const csvImporter = document.getElementById('csv-importer');
+    const stepButtons = document.querySelectorAll('.step-btn');
     
     // Function to calculate distance between two points in kilometers
     function calculateDistance(point1, point2) {
         // Convert meters to kilometers
         return point1.distanceTo(point2) / 1000;
     }
+    
+    // Handle step button clicks
+    stepButtons.forEach(button => {
+        button.addEventListener('click', async function() {
+            // Remove active class from all buttons
+            stepButtons.forEach(btn => btn.classList.remove('active'));
+            
+            // Add active class to clicked button
+            this.classList.add('active');
+            
+            // Update current sample step
+            currentSampleStep = parseInt(this.getAttribute('data-step'));
+            
+            // Recalculate elevation profile if route exists
+            if (routePoints.length >= 2) {
+                await calculateRouteElevation();
+            }
+        });
+    });
     
     function buildElevationProfile(elevationData) {
         const container = document.getElementById('profile-content');
@@ -331,7 +525,7 @@ document.addEventListener('DOMContentLoaded', function () {
         h3.style.color = 'darkorange';
         h3.style.marginTop = '0';
         h3.style.marginBottom = '10px';
-        h3.textContent = 'Профиль высоты маршрута';
+        h3.textContent = `Профиль высоты маршрута (шаг ${currentSampleStep}м, ${elevationData.length} точек)`;
         container.appendChild(h3);
 
         const svgNode = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -621,7 +815,7 @@ document.addEventListener('DOMContentLoaded', function () {
         profileContent.innerHTML = '<div style="color: white; font-family: sans-serif; text-align: center; padding-top: 50px;">Загрузка реальных данных о высоте...</div>';
         elevationProfile.style.display = 'block';
 
-        const SAMPLE_INTERVAL_KM = 0.05; // Sample every 50 meters
+        const SAMPLE_INTERVAL_KM = currentSampleStep / 1000; // Convert meters to kilometers
         const elevationData = [];
         let cumulativeDist = 0;
 
@@ -717,12 +911,18 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const headers = ["широта", "долгота", "высота", "расстояние"];
-        // Use only waypoints for a cleaner export, or all points for full detail
-        const dataToExport = currentRouteData.filter(p => p.isWaypoint);
+        const headers = ["широта", "долгота", "высота_м", "расстояние_км", "is_waypoint"];
+        // Export all points from elevation profile with current step
+        const dataToExport = currentRouteData;
 
         const rows = dataToExport.map(p => 
-            [p.lat.toFixed(6), p.lng.toFixed(6), p.elevation, p.distance.toFixed(2)].join(',')
+            [
+                p.lat.toFixed(6), 
+                p.lng.toFixed(6), 
+                p.elevation.toFixed(1), 
+                p.distance.toFixed(3),
+                p.isWaypoint ? '1' : '0' // Add the waypoint flag
+            ].join(',')
         );
 
         let csvContent = headers.join(",") + "\n" + rows.join("\n");
@@ -731,7 +931,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.setAttribute("href", url);
-        link.setAttribute("download", "route_profile.csv");
+        link.setAttribute("download", `route_profile_step${currentSampleStep}m.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -830,6 +1030,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const headers = lines[0].split(',').map(h => h.trim());
         const latIndex = headers.indexOf('широта');
         const lngIndex = headers.indexOf('долгота');
+        const waypointIndex = headers.indexOf('is_waypoint'); // Find the new column
 
         if (latIndex === -1 || lngIndex === -1) {
             throw new Error('CSV файл должен содержать столбцы: широта, долгота');
@@ -838,11 +1039,23 @@ document.addEventListener('DOMContentLoaded', function () {
         const data = [];
         for (let i = 1; i < lines.length; i++) {
             const values = lines[i].split(',');
+            
+            // If the waypoint column exists, only import rows where it's '1'.
+            // If it doesn't exist (old format), import all rows.
+            if (waypointIndex !== -1 && values[waypointIndex] !== '1') {
+                continue;
+            }
+
             data.push({
                 lat: parseFloat(values[latIndex]),
                 lng: parseFloat(values[lngIndex]),
             });
         }
+        
+        if (data.length === 0) {
+            throw new Error("В файле не найдено ни одной ключевой точки маршрута (с атрибутом is_waypoint=1).");
+        }
+
         return data;
     }
 
