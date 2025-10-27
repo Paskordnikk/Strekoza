@@ -4,14 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interactive Map</title>
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
      crossorigin=""/>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.polylinemeasure@2.1.0/Leaflet.PolylineMeasure.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.polylinemeasure/Leaflet.PolylineMeasure.css" />
 </head>
 <body>
     <div id="map"></div>
+    <div id="measure-control" class="map-control-button">
+        <button id="measure-distance-btn" class="map-control-btn">Измерить расстояние</button>
+    </div>
+    <div id="route-control" class="map-control-button" style="top: 60px;">
+        <button id="build-route-btn" class="map-control-btn">Построить маршрут</button>
+    </div>
+    <div id="import-control" class="map-control-button" style="top: 110px;">
+        <button id="import-route-btn" class="map-control-btn">Загрузить маршрут</button>
+    </div>
+    <input type="file" id="csv-importer" accept=".csv" style="display: none;">
+    <div id="route-calc-control" class="map-control-button" style="display: none; top: 60px;">
+        <button id="calculate-route-btn" class="map-control-btn">Рассчитать маршрут</button>
+    </div>
     <div id="hamburger-menu" class="menu-button">
         <span></span>
         <span></span>
@@ -25,25 +39,24 @@
         </div>
         <div class="menu-item radio-option">
             <input type="radio" id="opentopomap" name="map-type" value="opentopomap" checked>
-            <label for="opentopomap">OpenTopoMap</label>
-        </div>
-        <div class="menu-item radio-option">
-            <input type="radio" id="monochrome" name="map-type" value="monochrome">
-            <label for="monochrome">Монохромная карта рельефа</label>
+            <label for="opentopomap">OpenTopoMap (с высотами)</label>
         </div>
         <div class="menu-item radio-option">
             <input type="radio" id="thunderforestlandscape" name="map-type" value="thunderforestlandscape">
             <label for="thunderforestlandscape">Карта рельефа с высотами</label>
         </div>
         <div class="menu-item radio-option">
-            <input type="radio" id="openstreetmap" name="map-type" value="openstreetmap">
-            <label for="openstreetmap">OpenStreetMap</label>
-        </div>
-        <div class="menu-item radio-option">
             <input type="radio" id="cyclosm" name="map-type" value="cyclosm">
             <label for="cyclosm">Тропинки, дорожки, высоты</label>
         </div>
-        
+        <div class="menu-item radio-option">
+            <input type="radio" id="monochrome" name="map-type" value="monochrome">
+            <label for="monochrome">Монохромная карта рельефа</label>
+        </div>
+        <div class="menu-item radio-option">
+            <input type="radio" id="openstreetmap" name="map-type" value="openstreetmap">
+            <label for="openstreetmap">OpenStreetMap</label>
+        </div>
         <div class="menu-item radio-option">
             <input type="radio" id="cartovoyager" name="map-type" value="cartovoyager">
             <label for="cartovoyager">Светлая карта-подложка</label>
@@ -56,13 +69,22 @@
             <input type="radio" id="jawgdark" name="map-type" value="jawgdark">
             <label for="jawgdark">Dark</label>
         </div>
+
+    </div>
+    
+    <!-- Контейнер для графика профиля высоты -->
+    <div id="elevation-profile" style="display: none; position: absolute; bottom: 10px; left: 10px; right: 10px; height: 25vh; background-color: rgba(50, 51, 61, 0.9); padding: 10px; border-radius: 10px; z-index: 1000;">
+        <div id="profile-content" style="width: 100%; height: 100%;"></div>
+                <button id="export-route-btn" style="position: absolute; top: 10px; right: 105px; background: #4CAF50; color: white; border: none; border-radius: 5px; padding: 5px 10px; cursor: pointer;">Выгрузить</button>
+        <button id="finish-route-btn" style="position: absolute; top: 10px; right: 10px; background: darkorange; color: #32333d; border: none; border-radius: 5px; padding: 5px 10px; cursor: pointer;">Закончить</button>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
      crossorigin=""></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/leaflet.polylinemeasure@2.1.0/Leaflet.PolylineMeasure.js"></script>
+    <script src="https://unpkg.com/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet.polylinemeasure@latest/Leaflet.PolylineMeasure.js"></script>
     <script src="script.js"></script>
 
     <div id="geo-error-modal" class="hidden">
