@@ -871,7 +871,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // 3. Fetch real elevation data from the server
         try {
-            const response = await fetch('http://127.0.0.1:8000/api/get_elevation', {
+            const response = await fetch('https://strekoza-ylfm.onrender.com/api/get_elevation', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
