@@ -530,7 +530,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const svgNode = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svgNode.style.width = '100%';
-        svgNode.style.height = 'calc(100% - 30px)';
+        svgNode.style.height = '100%';
+        svgNode.style.flex = '1 1 auto';
         container.appendChild(svgNode);
 
         if (!routeHoverMarker) {
@@ -652,9 +653,11 @@ document.addEventListener('DOMContentLoaded', function () {
         hoverGroup.appendChild(hoverCircle);
         svgNode.appendChild(hoverGroup);
 
-        svgNode.addEventListener('mousemove', (event) => {
+        svgNode.style.touchAction = 'none';
+
+        const updateHoverAtClientX = (clientX) => {
             const rect = svgNode.getBoundingClientRect();
-            const mouseX = event.clientX - rect.left;
+            const mouseX = clientX - rect.left;
 
             if (mouseX < margin.left || mouseX > width - margin.right) {
                 hoverGroup.style.display = 'none';
@@ -736,9 +739,36 @@ document.addEventListener('DOMContentLoaded', function () {
             tooltipText1.setAttribute('y', textY1);
             tooltipText2.setAttribute('x', textX);
             tooltipText2.setAttribute('y', textY2);
+        };
+
+        svgNode.addEventListener('mousemove', (event) => {
+            updateHoverAtClientX(event.clientX);
         });
 
+        svgNode.addEventListener('pointermove', (event) => {
+            updateHoverAtClientX(event.clientX);
+        });
+
+        svgNode.addEventListener('touchstart', (event) => {
+            if (event.touches && event.touches[0]) {
+                updateHoverAtClientX(event.touches[0].clientX);
+            }
+        }, { passive: true });
+
+        svgNode.addEventListener('touchmove', (event) => {
+            if (event.touches && event.touches[0]) {
+                updateHoverAtClientX(event.touches[0].clientX);
+            }
+        }, { passive: true });
+
         svgNode.addEventListener('mouseleave', () => {
+            hoverGroup.style.display = 'none';
+            if (routeHoverMarker) {
+                routeHoverMarker.setStyle({ opacity: 0, fillOpacity: 0 });
+            }
+        });
+
+        svgNode.addEventListener('pointerleave', () => {
             hoverGroup.style.display = 'none';
             if (routeHoverMarker) {
                 routeHoverMarker.setStyle({ opacity: 0, fillOpacity: 0 });

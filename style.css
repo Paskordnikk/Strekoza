@@ -70,7 +70,7 @@ body, html {
     padding-top: 60px;
     padding-bottom: 20px;
     transition: left 0.3s ease-in-out;
-    z-index: 999;
+    z-index: 1500;
     overflow-y: auto;
     overflow-x: hidden;
     box-sizing: border-box;
@@ -427,13 +427,29 @@ body, html {
     color: #32333d;
 }
 
+/* Elevation profile layout */
+#elevation-profile {
+    display: flex;
+    flex-direction: column;
+}
+
+#profile-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
 /* Profile buttons container */
 #profile-buttons-container {
-    position: absolute;
-    top: 10px;
-    right: 10px;
+    position: static;
     display: flex;
     align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-top: 6px;
     border: none;
     border-radius: 5px;
 }
@@ -450,6 +466,7 @@ body, html {
     font-size: 14px;
     transition: all 0.3s ease;
     margin-right: 5px;
+    white-space: nowrap;
 }
 
 .step-btn-last {
@@ -480,6 +497,7 @@ body, html {
     font-family: sans-serif;
     font-size: 14px;
     transition: all 0.3s ease;
+    white-space: nowrap;
 }
 
 .export-btn {
@@ -490,4 +508,18 @@ body, html {
     background: darkorange;
     color: #32333d;
     border-color: #32333d;
+}
+
+/* Make SVG inside profile content flex to fill available space */
+#profile-content svg {
+    flex: 1 1 auto;
+}
+
+/* Mobile adjustments for buttons */
+@media (max-width: 600px) {
+    .step-btn,
+    .profile-action-btn {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
 }
