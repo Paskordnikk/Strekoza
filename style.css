@@ -471,7 +471,7 @@ body, html {
 #profile-chart {
     flex: 1;
     min-height: 0;
-    padding-right: 10px;
+    padding: 10px 10px 10px 0;
     position: relative;
     overflow: hidden;
 }
@@ -584,13 +584,8 @@ body, html {
         flex-wrap: nowrap;
         gap: 3px;
         margin-left: 0;
-        overflow-x: auto;
         width: 100%;
-        -webkit-overflow-scrolling: touch;
-    }
-    
-    #profile-buttons-container::-webkit-scrollbar {
-        height: 0;
+        justify-content: space-between;
     }
     
     .step-btn,
@@ -599,7 +594,8 @@ body, html {
         padding: 4px 6px;
         margin: 0;
         white-space: nowrap;
-        flex-shrink: 0;
+        flex: 1;
+        min-width: 0;
     }
     
     .profile-title {
