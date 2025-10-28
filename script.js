@@ -541,7 +541,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const svgNode = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svgNode.style.width = '100%';
-        svgNode.style.height = 'calc(100% - 30px)';
+        svgNode.style.height = '100%';
         container.appendChild(svgNode);
 
         if (!routeHoverMarker) {

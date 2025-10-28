@@ -492,6 +492,13 @@ body, html {
     border-color: #32333d;
 }
 
+#elevation-profile h3 {
+    color: darkorange;
+    font-family: sans-serif;
+    text-align: center;
+    margin: 0 0 10px 0;
+}
+
 @media (max-width: 768px) {
     #elevation-profile {
         height: 35vh;
@@ -501,10 +508,6 @@ body, html {
 
     #elevation-profile h3 {
         order: 1;
-        color: darkorange;
-        font-family: sans-serif;
-        text-align: center;
-        margin: 0 0 10px 0;
         flex-shrink: 0;
     }
 
@@ -520,7 +523,8 @@ body, html {
 
     #profile-content {
         order: 3;
-        height: 100%;
+        flex-grow: 1;
+        min-height: 0;
     }
 
     .step-btn, .profile-action-btn {
