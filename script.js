@@ -485,7 +485,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const calculateRouteBtn = document.getElementById('calculate-route-btn');
     const routeCalcControl = document.getElementById('route-calc-control');
     const elevationProfile = document.getElementById('elevation-profile');
-    const profileContent = document.getElementById('profile-content');
     const finishRouteBtn = document.getElementById('finish-route-btn');
     const exportRouteBtn = document.getElementById('export-route-btn');
     const importRouteBtn = document.getElementById('import-route-btn');
@@ -518,13 +517,8 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     
     function buildElevationProfile(elevationData) {
-        const container = document.getElementById('profile-content');
-        container.innerHTML = ''; // Clear previous chart
-
-        const headerContainer = document.createElement('div');
-        headerContainer.style.marginLeft = '10px';
-        headerContainer.style.marginTop = '0';
-        headerContainer.style.marginBottom = '10px';
+        const headerContainer = document.getElementById('profile-header');
+        headerContainer.innerHTML = ''; // Clear previous header
 
         // Check if mobile (screen width < 768px)
         const isMobile = window.innerWidth < 768;
@@ -532,40 +526,29 @@ document.addEventListener('DOMContentLoaded', function () {
         if (isMobile) {
             // Mobile: two lines
             const h3 = document.createElement('h3');
-            h3.style.color = 'darkorange';
-            h3.style.marginTop = '0';
-            h3.style.marginBottom = '3px';
-            h3.style.fontSize = '16px';
-            h3.style.lineHeight = '1.2';
-            h3.style.fontFamily = 'sans-serif';
+            h3.className = 'profile-title';
             h3.textContent = `Профиль высоты маршрута`;
             headerContainer.appendChild(h3);
 
             const subtitle = document.createElement('div');
-            subtitle.style.color = 'darkorange';
-            subtitle.style.fontSize = '12px';
-            subtitle.style.marginBottom = '0';
-            subtitle.style.fontFamily = 'sans-serif';
+            subtitle.className = 'profile-subtitle';
             subtitle.textContent = `(Шаг ${currentSampleStep}м, ${elevationData.length} точек)`;
             headerContainer.appendChild(subtitle);
         } else {
             // Desktop/Tablet: one line
             const h3 = document.createElement('h3');
-            h3.style.color = 'darkorange';
-            h3.style.marginTop = '0';
-            h3.style.marginBottom = '0';
-            h3.style.fontSize = '18px';
-            h3.style.fontFamily = 'sans-serif';
+            h3.className = 'profile-title';
             h3.textContent = `Профиль высоты маршрута (шаг ${currentSampleStep}м, ${elevationData.length} точек)`;
             headerContainer.appendChild(h3);
         }
 
-        container.appendChild(headerContainer);
+        const chartContainer = document.getElementById('profile-chart');
+        chartContainer.innerHTML = ''; // Clear previous chart
 
         const svgNode = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svgNode.style.width = '100%';
-        svgNode.style.height = isMobile ? 'calc(100% - 50px)' : 'calc(100% - 30px)';
-        container.appendChild(svgNode);
+        svgNode.setAttribute('width', '100%');
+        svgNode.setAttribute('height', '100%');
+        chartContainer.appendChild(svgNode);
 
         if (!routeHoverMarker) {
             routeHoverMarker = L.circleMarker([0, 0], {
@@ -686,9 +669,9 @@ document.addEventListener('DOMContentLoaded', function () {
         hoverGroup.appendChild(hoverCircle);
         svgNode.appendChild(hoverGroup);
 
-        svgNode.addEventListener('mousemove', (event) => {
+        const handleInteraction = (clientX) => {
             const rect = svgNode.getBoundingClientRect();
-            const mouseX = event.clientX - rect.left;
+            const mouseX = clientX - rect.left;
 
             if (mouseX < margin.left || mouseX > width - margin.right) {
                 hoverGroup.style.display = 'none';
@@ -770,14 +753,32 @@ document.addEventListener('DOMContentLoaded', function () {
             tooltipText1.setAttribute('y', textY1);
             tooltipText2.setAttribute('x', textX);
             tooltipText2.setAttribute('y', textY2);
-        });
+        };
 
-        svgNode.addEventListener('mouseleave', () => {
+        const hideInteraction = () => {
             hoverGroup.style.display = 'none';
             if (routeHoverMarker) {
                 routeHoverMarker.setStyle({ opacity: 0, fillOpacity: 0 });
             }
+        };
+
+        // Mouse events
+        svgNode.addEventListener('mousemove', (event) => {
+            handleInteraction(event.clientX);
         });
+
+        svgNode.addEventListener('mouseleave', hideInteraction);
+
+        // Touch events
+        svgNode.addEventListener('touchmove', (event) => {
+            event.preventDefault();
+            if (event.touches.length > 0) {
+                handleInteraction(event.touches[0].clientX);
+            }
+        }, { passive: false });
+
+        svgNode.addEventListener('touchend', hideInteraction);
+        svgNode.addEventListener('touchcancel', hideInteraction);
     }
     
     // Handle map click when building route
@@ -846,8 +847,9 @@ document.addEventListener('DOMContentLoaded', function () {
         isCalculatingRoute = true;
         map.off('click', onMapClickForRoute);
 
-        profileContent.innerHTML = '<div style="color: white; font-family: sans-serif; text-align: center; padding-top: 50px;">Загрузка реальных данных о высоте...</div>';
-        elevationProfile.style.display = 'block';
+        const chartContainer = document.getElementById('profile-chart');
+        chartContainer.innerHTML = '<div class="loading-message">Загрузка реальных данных о высоте...</div>';
+        elevationProfile.classList.add('visible');
 
         const SAMPLE_INTERVAL_KM = currentSampleStep / 1000; // Convert meters to kilometers
         const elevationData = [];
@@ -935,7 +937,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         } catch (error) {
             console.error('Failed to fetch elevation data:', error);
-            profileContent.innerHTML = `<div style="color: red; font-family: sans-serif; text-align: center; padding-top: 50px;">Ошибка при загрузке данных о высоте.<br>Убедитесь, что сервер запущен.</div>`;
+            chartContainer.innerHTML = `<div class="error-message">Ошибка при загрузке данных о высоте.<br>Убедитесь, что сервер запущен.</div>`;
         }
     }
     
@@ -990,7 +992,7 @@ document.addEventListener('DOMContentLoaded', function () {
         isCalculatingRoute = false;
 
         routeCalcControl.style.display = 'none';
-        elevationProfile.style.display = 'none';
+        elevationProfile.classList.remove('visible');
 
         map.off('click', onMapClickForRoute);
         isBuildingRoute = false;

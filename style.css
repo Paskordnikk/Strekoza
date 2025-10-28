@@ -427,18 +427,84 @@ body, html {
     color: #32333d;
 }
 
-/* Profile buttons container */
-#profile-buttons-container {
+/* Elevation Profile Container */
+#elevation-profile {
+    display: none;
     position: absolute;
-    top: 10px;
+    bottom: 10px;
+    left: 10px;
     right: 10px;
-    display: flex;
-    align-items: center;
-    border: none;
-    border-radius: 5px;
+    background-color: rgba(50, 51, 61, 0.9);
+    border-radius: 10px;
+    z-index: 1000;
+    padding: 10px;
+    height: 25vh;
 }
 
-/* Step buttons - Group 1 */
+#elevation-profile.visible {
+    display: flex;
+    flex-direction: column;
+}
+
+#profile-header {
+    padding-left: 10px;
+    padding-right: 10px;
+    flex-shrink: 0;
+}
+
+#profile-buttons-container {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    flex-shrink: 0;
+}
+
+#profile-chart {
+    flex: 1;
+    min-height: 0;
+    padding-right: 10px;
+    position: relative;
+}
+
+#profile-chart svg {
+    display: block;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+/* Profile title and subtitle */
+.profile-title {
+    color: darkorange;
+    margin: 0 0 5px 0;
+    font-size: 18px;
+    font-family: sans-serif;
+    line-height: 1.2;
+}
+
+.profile-subtitle {
+    color: darkorange;
+    font-size: 12px;
+    font-family: sans-serif;
+    margin: 0;
+}
+
+.loading-message,
+.error-message {
+    color: white;
+    font-family: sans-serif;
+    text-align: center;
+    padding-top: 50px;
+}
+
+.error-message {
+    color: red;
+}
+
+/* Step buttons */
 .step-btn {
     background: #32333d;
     color: darkorange;
@@ -449,11 +515,7 @@ body, html {
     font-family: sans-serif;
     font-size: 14px;
     transition: all 0.3s ease;
-    margin-right: 5px;
-}
-
-.step-btn-last {
-    margin-right: 15px;
+    white-space: nowrap;
 }
 
 .step-btn:hover {
@@ -469,7 +531,7 @@ body, html {
     font-weight: bold;
 }
 
-/* Profile action buttons - Groups 2 and 3 */
+/* Profile action buttons */
 .profile-action-btn {
     background: #32333d;
     color: darkorange;
@@ -480,10 +542,8 @@ body, html {
     font-family: sans-serif;
     font-size: 14px;
     transition: all 0.3s ease;
-}
-
-.export-btn {
-    margin-right: 15px;
+    white-space: nowrap;
+    margin-left: 10px;
 }
 
 .profile-action-btn:hover {
@@ -494,13 +554,13 @@ body, html {
 
 /* Mobile optimization */
 @media (max-width: 768px) {
+    #elevation-profile {
+        height: 30vh;
+    }
+    
     #profile-buttons-container {
-        position: static;
         flex-wrap: wrap;
-        gap: 5px;
-        margin: 5px 10px 5px 10px;
-        padding: 0;
-        justify-content: flex-start;
+        padding: 5px 10px;
     }
     
     .step-btn,
@@ -510,24 +570,28 @@ body, html {
         margin: 0;
     }
     
-    .step-btn-last,
-    .export-btn {
-        margin-right: 0;
-    }
-    
-    #elevation-profile {
-        height: 35vh !important;
+    .profile-title {
+        font-size: 16px;
+        margin-bottom: 3px;
     }
 }
 
 @media (max-width: 480px) {
+    #elevation-profile {
+        height: 35vh;
+    }
+    
     .step-btn,
     .profile-action-btn {
         font-size: 10px;
         padding: 4px 6px;
     }
     
-    #elevation-profile {
-        height: 40vh !important;
+    .profile-title {
+        font-size: 14px;
+    }
+    
+    .profile-subtitle {
+        font-size: 11px;
     }
 }
