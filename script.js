@@ -518,6 +518,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     
     function buildElevationProfile(elevationData) {
+        const elevationProfile = document.getElementById('elevation-profile');
         const container = document.getElementById('profile-content');
         container.innerHTML = ''; // Clear previous chart
 
@@ -526,12 +527,11 @@ document.addEventListener('DOMContentLoaded', function () {
         h3.style.marginTop = '0';
         h3.style.marginBottom = '10px';
         h3.textContent = `Профиль высоты маршрута (шаг ${currentSampleStep}м, ${elevationData.length} точек)`;
-        container.appendChild(h3);
+        elevationProfile.prepend(h3);
 
         const svgNode = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svgNode.style.width = '100%';
-        svgNode.style.height = '100%';
-        svgNode.style.flex = '1 1 auto';
+        svgNode.style.height = 'calc(100% - 30px)';
         container.appendChild(svgNode);
 
         if (!routeHoverMarker) {
@@ -653,10 +653,15 @@ document.addEventListener('DOMContentLoaded', function () {
         hoverGroup.appendChild(hoverCircle);
         svgNode.appendChild(hoverGroup);
 
-        svgNode.style.touchAction = 'none';
-
-        const updateHoverAtClientX = (clientX) => {
+        function handleInteraction(event) {
+            event.preventDefault();
             const rect = svgNode.getBoundingClientRect();
+            let clientX;
+            if (event.touches) {
+                clientX = event.touches[0].clientX;
+            } else {
+                clientX = event.clientX;
+            }
             const mouseX = clientX - rect.left;
 
             if (mouseX < margin.left || mouseX > width - margin.right) {
@@ -739,41 +744,21 @@ document.addEventListener('DOMContentLoaded', function () {
             tooltipText1.setAttribute('y', textY1);
             tooltipText2.setAttribute('x', textX);
             tooltipText2.setAttribute('y', textY2);
-        };
+        }
 
-        svgNode.addEventListener('mousemove', (event) => {
-            updateHoverAtClientX(event.clientX);
-        });
+        svgNode.addEventListener('mousemove', handleInteraction);
+        svgNode.addEventListener('touchmove', handleInteraction);
+        svgNode.addEventListener('touchstart', handleInteraction);
 
-        svgNode.addEventListener('pointermove', (event) => {
-            updateHoverAtClientX(event.clientX);
-        });
-
-        svgNode.addEventListener('touchstart', (event) => {
-            if (event.touches && event.touches[0]) {
-                updateHoverAtClientX(event.touches[0].clientX);
-            }
-        }, { passive: true });
-
-        svgNode.addEventListener('touchmove', (event) => {
-            if (event.touches && event.touches[0]) {
-                updateHoverAtClientX(event.touches[0].clientX);
-            }
-        }, { passive: true });
-
-        svgNode.addEventListener('mouseleave', () => {
+        function endInteraction() {
             hoverGroup.style.display = 'none';
             if (routeHoverMarker) {
                 routeHoverMarker.setStyle({ opacity: 0, fillOpacity: 0 });
             }
-        });
+        }
 
-        svgNode.addEventListener('pointerleave', () => {
-            hoverGroup.style.display = 'none';
-            if (routeHoverMarker) {
-                routeHoverMarker.setStyle({ opacity: 0, fillOpacity: 0 });
-            }
-        });
+        svgNode.addEventListener('mouseleave', endInteraction);
+        svgNode.addEventListener('touchend', endInteraction);
     }
     
     // Handle map click when building route
