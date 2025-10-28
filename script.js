@@ -525,6 +525,7 @@ document.addEventListener('DOMContentLoaded', function () {
         h3.style.color = 'darkorange';
         h3.style.marginTop = '0';
         h3.style.marginBottom = '10px';
+        h3.style.marginLeft = '10px';
         h3.textContent = `Профиль высоты маршрута (шаг ${currentSampleStep}м, ${elevationData.length} точек)`;
         container.appendChild(h3);
 
@@ -548,7 +549,7 @@ document.addEventListener('DOMContentLoaded', function () {
         
         const { width, height } = svgNode.getBoundingClientRect();
 
-        const margin = { top: 20, right: 20, bottom: 30, left: 60 };
+        const margin = { top: 20, right: 20, bottom: 30, left: 50 };
         const chartWidth = width - margin.left - margin.right;
         const chartHeight = height - margin.top - margin.bottom;
 
