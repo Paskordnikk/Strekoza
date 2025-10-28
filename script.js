@@ -524,29 +524,47 @@ document.addEventListener('DOMContentLoaded', function () {
         const headerContainer = document.createElement('div');
         headerContainer.style.marginLeft = '10px';
         headerContainer.style.marginTop = '0';
-        headerContainer.style.marginBottom = '5px';
+        headerContainer.style.marginBottom = '10px';
 
-        const h3 = document.createElement('h3');
-        h3.style.color = 'darkorange';
-        h3.style.marginTop = '0';
-        h3.style.marginBottom = '3px';
-        h3.style.fontSize = '16px';
-        h3.style.lineHeight = '1.2';
-        h3.textContent = `Профиль высоты маршрута`;
-        headerContainer.appendChild(h3);
+        // Check if mobile (screen width < 768px)
+        const isMobile = window.innerWidth < 768;
 
-        const subtitle = document.createElement('div');
-        subtitle.style.color = 'darkorange';
-        subtitle.style.fontSize = '12px';
-        subtitle.style.marginBottom = '0';
-        subtitle.textContent = `(Шаг ${currentSampleStep}м, ${elevationData.length} точек)`;
-        headerContainer.appendChild(subtitle);
+        if (isMobile) {
+            // Mobile: two lines
+            const h3 = document.createElement('h3');
+            h3.style.color = 'darkorange';
+            h3.style.marginTop = '0';
+            h3.style.marginBottom = '3px';
+            h3.style.fontSize = '16px';
+            h3.style.lineHeight = '1.2';
+            h3.style.fontFamily = 'sans-serif';
+            h3.textContent = `Профиль высоты маршрута`;
+            headerContainer.appendChild(h3);
+
+            const subtitle = document.createElement('div');
+            subtitle.style.color = 'darkorange';
+            subtitle.style.fontSize = '12px';
+            subtitle.style.marginBottom = '0';
+            subtitle.style.fontFamily = 'sans-serif';
+            subtitle.textContent = `(Шаг ${currentSampleStep}м, ${elevationData.length} точек)`;
+            headerContainer.appendChild(subtitle);
+        } else {
+            // Desktop/Tablet: one line
+            const h3 = document.createElement('h3');
+            h3.style.color = 'darkorange';
+            h3.style.marginTop = '0';
+            h3.style.marginBottom = '0';
+            h3.style.fontSize = '18px';
+            h3.style.fontFamily = 'sans-serif';
+            h3.textContent = `Профиль высоты маршрута (шаг ${currentSampleStep}м, ${elevationData.length} точек)`;
+            headerContainer.appendChild(h3);
+        }
 
         container.appendChild(headerContainer);
 
         const svgNode = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svgNode.style.width = '100%';
-        svgNode.style.height = 'calc(100% - 50px)';
+        svgNode.style.height = isMobile ? 'calc(100% - 50px)' : 'calc(100% - 30px)';
         container.appendChild(svgNode);
 
         if (!routeHoverMarker) {
