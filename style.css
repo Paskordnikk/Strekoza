@@ -429,12 +429,13 @@ body, html {
 
 /* Profile buttons container */
 #profile-buttons-container {
+    position: absolute;
+    top: 10px;
+    right: 10px;
     display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
     align-items: center;
-    margin-top: 10px;
-    margin-bottom: 10px;
+    border: none;
+    border-radius: 5px;
 }
 
 /* Step buttons - Group 1 */
@@ -446,9 +447,13 @@ body, html {
     padding: 5px 10px;
     cursor: pointer;
     font-family: sans-serif;
-    font-size: 12px;
+    font-size: 14px;
     transition: all 0.3s ease;
-    white-space: nowrap;
+    margin-right: 5px;
+}
+
+.step-btn-last {
+    margin-right: 15px;
 }
 
 .step-btn:hover {
@@ -473,9 +478,12 @@ body, html {
     padding: 5px 10px;
     cursor: pointer;
     font-family: sans-serif;
-    font-size: 12px;
+    font-size: 14px;
     transition: all 0.3s ease;
-    white-space: nowrap;
+}
+
+.export-btn {
+    margin-right: 15px;
 }
 
 .profile-action-btn:hover {
@@ -484,31 +492,31 @@ body, html {
     border-color: #32333d;
 }
 
-/* Elevation profile layout */
-#elevation-profile {
-    display: flex;
-    flex-direction: column;
-}
-
-#profile-chart-container {
-    overflow: hidden;
-}
-
 /* Mobile optimization */
 @media (max-width: 768px) {
     #profile-buttons-container {
-        gap: 3px;
+        position: static;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin: 5px 10px 5px 10px;
+        padding: 0;
+        justify-content: flex-start;
     }
     
     .step-btn,
     .profile-action-btn {
         font-size: 11px;
-        padding: 4px 8px;
+        padding: 5px 8px;
+        margin: 0;
+    }
+    
+    .step-btn-last,
+    .export-btn {
+        margin-right: 0;
     }
     
     #elevation-profile {
         height: 35vh !important;
-        min-height: 220px !important;
     }
 }
 
@@ -516,11 +524,10 @@ body, html {
     .step-btn,
     .profile-action-btn {
         font-size: 10px;
-        padding: 3px 6px;
+        padding: 4px 6px;
     }
     
     #elevation-profile {
         height: 40vh !important;
-        min-height: 200px !important;
     }
 }

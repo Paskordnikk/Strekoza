@@ -485,6 +485,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const calculateRouteBtn = document.getElementById('calculate-route-btn');
     const routeCalcControl = document.getElementById('route-calc-control');
     const elevationProfile = document.getElementById('elevation-profile');
+    const profileContent = document.getElementById('profile-content');
     const finishRouteBtn = document.getElementById('finish-route-btn');
     const exportRouteBtn = document.getElementById('export-route-btn');
     const importRouteBtn = document.getElementById('import-route-btn');
@@ -517,31 +518,36 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     
     function buildElevationProfile(elevationData) {
-        const titleContainer = document.getElementById('profile-title-container');
-        titleContainer.innerHTML = ''; // Clear previous title
+        const container = document.getElementById('profile-content');
+        container.innerHTML = ''; // Clear previous chart
+
+        const headerContainer = document.createElement('div');
+        headerContainer.style.marginLeft = '10px';
+        headerContainer.style.marginTop = '0';
+        headerContainer.style.marginBottom = '5px';
 
         const h3 = document.createElement('h3');
         h3.style.color = 'darkorange';
         h3.style.marginTop = '0';
-        h3.style.marginBottom = '5px';
+        h3.style.marginBottom = '3px';
         h3.style.fontSize = '16px';
+        h3.style.lineHeight = '1.2';
         h3.textContent = `Профиль высоты маршрута`;
-        titleContainer.appendChild(h3);
+        headerContainer.appendChild(h3);
 
         const subtitle = document.createElement('div');
         subtitle.style.color = 'darkorange';
         subtitle.style.fontSize = '12px';
-        subtitle.style.marginBottom = '10px';
+        subtitle.style.marginBottom = '0';
         subtitle.textContent = `(Шаг ${currentSampleStep}м, ${elevationData.length} точек)`;
-        titleContainer.appendChild(subtitle);
+        headerContainer.appendChild(subtitle);
 
-        const chartContainer = document.getElementById('profile-chart-container');
-        chartContainer.innerHTML = ''; // Clear previous chart
+        container.appendChild(headerContainer);
 
         const svgNode = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svgNode.style.width = '100%';
-        svgNode.style.height = '100%';
-        chartContainer.appendChild(svgNode);
+        svgNode.style.height = 'calc(100% - 50px)';
+        container.appendChild(svgNode);
 
         if (!routeHoverMarker) {
             routeHoverMarker = L.circleMarker([0, 0], {
@@ -822,8 +828,7 @@ document.addEventListener('DOMContentLoaded', function () {
         isCalculatingRoute = true;
         map.off('click', onMapClickForRoute);
 
-        const chartContainer = document.getElementById('profile-chart-container');
-        chartContainer.innerHTML = '<div style="color: white; font-family: sans-serif; text-align: center; padding-top: 50px;">Загрузка реальных данных о высоте...</div>';
+        profileContent.innerHTML = '<div style="color: white; font-family: sans-serif; text-align: center; padding-top: 50px;">Загрузка реальных данных о высоте...</div>';
         elevationProfile.style.display = 'block';
 
         const SAMPLE_INTERVAL_KM = currentSampleStep / 1000; // Convert meters to kilometers
@@ -912,7 +917,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         } catch (error) {
             console.error('Failed to fetch elevation data:', error);
-            chartContainer.innerHTML = `<div style="color: red; font-family: sans-serif; text-align: center; padding-top: 50px;">Ошибка при загрузке данных о высоте.<br>Убедитесь, что сервер запущен.</div>`;
+            profileContent.innerHTML = `<div style="color: red; font-family: sans-serif; text-align: center; padding-top: 50px;">Ошибка при загрузке данных о высоте.<br>Убедитесь, что сервер запущен.</div>`;
         }
     }
     
