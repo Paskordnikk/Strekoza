@@ -522,11 +522,21 @@ document.addEventListener('DOMContentLoaded', function () {
         const container = document.getElementById('profile-content');
         container.innerHTML = ''; // Clear previous chart
 
+        // Remove existing h3 if any
+        const existingH3 = elevationProfile.querySelector('h3');
+        if (existingH3) {
+            elevationProfile.removeChild(existingH3);
+        }
+
         const h3 = document.createElement('h3');
-        h3.style.color = 'darkorange';
-        h3.style.marginTop = '0';
-        h3.style.marginBottom = '10px';
-        h3.textContent = `Профиль высоты маршрута (шаг ${currentSampleStep}м, ${elevationData.length} точек)`;
+        let titleText = `Профиль высоты маршрута (шаг ${currentSampleStep}м, ${elevationData.length} точек)`;
+        if (window.innerWidth <= 768) {
+            titleText = titleText.replace(' (', '<br>(');
+            h3.innerHTML = titleText;
+        } else {
+            h3.textContent = titleText;
+        }
+
         elevationProfile.prepend(h3);
 
         const svgNode = document.createElementNS('http://www.w3.org/2000/svg', 'svg');

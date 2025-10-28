@@ -505,6 +505,7 @@ body, html {
         font-family: sans-serif;
         text-align: center;
         margin: 0 0 10px 0;
+        flex-shrink: 0;
     }
 
     #profile-buttons-container {
@@ -514,10 +515,12 @@ body, html {
         display: flex;
         justify-content: center;
         flex-wrap: wrap;
+        flex-shrink: 0;
     }
 
     #profile-content {
         order: 3;
+        height: 100%;
     }
 
     .step-btn, .profile-action-btn {
