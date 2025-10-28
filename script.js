@@ -517,8 +517,8 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     
     function buildElevationProfile(elevationData) {
-        const headerContainer = document.getElementById('profile-header');
-        headerContainer.innerHTML = ''; // Clear previous header
+        const titleWrapper = document.getElementById('profile-title-wrapper');
+        titleWrapper.innerHTML = ''; // Clear previous title
 
         // Check if mobile (screen width < 768px)
         const isMobile = window.innerWidth < 768;
@@ -528,18 +528,18 @@ document.addEventListener('DOMContentLoaded', function () {
             const h3 = document.createElement('h3');
             h3.className = 'profile-title';
             h3.textContent = `Профиль высоты маршрута`;
-            headerContainer.appendChild(h3);
+            titleWrapper.appendChild(h3);
 
             const subtitle = document.createElement('div');
             subtitle.className = 'profile-subtitle';
             subtitle.textContent = `(Шаг ${currentSampleStep}м, ${elevationData.length} точек)`;
-            headerContainer.appendChild(subtitle);
+            titleWrapper.appendChild(subtitle);
         } else {
             // Desktop/Tablet: one line
             const h3 = document.createElement('h3');
             h3.className = 'profile-title';
             h3.textContent = `Профиль высоты маршрута (шаг ${currentSampleStep}м, ${elevationData.length} точек)`;
-            headerContainer.appendChild(h3);
+            titleWrapper.appendChild(h3);
         }
 
         const chartContainer = document.getElementById('profile-chart');
@@ -762,23 +762,28 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         };
 
-        // Mouse events
+        // Mouse events (desktop)
         svgNode.addEventListener('mousemove', (event) => {
             handleInteraction(event.clientX);
         });
 
         svgNode.addEventListener('mouseleave', hideInteraction);
 
-        // Touch events
-        svgNode.addEventListener('touchmove', (event) => {
-            event.preventDefault();
+        // Touch events (mobile)
+        svgNode.addEventListener('touchstart', (event) => {
             if (event.touches.length > 0) {
                 handleInteraction(event.touches[0].clientX);
             }
-        }, { passive: false });
+        }, { passive: true });
 
-        svgNode.addEventListener('touchend', hideInteraction);
-        svgNode.addEventListener('touchcancel', hideInteraction);
+        svgNode.addEventListener('touchmove', (event) => {
+            if (event.touches.length > 0) {
+                handleInteraction(event.touches[0].clientX);
+            }
+        }, { passive: true });
+
+        svgNode.addEventListener('touchend', hideInteraction, { passive: true });
+        svgNode.addEventListener('touchcancel', hideInteraction, { passive: true });
     }
     
     // Handle map click when building route
