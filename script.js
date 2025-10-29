@@ -638,8 +638,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const titleWrapper = document.getElementById('profile-title-wrapper');
         titleWrapper.innerHTML = ''; // Clear previous title
 
-        // Check if mobile (screen width < 768px)
+        // Check if mobile (screen width < 768px) or very small (< 480px)
         const isMobile = window.innerWidth < 768;
+        const isVerySmall = window.innerWidth < 480;
 
         if (isMobile) {
             // Mobile: two lines
@@ -683,7 +684,12 @@ document.addEventListener('DOMContentLoaded', function () {
         
         const { width, height } = svgNode.getBoundingClientRect();
 
-        const margin = { top: 20, right: 20, bottom: 30, left: 50 };
+        // Адаптивные отступы для мобильных устройств
+        const margin = isVerySmall
+            ? { top: 5, right: 15, bottom: 15, left: 40 }
+            : isMobile 
+                ? { top: 10, right: 20, bottom: 20, left: 50 }
+                : { top: 20, right: 20, bottom: 30, left: 50 };
         const chartWidth = width - margin.left - margin.right;
         const chartHeight = height - margin.top - margin.bottom;
 

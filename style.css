@@ -587,6 +587,11 @@ body, html {
         justify-content: space-between;
     }
     
+    #profile-chart {
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+    
     .step-btn,
     .profile-action-btn {
         font-size: 10px;
@@ -615,6 +620,11 @@ body, html {
     
     #profile-header {
         margin-bottom: 6px;
+    }
+    
+    #profile-chart {
+        padding-top: 0;
+        padding-bottom: 0;
     }
     
     .step-btn,
