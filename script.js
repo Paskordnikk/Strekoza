@@ -739,26 +739,28 @@ document.addEventListener('DOMContentLoaded', function () {
         let lastLabelEndX = -Infinity;
         const labelPadding = 10; // Min padding between labels
 
-        waypoints.forEach(point => {
+        waypoints.forEach((point, index) => {
             const x = xScale(point.distance);
+            const isLastWaypoint = index === waypoints.length - 1;
             
             const textNode = document.createElementNS('http://www.w3.org/2000/svg', 'text');
             textNode.setAttribute('x', x);
             textNode.setAttribute('y', height - margin.bottom + 15);
             textNode.setAttribute('fill', 'darkorange');
             textNode.setAttribute('font-size', '12');
-            textNode.setAttribute('text-anchor', 'middle');
+            // Последнюю метку выравниваем по правому краю
+            textNode.setAttribute('text-anchor', isLastWaypoint ? 'end' : 'middle');
             textNode.textContent = `${point.distance.toFixed(1)} км`;
             
             svgNode.appendChild(textNode);
             
             const bbox = textNode.getBBox();
-            const currentLabelStartX = x - bbox.width / 2;
+            const currentLabelStartX = isLastWaypoint ? (x - bbox.width) : (x - bbox.width / 2);
             
             if (currentLabelStartX < lastLabelEndX) {
                 svgNode.removeChild(textNode);
             } else {
-                lastLabelEndX = x + bbox.width / 2 + labelPadding;
+                lastLabelEndX = isLastWaypoint ? x : (x + bbox.width / 2 + labelPadding);
             }
         });
 
