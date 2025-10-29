@@ -65,10 +65,9 @@ body, html {
     left: -100%; 
     width: calc(100% - 70px);
     height: 100vh;
-    max-height: 100vh;
     background-color: rgba(50, 51, 61, 0.8);
     padding-top: 60px;
-    padding-bottom: 20px;
+    padding-bottom: 500vh;
     transition: left 0.3s ease-in-out;
     z-index: 1500;
     overflow-y: auto;
