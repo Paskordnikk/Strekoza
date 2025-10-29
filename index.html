@@ -31,7 +31,6 @@
         <span></span>
         <span></span>
     </div>
-    <button id="debug-toggle" class="debug-button" style="display: none;">🐛</button>
     <div id="side-menu">
         <div id="close-menu-btn">&times;</div>
         
@@ -200,28 +199,16 @@
     <script src="script.js"></script>
 
     <script>
-        // Показываем кнопку консоли только на мобильных устройствах
+        // Автоматически загружаем консоль разработчика на мобильных устройствах
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         
         if (isMobile) {
-            const debugBtn = document.getElementById('debug-toggle');
-            debugBtn.style.display = 'block';
-            
-            let erudaLoaded = false;
-            
-            debugBtn.addEventListener('click', function() {
-                if (!erudaLoaded) {
-                    const script = document.createElement('script');
-                    script.src = 'https://cdn.jsdelivr.net/npm/eruda';
-                    script.onload = function() {
-                        eruda.init();
-                        erudaLoaded = true;
-                    };
-                    document.body.appendChild(script);
-                } else {
-                    eruda.show();
-                }
-            });
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/eruda';
+            script.onload = function() {
+                eruda.init();
+            };
+            document.body.appendChild(script);
         }
     </script>
 
