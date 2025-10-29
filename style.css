@@ -620,13 +620,17 @@ body, html {
     }
     
     #profile-chart {
-        padding: 0;
+        padding: 0 0 0 5px;
+    }
+    
+    #profile-chart svg {
+        margin-top: 10px;
     }
     
     .step-btn,
     .profile-action-btn {
         font-size: 10px;
-        padding: 10px;
+        padding: 5px 10px;
         margin: 0;
         white-space: nowrap;
     }
@@ -661,13 +665,17 @@ body, html {
     }
     
     #profile-chart {
-        padding: 0;
+        padding: 0 0 0 5px;
+    }
+    
+    #profile-chart svg {
+        margin-top: 10px;
     }
     
     .step-btn,
     .profile-action-btn {
         font-size: 9px;
-        padding: 8px;
+        padding: 5px 10px;
     }
     
     #export-route-btn {
