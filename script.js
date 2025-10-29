@@ -603,7 +603,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const calculateRouteBtn = document.getElementById('calculate-route-btn');
     const routeCalcControl = document.getElementById('route-calc-control');
     const elevationProfile = document.getElementById('elevation-profile');
-    const finishRouteBtn = document.getElementById('finish-route-btn');
+    const profileCloseBtn = document.getElementById('profile-close-btn');
     const exportRouteBtn = document.getElementById('export-route-btn');
     const importRouteBtn = document.getElementById('import-route-btn');
     const csvImporter = document.getElementById('csv-importer');
@@ -684,12 +684,12 @@ document.addEventListener('DOMContentLoaded', function () {
         
         const { width, height } = svgNode.getBoundingClientRect();
 
-        // Адаптивные отступы для мобильных устройств
+        // Уменьшенные отступы для всех устройств
         const margin = isVerySmall
             ? { top: 5, right: 15, bottom: 15, left: 40 }
             : isMobile 
                 ? { top: 10, right: 20, bottom: 20, left: 50 }
-                : { top: 20, right: 20, bottom: 30, left: 50 };
+                : { top: 10, right: 20, bottom: 20, left: 50 };
         const chartWidth = width - margin.left - margin.right;
         const chartHeight = height - margin.top - margin.bottom;
 
@@ -1155,7 +1155,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
-    finishRouteBtn.addEventListener('click', function() {
+    profileCloseBtn.addEventListener('click', function() {
         // Reset route building
         resetRouteBuilding();
         
