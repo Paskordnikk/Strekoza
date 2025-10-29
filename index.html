@@ -31,6 +31,7 @@
         <span></span>
         <span></span>
     </div>
+    <button id="debug-toggle" class="debug-button" style="display: none;">🐛</button>
     <div id="side-menu">
         <div id="close-menu-btn">&times;</div>
         
@@ -138,17 +139,37 @@
             </div>
         </div>
 
-        <!-- Слой дорог -->
+        <!-- Слои -->
         <div class="menu-section">
-            <div class="menu-section-title">Слой дорог</div>
+            <div class="menu-section-title">Слои</div>
             <div class="menu-item checkbox-option">
                 <input type="checkbox" id="enable-roads-layer">
-                <label for="enable-roads-layer">Показать железные дороги</label>
+                <label for="enable-roads-layer">Железные дороги</label>
             </div>
             <div id="roads-layer-controls" style="display: none;">
                 <div class="menu-item">
                     <label for="roads-opacity-slider">Прозрачность слоя дорог</label>
                     <input type="range" id="roads-opacity-slider" min="0" max="100" value="100">
+                </div>
+            </div>
+            <div class="menu-item checkbox-option">
+                <input type="checkbox" id="enable-borders-layer">
+                <label for="enable-borders-layer">Границы</label>
+            </div>
+            <div id="borders-layer-controls" style="display: none;">
+                <div class="menu-item">
+                    <label for="borders-opacity-slider">Прозрачность слоя границ</label>
+                    <input type="range" id="borders-opacity-slider" min="0" max="100" value="100">
+                </div>
+            </div>
+            <div class="menu-item checkbox-option">
+                <input type="checkbox" id="enable-labels-layer">
+                <label for="enable-labels-layer">Географические названия</label>
+            </div>
+            <div id="labels-layer-controls" style="display: none;">
+                <div class="menu-item">
+                    <label for="labels-opacity-slider">Прозрачность слоя названий</label>
+                    <input type="range" id="labels-opacity-slider" min="0" max="100" value="100">
                 </div>
             </div>
         </div>
@@ -177,6 +198,32 @@
     <script src="https://unpkg.com/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet.polylinemeasure@latest/Leaflet.PolylineMeasure.js"></script>
     <script src="script.js"></script>
+
+    <script>
+        // Показываем кнопку консоли только на мобильных устройствах
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        if (isMobile) {
+            const debugBtn = document.getElementById('debug-toggle');
+            debugBtn.style.display = 'block';
+            
+            let erudaLoaded = false;
+            
+            debugBtn.addEventListener('click', function() {
+                if (!erudaLoaded) {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdn.jsdelivr.net/npm/eruda';
+                    script.onload = function() {
+                        eruda.init();
+                        erudaLoaded = true;
+                    };
+                    document.body.appendChild(script);
+                } else {
+                    eruda.show();
+                }
+            });
+        }
+    </script>
 
     <div id="geo-error-modal" class="hidden">
         <p>Не удалось определить ваше местоположение. Включите геолокацию в настройках браузера.</p>

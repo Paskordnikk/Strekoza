@@ -204,6 +204,8 @@ document.addEventListener('DOMContentLoaded', function () {
     baseLayer.addTo(map);
     
     let roadsLayer = null;
+    let bordersLayer = null;
+    let labelsLayer = null;
     let overlayLayer = null;
 
     const hamburgerMenu = document.getElementById('hamburger-menu');
@@ -242,6 +244,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const lastOverlayOpacity = parseInt(localStorage.getItem('overlayOpacity') || '50');
     const lastRoadsEnabled = localStorage.getItem('roadsEnabled') === 'true';
     const lastRoadsOpacity = parseInt(localStorage.getItem('roadsOpacity') || '100');
+    const lastBordersEnabled = localStorage.getItem('bordersEnabled') === 'true';
+    const lastBordersOpacity = parseInt(localStorage.getItem('bordersOpacity') || '100');
+    const lastLabelsEnabled = localStorage.getItem('labelsEnabled') === 'true';
+    const lastLabelsOpacity = parseInt(localStorage.getItem('labelsOpacity') || '100');
     const lastZoomLevel = localStorage.getItem('mapZoomLevel');
     const lastBaseBrightness = parseInt(localStorage.getItem('baseBrightness') || '100');
 
@@ -281,6 +287,48 @@ document.addEventListener('DOMContentLoaded', function () {
         roadsLayer.addTo(map);
         
         roadsOpacitySlider.value = lastRoadsOpacity;
+    }
+
+    // Apply saved borders layer settings
+    const enableBordersCheckbox = document.getElementById('enable-borders-layer');
+    const bordersControls = document.getElementById('borders-layer-controls');
+    const bordersOpacitySlider = document.getElementById('borders-opacity-slider');
+    
+    if (lastBordersEnabled) {
+        enableBordersCheckbox.checked = true;
+        bordersControls.style.display = 'block';
+        
+        bordersLayer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_lines/{z}/{x}/{y}{r}.png', {
+            minZoom: 0,
+            maxZoom: 20,
+            attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            pane: 'roadsPane'
+        });
+        bordersLayer.setOpacity(lastBordersOpacity / 100);
+        bordersLayer.addTo(map);
+        
+        bordersOpacitySlider.value = lastBordersOpacity;
+    }
+
+    // Apply saved labels layer settings
+    const enableLabelsCheckbox = document.getElementById('enable-labels-layer');
+    const labelsControls = document.getElementById('labels-layer-controls');
+    const labelsOpacitySlider = document.getElementById('labels-opacity-slider');
+    
+    if (lastLabelsEnabled) {
+        enableLabelsCheckbox.checked = true;
+        labelsControls.style.display = 'block';
+        
+        labelsLayer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_labels/{z}/{x}/{y}{r}.png', {
+            minZoom: 0,
+            maxZoom: 20,
+            attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            pane: 'roadsPane'
+        });
+        labelsLayer.setOpacity(lastLabelsOpacity / 100);
+        labelsLayer.addTo(map);
+        
+        labelsOpacitySlider.value = lastLabelsOpacity;
     }
 
     // Apply saved overlay settings
@@ -408,6 +456,76 @@ document.addEventListener('DOMContentLoaded', function () {
         if (roadsLayer) {
             roadsLayer.setOpacity(e.target.value / 100);
             localStorage.setItem('roadsOpacity', e.target.value);
+        }
+    });
+
+    // Enable/disable borders layer
+    enableBordersCheckbox.addEventListener('change', function (e) {
+        if (e.target.checked) {
+            bordersControls.style.display = 'block';
+            
+            bordersLayer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_lines/{z}/{x}/{y}{r}.png', {
+                minZoom: 0,
+                maxZoom: 20,
+                attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                pane: 'roadsPane'
+            });
+            bordersLayer.setOpacity(bordersOpacitySlider.value / 100);
+            bordersLayer.addTo(map);
+            
+            localStorage.setItem('bordersEnabled', 'true');
+        } else {
+            bordersControls.style.display = 'none';
+            
+            if (bordersLayer) {
+                map.removeLayer(bordersLayer);
+                bordersLayer = null;
+            }
+            
+            localStorage.setItem('bordersEnabled', 'false');
+        }
+    });
+
+    // Borders opacity control
+    bordersOpacitySlider.addEventListener('input', function (e) {
+        if (bordersLayer) {
+            bordersLayer.setOpacity(e.target.value / 100);
+            localStorage.setItem('bordersOpacity', e.target.value);
+        }
+    });
+
+    // Enable/disable labels layer
+    enableLabelsCheckbox.addEventListener('change', function (e) {
+        if (e.target.checked) {
+            labelsControls.style.display = 'block';
+            
+            labelsLayer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_labels/{z}/{x}/{y}{r}.png', {
+                minZoom: 0,
+                maxZoom: 20,
+                attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                pane: 'roadsPane'
+            });
+            labelsLayer.setOpacity(labelsOpacitySlider.value / 100);
+            labelsLayer.addTo(map);
+            
+            localStorage.setItem('labelsEnabled', 'true');
+        } else {
+            labelsControls.style.display = 'none';
+            
+            if (labelsLayer) {
+                map.removeLayer(labelsLayer);
+                labelsLayer = null;
+            }
+            
+            localStorage.setItem('labelsEnabled', 'false');
+        }
+    });
+
+    // Labels opacity control
+    labelsOpacitySlider.addEventListener('input', function (e) {
+        if (labelsLayer) {
+            labelsLayer.setOpacity(e.target.value / 100);
+            localStorage.setItem('labelsOpacity', e.target.value);
         }
     });
 
