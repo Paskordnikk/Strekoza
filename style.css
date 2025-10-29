@@ -601,13 +601,10 @@ body, html {
     }
     
     #profile-header {
-        flex-direction: column;
-        align-items: flex-start;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
         margin-bottom: 8px;
-    }
-    
-    #profile-title-wrapper {
-        margin-bottom: 5px;
     }
     
     #profile-close-btn {
@@ -619,23 +616,23 @@ body, html {
         flex-wrap: nowrap;
         gap: 3px;
         margin-left: 0;
-        width: 100%;
-        justify-content: space-between;
+        justify-content: flex-start;
     }
     
     #profile-chart {
-        padding-top: 0;
-        padding-bottom: 0;
+        padding: 0;
     }
     
     .step-btn,
     .profile-action-btn {
         font-size: 10px;
-        padding: 4px 6px;
+        padding: 10px;
         margin: 0;
         white-space: nowrap;
-        flex: 1;
-        min-width: 0;
+    }
+    
+    #export-route-btn {
+        margin-left: 40px;
     }
     
     .profile-title {
@@ -664,14 +661,17 @@ body, html {
     }
     
     #profile-chart {
-        padding-top: 0;
-        padding-bottom: 0;
+        padding: 0;
     }
     
     .step-btn,
     .profile-action-btn {
         font-size: 9px;
-        padding: 3px 5px;
+        padding: 8px;
+    }
+    
+    #export-route-btn {
+        margin-left: 30px;
     }
     
     .profile-title {

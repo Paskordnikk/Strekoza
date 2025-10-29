@@ -686,9 +686,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Уменьшенные отступы для всех устройств
         const margin = isVerySmall
-            ? { top: 5, right: 15, bottom: 15, left: 40 }
+            ? { top: 5, right: 5, bottom: 15, left: 40 }
             : isMobile 
-                ? { top: 10, right: 20, bottom: 20, left: 50 }
+                ? { top: 10, right: 10, bottom: 20, left: 50 }
                 : { top: 10, right: 20, bottom: 20, left: 50 };
         const chartWidth = width - margin.left - margin.right;
         const chartHeight = height - margin.top - margin.bottom;
