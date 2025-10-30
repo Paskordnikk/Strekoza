@@ -615,7 +615,7 @@ body, html {
     #profile-buttons-container {
         flex-wrap: nowrap;
         gap: 3px;
-        margin-left: 0;
+        margin-left: 10px;
         justify-content: flex-start;
     }
     
@@ -664,9 +664,6 @@ body, html {
         height: 18px;
     }
     
-    #profile-chart {
-        padding: 0 0 0 5px;
-    }
     
     #profile-chart svg {
         margin-top: 10px;

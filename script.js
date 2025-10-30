@@ -979,7 +979,7 @@ document.addEventListener('DOMContentLoaded', function () {
         map.off('click', onMapClickForRoute);
 
         const chartContainer = document.getElementById('profile-chart');
-        chartContainer.innerHTML = '<div class="loading-message">Загрузка реальных данных о высоте...</div>';
+        chartContainer.innerHTML = '<div class="loading-message">Построение профиля высоты...</div>';
         elevationProfile.classList.add('visible');
 
         const SAMPLE_INTERVAL_KM = currentSampleStep / 1000; // Convert meters to kilometers
@@ -1068,7 +1068,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         } catch (error) {
             console.error('Failed to fetch elevation data:', error);
-            chartContainer.innerHTML = `<div class="error-message">Ошибка при загрузке данных о высоте.<br>Убедитесь, что сервер запущен.</div>`;
+            chartContainer.innerHTML = `<div class="error-message">Ошибка при загрузке данных о высоте.<br>Обратитесь к разработчику.</div>`;
         }
     }
     
