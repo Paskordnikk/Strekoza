@@ -597,6 +597,14 @@ document.addEventListener('DOMContentLoaded', function () {
     let routeHoverMarker = null; // Marker for map hover sync
     let currentRouteData = []; // To store data for export
     let currentSampleStep = 50; // Default step in meters
+    let routeHoverPolyline = null; // Wide invisible polyline for capturing mouse events
+    
+    // Chart elements for route-to-chart interaction
+    let chartHoverGroup = null;
+    let chartHoverCircle = null;
+    let chartTooltipRect = null;
+    let chartTooltipText1 = null;
+    let chartTooltipText2 = null;
     
     // Get DOM elements
     const buildRouteBtn = document.getElementById('build-route-btn');
@@ -794,6 +802,13 @@ document.addEventListener('DOMContentLoaded', function () {
         hoverGroup.appendChild(tooltipGroup);
         hoverGroup.appendChild(hoverCircle);
         svgNode.appendChild(hoverGroup);
+        
+        // Save references to global variables for route-to-chart interaction
+        chartHoverGroup = hoverGroup;
+        chartHoverCircle = hoverCircle;
+        chartTooltipRect = tooltipRect;
+        chartTooltipText1 = tooltipText1;
+        chartTooltipText2 = tooltipText2;
 
         const handleInteraction = (clientX) => {
             const rect = svgNode.getBoundingClientRect();
@@ -912,6 +927,233 @@ document.addEventListener('DOMContentLoaded', function () {
         svgNode.addEventListener('touchcancel', hideInteraction, { passive: true });
     }
     
+    // Setup route hover interactions (from route to chart)
+    function setupRouteToChartInteraction(elevationData) {
+        if (!routePolyline || !elevationData || elevationData.length < 2) return;
+        
+        const chartContainer = document.getElementById('profile-chart');
+        const svgNode = chartContainer.querySelector('svg');
+        if (!svgNode) return;
+        
+        const { width, height } = svgNode.getBoundingClientRect();
+        const isMobile = window.innerWidth < 768;
+        const isVerySmall = window.innerWidth < 480;
+        const margin = isVerySmall
+            ? { top: 5, right: 5, bottom: 25, left: 55 }
+            : isMobile 
+                ? { top: 10, right: 10, bottom: 30, left: 65 }
+                : { top: 10, right: 20, bottom: 20, left: 50 };
+        const chartWidth = width - margin.left - margin.right;
+        const chartHeight = height - margin.top - margin.bottom;
+        
+        const elevations = elevationData.map(d => d.elevation);
+        const minElev = Math.min(...elevations);
+        const maxElev = Math.max(...elevations);
+        const maxDist = Math.max(...elevationData.map(d => d.distance));
+        const elevationRange = maxElev - minElev;
+        
+        let yScale;
+        if (elevationRange === 0 || !isFinite(elevationRange)) {
+            yScale = (elev) => margin.top + chartHeight / 2;
+        } else {
+            yScale = (elev) => margin.top + chartHeight - ((elev - minElev) / elevationRange) * chartHeight;
+        }
+        const xScale = (dist) => margin.left + (dist / maxDist) * chartWidth;
+        
+        // Get existing hover elements from the chart - use global references
+        function getChartElements() {
+            return {
+                hoverGroup: chartHoverGroup,
+                hoverCircle: chartHoverCircle,
+                tooltipRect: chartTooltipRect,
+                tooltipText1: chartTooltipText1,
+                tooltipText2: chartTooltipText2
+            };
+        }
+        
+        // Helper function to find closest point on segment (optimized)
+        function findClosestPointOnRoute(latlng) {
+            let minDistance = Infinity;
+            let closestIndex = 0;
+            let closestFraction = 0;
+            
+            const mouseLat = latlng.lat;
+            const mouseLng = latlng.lng;
+            
+            // Search through all segments
+            for (let i = 0; i < elevationData.length - 1; i++) {
+                const p1Lat = elevationData[i].lat;
+                const p1Lng = elevationData[i].lng;
+                const p2Lat = elevationData[i + 1].lat;
+                const p2Lng = elevationData[i + 1].lng;
+                
+                // Vector from p1 to p2
+                const dx = p2Lng - p1Lng;
+                const dy = p2Lat - p1Lat;
+                
+                // Vector from p1 to mouse
+                const px = mouseLng - p1Lng;
+                const py = mouseLat - p1Lat;
+                
+                // Project mouse onto segment using dot product
+                const segmentLengthSq = dx * dx + dy * dy;
+                
+                if (segmentLengthSq === 0) {
+                    // Degenerate segment (p1 == p2)
+                    const distance = latlng.distanceTo(L.latLng(p1Lat, p1Lng));
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestIndex = i;
+                        closestFraction = 0;
+                    }
+                    continue;
+                }
+                
+                // Calculate projection parameter (0 <= t <= 1)
+                let t = (px * dx + py * dy) / segmentLengthSq;
+                t = Math.max(0, Math.min(1, t));
+                
+                // Closest point on segment (in lat/lng space - approximation for short segments)
+                const closestLat = p1Lat + t * dy;
+                const closestLng = p1Lng + t * dx;
+                
+                // Calculate distance
+                const distance = latlng.distanceTo(L.latLng(closestLat, closestLng));
+                
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestIndex = i;
+                    closestFraction = t;
+                }
+            }
+            
+            // Interpolate using geodesic calculations for final position
+            const p1 = elevationData[closestIndex];
+            const p2 = elevationData[closestIndex + 1];
+            const p1LatLng = L.latLng(p1.lat, p1.lng);
+            const p2LatLng = L.latLng(p2.lat, p2.lng);
+            const segmentDistance = p1LatLng.distanceTo(p2LatLng);
+            const bearing = calculateBearing(p1.lat, p1.lng, p2.lat, p2.lng);
+            const interpolatedPoint = calculateDestinationPoint(p1.lat, p1.lng, bearing, segmentDistance * closestFraction);
+            
+            return {
+                lat: interpolatedPoint.lat,
+                lng: interpolatedPoint.lng,
+                elevation: p1.elevation + closestFraction * (p2.elevation - p1.elevation),
+                distance: p1.distance + closestFraction * (p2.distance - p1.distance)
+            };
+        }
+        
+        // Update chart display
+        function updateChartDisplay(pointData) {
+            const elements = getChartElements();
+            
+            if (!elements || !elements.hoverGroup || !elements.hoverCircle || !elements.tooltipRect || !elements.tooltipText1 || !elements.tooltipText2) {
+                return;
+            }
+            
+            elements.hoverGroup.style.display = 'block';
+            
+            const x = xScale(pointData.distance);
+            const y = yScale(pointData.elevation);
+            
+            elements.hoverCircle.setAttribute('cx', x);
+            elements.hoverCircle.setAttribute('cy', y);
+            
+            elements.tooltipText1.textContent = `Высота: ${pointData.elevation.toFixed(0)} м`;
+            elements.tooltipText2.textContent = `Расстояние: ${pointData.distance.toFixed(2)} км`;
+            
+            const padding = 5;
+            const bbox1 = elements.tooltipText1.getBBox();
+            const bbox2 = elements.tooltipText2.getBBox();
+            const tooltipWidth = Math.max(bbox1.width, bbox2.width) + 2 * padding;
+            const tooltipHeight = bbox1.height + bbox2.height + 2 * padding;
+            
+            let tooltipX, tooltipY, textX, textY1, textY2;
+            const offset = 3;
+            const rightEdge = width - margin.right;
+            const topEdge = margin.top;
+            
+            const overflowsRight = x + offset + tooltipWidth > rightEdge;
+            const overflowsTop = y - offset - tooltipHeight < topEdge;
+            
+            if (!overflowsTop && !overflowsRight) {
+                tooltipX = x + offset;
+                tooltipY = y - offset - tooltipHeight;
+            } else if (!overflowsTop && overflowsRight) {
+                tooltipX = x - offset - tooltipWidth;
+                tooltipY = y - offset - tooltipHeight;
+            } else if (overflowsTop && !overflowsRight) {
+                tooltipX = x + offset;
+                tooltipY = y + offset;
+            } else {
+                tooltipX = x - offset - tooltipWidth;
+                tooltipY = y + offset;
+            }
+            
+            textX = tooltipX + padding;
+            textY1 = tooltipY + padding + bbox1.height - 2;
+            textY2 = tooltipY + 2 * padding + bbox1.height + bbox2.height - 2;
+            
+            elements.tooltipRect.setAttribute('x', tooltipX);
+            elements.tooltipRect.setAttribute('y', tooltipY);
+            elements.tooltipRect.setAttribute('width', tooltipWidth);
+            elements.tooltipRect.setAttribute('height', tooltipHeight);
+            
+            elements.tooltipText1.setAttribute('x', textX);
+            elements.tooltipText1.setAttribute('y', textY1);
+            elements.tooltipText2.setAttribute('x', textX);
+            elements.tooltipText2.setAttribute('y', textY2);
+        }
+        
+        // Handle route hover
+        function handleRouteHover(e) {
+            const latlng = e.latlng;
+            const pointData = findClosestPointOnRoute(latlng);
+            
+            // Update marker on route
+            if (routeHoverMarker) {
+                routeHoverMarker.setLatLng([pointData.lat, pointData.lng]);
+                routeHoverMarker.setStyle({ opacity: 1, fillOpacity: 0.8 });
+            }
+            
+            // Update chart display
+            updateChartDisplay(pointData);
+        }
+        
+        function hideRouteHover() {
+            if (routeHoverMarker) {
+                routeHoverMarker.setStyle({ opacity: 0, fillOpacity: 0 });
+            }
+            const elements = getChartElements();
+            if (elements && elements.hoverGroup) {
+                elements.hoverGroup.style.display = 'none';
+            }
+        }
+        
+        // Create wide invisible polyline for event capture (40px width)
+        if (routeHoverPolyline) {
+            map.removeLayer(routeHoverPolyline);
+        }
+        
+        routeHoverPolyline = L.polyline(routePoints, {
+            color: 'transparent',
+            weight: 40,
+            opacity: 0,
+            interactive: true,
+            pane: 'routeHoverPane'
+        }).addTo(map);
+        
+        // Attach event listeners
+        routeHoverPolyline.on('mousemove', handleRouteHover);
+        routeHoverPolyline.on('touchmove', handleRouteHover);
+        routeHoverPolyline.on('touchstart', handleRouteHover);
+        
+        routeHoverPolyline.on('mouseleave', hideRouteHover);
+        routeHoverPolyline.on('touchend', hideRouteHover);
+        routeHoverPolyline.on('touchcancel', hideRouteHover);
+    }
+    
     // Handle map click when building route
     function onMapClickForRoute(e) {
         // Check if we're still in route building mode
@@ -972,6 +1214,46 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
     
+    // Helper functions for geodesic calculations
+    function toRadians(degrees) {
+        return degrees * Math.PI / 180;
+    }
+    
+    function toDegrees(radians) {
+        return radians * 180 / Math.PI;
+    }
+    
+    // Calculate bearing from point A to point B
+    function calculateBearing(latA, lngA, latB, lngB) {
+        const φ1 = toRadians(latA);
+        const φ2 = toRadians(latB);
+        const Δλ = toRadians(lngB - lngA);
+        
+        const y = Math.sin(Δλ) * Math.cos(φ2);
+        const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+        const θ = Math.atan2(y, x);
+        
+        return (toDegrees(θ) + 360) % 360; // Normalize to 0-360
+    }
+    
+    // Calculate destination point given start point, bearing, and distance
+    function calculateDestinationPoint(lat, lng, bearing, distanceMeters) {
+        const R = 6371000; // Earth's radius in meters
+        const δ = distanceMeters / R; // Angular distance
+        const θ = toRadians(bearing);
+        
+        const φ1 = toRadians(lat);
+        const λ1 = toRadians(lng);
+        
+        const φ2 = Math.asin(Math.sin(φ1) * Math.cos(δ) + Math.cos(φ1) * Math.sin(δ) * Math.cos(θ));
+        const λ2 = λ1 + Math.atan2(Math.sin(θ) * Math.sin(δ) * Math.cos(φ1), Math.cos(δ) - Math.sin(φ1) * Math.sin(φ2));
+        
+        return {
+            lat: toDegrees(φ2),
+            lng: toDegrees(λ2)
+        };
+    }
+
     async function calculateRouteElevation() {
         if (routePoints.length < 2) return;
 
@@ -1006,14 +1288,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Add intermediate sample points within the current segment
             while (nextSampleDist < segmentEndDist) {
-                const fraction = (nextSampleDist - cumulativeDist) / segmentDist;
-                const interLat = startPoint.lat + (endPoint.lat - startPoint.lat) * fraction;
-                const interLng = startPoint.lng + (endPoint.lng - startPoint.lng) * fraction;
+                // Use proper geodesic interpolation to get point exactly on the route line
+                // Calculate the distance from start in meters
+                const distanceFromStart = (nextSampleDist - cumulativeDist) * 1000; // km to meters
+                const bearing = calculateBearing(startPoint.lat, startPoint.lng, endPoint.lat, endPoint.lng);
+                const intermediatePoint = calculateDestinationPoint(startPoint.lat, startPoint.lng, bearing, distanceFromStart);
                 
                 elevationData.push({ 
                     distance: nextSampleDist, 
-                    lat: interLat, 
-                    lng: interLng, 
+                    lat: intermediatePoint.lat, 
+                    lng: intermediatePoint.lng, 
                     isWaypoint: false 
                 });
 
@@ -1053,10 +1337,62 @@ document.addEventListener('DOMContentLoaded', function () {
             const data = await response.json();
             const realElevations = data.elevations;
 
-            // 4. Populate elevationData with real elevations
+            // 4. Populate elevationData with real elevations and handle negative values
             if (realElevations.length === uniqueElevationData.length) {
+                // First pass: assign elevations, mark negative as null (invalid SRTM data)
                 for (let i = 0; i < uniqueElevationData.length; i++) {
-                    uniqueElevationData[i].elevation = realElevations[i];
+                    const elev = realElevations[i];
+                    uniqueElevationData[i].elevation = (elev < 0) ? null : elev;
+                }
+                
+                // Second pass: interpolate null values with smart strategy
+                for (let i = 0; i < uniqueElevationData.length; i++) {
+                    if (uniqueElevationData[i].elevation === null) {
+                        // Find previous valid value
+                        let prevVal = null;
+                        let prevIdx = null;
+                        for (let j = i - 1; j >= 0; j--) {
+                            if (uniqueElevationData[j].elevation !== null) {
+                                prevVal = uniqueElevationData[j].elevation;
+                                prevIdx = j;
+                                break;
+                            }
+                        }
+                        
+                        // Find next valid value
+                        let nextVal = null;
+                        let nextIdx = null;
+                        for (let j = i + 1; j < uniqueElevationData.length; j++) {
+                            if (uniqueElevationData[j].elevation !== null) {
+                                nextVal = uniqueElevationData[j].elevation;
+                                nextIdx = j;
+                                break;
+                            }
+                        }
+                        
+                        // Smart interpolation strategy
+                        if (prevVal !== null && nextVal !== null) {
+                            // Check if we're in a low-elevation area (likely water)
+                            // If both neighbors are very low (< 5m), use 0 (sea level)
+                            if (prevVal < 5 && nextVal < 5) {
+                                uniqueElevationData[i].elevation = 0;
+                                console.log(`Void data at ${uniqueElevationData[i].distance.toFixed(1)}km: using sea level (0m) between low points (${prevVal}m, ${nextVal}m)`);
+                            } else {
+                                // Linear interpolation for normal terrain
+                                const weight = (i - prevIdx) / (nextIdx - prevIdx);
+                                uniqueElevationData[i].elevation = prevVal + (nextVal - prevVal) * weight;
+                            }
+                        } else if (prevVal !== null) {
+                            // Use previous value, but if it's very low, use 0
+                            uniqueElevationData[i].elevation = (prevVal < 5) ? 0 : prevVal;
+                        } else if (nextVal !== null) {
+                            // Use next value, but if it's very low, use 0
+                            uniqueElevationData[i].elevation = (nextVal < 5) ? 0 : nextVal;
+                        } else {
+                            // No valid values at all - use 0 (sea level)
+                            uniqueElevationData[i].elevation = 0;
+                        }
+                    }
                 }
             } else {
                 throw new Error('Mismatch between requested points and received elevations.');
@@ -1065,6 +1401,9 @@ document.addEventListener('DOMContentLoaded', function () {
             // Store data for export and build the chart
             currentRouteData = uniqueElevationData;
             buildElevationProfile(uniqueElevationData);
+            
+            // Setup route to chart interaction
+            setupRouteToChartInteraction(uniqueElevationData);
 
         } catch (error) {
             console.error('Failed to fetch elevation data:', error);
@@ -1111,6 +1450,12 @@ document.addEventListener('DOMContentLoaded', function () {
         if (routePolyline) {
             map.removeLayer(routePolyline);
             routePolyline = null;
+        }
+        
+        if (routeHoverPolyline) {
+            routeHoverPolyline.off('mousemove touchmove touchstart mouseleave touchend touchcancel');
+            map.removeLayer(routeHoverPolyline);
+            routeHoverPolyline = null;
         }
 
         if (routeHoverMarker) {
