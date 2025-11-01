@@ -216,37 +216,6 @@ body, html {
     border-color: darkorange;
 }
 
-/* Mobile touch improvements */
-.checkbox-option label,
-.radio-option label {
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-    user-select: none;
-    -webkit-user-select: none;
-    touch-action: manipulation;
-}
-
-.checkbox-option input[type="checkbox"],
-.radio-option input[type="radio"] {
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-}
-
-@media (max-width: 768px) {
-    .checkbox-option,
-    .radio-option {
-        min-height: 44px; /* Minimum touch target size */
-        display: flex;
-        align-items: center;
-    }
-    
-    .checkbox-option label,
-    .radio-option label {
-        flex: 1;
-        padding: 10px 0;
-    }
-}
-
 /* Стили для кнопок маршрута */
 .map-control-btn.route-btn {
     background-color: #32333d;

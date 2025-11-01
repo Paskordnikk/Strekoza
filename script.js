@@ -225,11 +225,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     closeMenuBtn.addEventListener('click', closeMenu);
     map.on('click', closeMenu);
-    
-    // Prevent menu from closing when clicking inside it
-    sideMenu.addEventListener('click', function(e) {
-        e.stopPropagation();
-    });
 
     // Brightness control for base layer
     const brightnessSlider = document.getElementById('brightness-slider');
@@ -431,8 +426,8 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Enable/disable roads layer
-    const handleRoadsLayerToggle = function (e) {
-        if (enableRoadsCheckbox.checked) {
+    enableRoadsCheckbox.addEventListener('change', function (e) {
+        if (e.target.checked) {
             roadsControls.style.display = 'block';
             
             roadsLayer = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
@@ -454,28 +449,7 @@ document.addEventListener('DOMContentLoaded', function () {
             
             localStorage.setItem('roadsEnabled', 'false');
         }
-    };
-    
-    enableRoadsCheckbox.addEventListener('change', handleRoadsLayerToggle);
-    
-    // Add touch handlers for better mobile support
-    enableRoadsCheckbox.addEventListener('touchend', function(e) {
-        e.stopPropagation();
-        // Trigger change event manually if needed for mobile browsers
-        const event = new Event('change', { bubbles: true });
-        enableRoadsCheckbox.dispatchEvent(event);
-    }, { passive: true });
-    
-    // Add click/touch handlers for label to ensure it works on mobile
-    const roadsLabel = document.querySelector('label[for="enable-roads-layer"]');
-    if (roadsLabel) {
-        const handleLabelInteraction = function(e) {
-            e.stopPropagation();
-            // Let default label behavior toggle the checkbox, which will trigger change event
-        };
-        roadsLabel.addEventListener('click', handleLabelInteraction);
-        roadsLabel.addEventListener('touchend', handleLabelInteraction, { passive: true });
-    }
+    });
 
     // Roads opacity control
     roadsOpacitySlider.addEventListener('input', function (e) {
@@ -486,8 +460,8 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Enable/disable borders layer
-    const handleBordersLayerToggle = function (e) {
-        if (enableBordersCheckbox.checked) {
+    enableBordersCheckbox.addEventListener('change', function (e) {
+        if (e.target.checked) {
             bordersControls.style.display = 'block';
             
             bordersLayer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_lines/{z}/{x}/{y}{r}.png', {
@@ -510,28 +484,7 @@ document.addEventListener('DOMContentLoaded', function () {
             
             localStorage.setItem('bordersEnabled', 'false');
         }
-    };
-    
-    enableBordersCheckbox.addEventListener('change', handleBordersLayerToggle);
-    
-    // Add touch handlers for better mobile support
-    enableBordersCheckbox.addEventListener('touchend', function(e) {
-        e.stopPropagation();
-        // Trigger change event manually if needed for mobile browsers
-        const event = new Event('change', { bubbles: true });
-        enableBordersCheckbox.dispatchEvent(event);
-    }, { passive: true });
-    
-    // Add click/touch handlers for label to ensure it works on mobile
-    const bordersLabel = document.querySelector('label[for="enable-borders-layer"]');
-    if (bordersLabel) {
-        const handleLabelInteraction = function(e) {
-            e.stopPropagation();
-            // Let default label behavior toggle the checkbox, which will trigger change event
-        };
-        bordersLabel.addEventListener('click', handleLabelInteraction);
-        bordersLabel.addEventListener('touchend', handleLabelInteraction, { passive: true });
-    }
+    });
 
     // Borders opacity control
     bordersOpacitySlider.addEventListener('input', function (e) {
@@ -542,8 +495,8 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Enable/disable labels layer
-    const handleLabelsLayerToggle = function (e) {
-        if (enableLabelsCheckbox.checked) {
+    enableLabelsCheckbox.addEventListener('change', function (e) {
+        if (e.target.checked) {
             labelsControls.style.display = 'block';
             
             labelsLayer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_labels/{z}/{x}/{y}{r}.png', {
@@ -566,28 +519,7 @@ document.addEventListener('DOMContentLoaded', function () {
             
             localStorage.setItem('labelsEnabled', 'false');
         }
-    };
-    
-    enableLabelsCheckbox.addEventListener('change', handleLabelsLayerToggle);
-    
-    // Add touch handlers for better mobile support
-    enableLabelsCheckbox.addEventListener('touchend', function(e) {
-        e.stopPropagation();
-        // Trigger change event manually if needed for mobile browsers
-        const event = new Event('change', { bubbles: true });
-        enableLabelsCheckbox.dispatchEvent(event);
-    }, { passive: true });
-    
-    // Add click/touch handlers for label to ensure it works on mobile
-    const labelsLabel = document.querySelector('label[for="enable-labels-layer"]');
-    if (labelsLabel) {
-        const handleLabelInteraction = function(e) {
-            e.stopPropagation();
-            // Let default label behavior toggle the checkbox, which will trigger change event
-        };
-        labelsLabel.addEventListener('click', handleLabelInteraction);
-        labelsLabel.addEventListener('touchend', handleLabelInteraction, { passive: true });
-    }
+    });
 
     // Labels opacity control
     labelsOpacitySlider.addEventListener('input', function (e) {
