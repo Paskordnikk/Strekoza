@@ -41,8 +41,12 @@
                 <label for="brightness-slider">Яркость основной карты</label>
                 <input type="range" id="brightness-slider" min="0" max="100" value="100">
             </div>
+             <div class="menu-item radio-option">
+                <input type="radio" id="base-jawgdark" name="base-map-type" value="jawgdark" checked>
+                <label for="base-jawgdark">Dark</label>
+            </div>
             <div class="menu-item radio-option">
-                <input type="radio" id="base-opentopomap" name="base-map-type" value="opentopomap" checked>
+                <input type="radio" id="base-opentopomap" name="base-map-type" value="opentopomap">
                 <label for="base-opentopomap">OpenTopoMap (с высотами)</label>
             </div>
             <div class="menu-item radio-option">
@@ -77,10 +81,6 @@
                 <input type="radio" id="base-nasanight" name="base-map-type" value="nasanight">
                 <label for="base-nasanight">Ночное время суток</label>
             </div>
-            <div class="menu-item radio-option">
-                <input type="radio" id="base-jawgdark" name="base-map-type" value="jawgdark">
-                <label for="base-jawgdark">Dark</label>
-            </div>
         </div>
 
         <!-- Верхняя карта -->
@@ -94,6 +94,10 @@
                 <div class="menu-item">
                     <label for="overlay-opacity-slider">Прозрачность верхней карты</label>
                     <input type="range" id="overlay-opacity-slider" min="0" max="100" value="50">
+                </div>
+                <div class="menu-item radio-option">
+                    <input type="radio" id="overlay-jawgdark" name="overlay-map-type" value="jawgdark">
+                    <label for="overlay-jawgdark">Dark</label>
                 </div>
                 <div class="menu-item radio-option">
                     <input type="radio" id="overlay-opentopomap" name="overlay-map-type" value="opentopomap" checked>
@@ -131,10 +135,6 @@
                     <input type="radio" id="overlay-nasanight" name="overlay-map-type" value="nasanight">
                     <label for="overlay-nasanight">Ночное время суток</label>
                 </div>
-                <div class="menu-item radio-option">
-                    <input type="radio" id="overlay-jawgdark" name="overlay-map-type" value="jawgdark">
-                    <label for="overlay-jawgdark">Dark</label>
-                </div>
             </div>
         </div>
 
@@ -147,7 +147,7 @@
             </div>
             <div id="roads-layer-controls" style="display: none;">
                 <div class="menu-item">
-                    <label for="roads-opacity-slider">Прозрачность слоя дорог</label>
+                    <label for="roads-opacity-slider">Прозрачность железных дорог</label>
                     <input type="range" id="roads-opacity-slider" min="0" max="100" value="100">
                 </div>
             </div>
@@ -157,7 +157,7 @@
             </div>
             <div id="borders-layer-controls" style="display: none;">
                 <div class="menu-item">
-                    <label for="borders-opacity-slider">Прозрачность слоя границ</label>
+                    <label for="borders-opacity-slider">Прозрачность границ, дорог улиц</label>
                     <input type="range" id="borders-opacity-slider" min="0" max="100" value="100">
                 </div>
             </div>
@@ -167,7 +167,7 @@
             </div>
             <div id="labels-layer-controls" style="display: none;">
                 <div class="menu-item">
-                    <label for="labels-opacity-slider">Прозрачность слоя названий</label>
+                    <label for="labels-opacity-slider">Прозрачность географических названий</label>
                     <input type="range" id="labels-opacity-slider" min="0" max="100" value="100">
                 </div>
             </div>

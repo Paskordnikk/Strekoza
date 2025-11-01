@@ -41,8 +41,27 @@ document.addEventListener('DOMContentLoaded', function () {
             measurementPolyline.remove();
         }
         
-        // Add polyline to show the measured path
-        measurementPolyline = L.polyline(measurementPoints, {
+        // Generate geodesic points for the measurement line to account for Earth's curvature
+        let geodesicMeasurementPoints = [];
+        
+        for (let i = 0; i < measurementPoints.length - 1; i++) {
+            const startPoint = measurementPoints[i];
+            const endPoint = measurementPoints[i + 1];
+            
+            // Generate intermediate points for this segment
+            const segmentPoints = generateGeodesicPoints(startPoint, endPoint);
+            
+            if (i === 0) {
+                // For the first segment, include all points
+                geodesicMeasurementPoints = [...segmentPoints];
+            } else {
+                // For subsequent segments, skip the first point to avoid duplication
+                geodesicMeasurementPoints = [...geodesicMeasurementPoints, ...segmentPoints.slice(1)];
+            }
+        }
+        
+        // Add polyline to show the measured path with geodesic segments
+        measurementPolyline = L.polyline(geodesicMeasurementPoints, {
             color: 'red',
             weight: 3,
             opacity: 0.7
@@ -199,7 +218,7 @@ document.addEventListener('DOMContentLoaded', function () {
     map.createPane('overlayPane');
     map.getPane('overlayPane').style.zIndex = 300;
 
-    let baseLayer = createTileLayer('opentopomap');
+    let baseLayer = createTileLayer('jawgdark');
     baseLayer.options.pane = 'basePane';
     baseLayer.addTo(map);
     
@@ -238,7 +257,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const overlayOpacitySlider = document.getElementById('overlay-opacity-slider');
 
     // Load saved settings
-    const lastBaseMapType = localStorage.getItem('baseMapType') || 'opentopomap';
+    const lastBaseMapType = localStorage.getItem('baseMapType') || 'jawgdark';
     const lastOverlayMapType = localStorage.getItem('overlayMapType') || 'opentopomap';
     const lastOverlayEnabled = localStorage.getItem('overlayEnabled') === 'true';
     const lastOverlayOpacity = parseInt(localStorage.getItem('overlayOpacity') || '50');
@@ -252,7 +271,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const lastBaseBrightness = parseInt(localStorage.getItem('baseBrightness') || '100');
 
     // Apply saved base map
-    if (lastBaseMapType !== 'opentopomap') {
+    if (lastBaseMapType !== 'jawgdark') {
         map.removeLayer(baseLayer);
         baseLayer = createTileLayer(lastBaseMapType);
         baseLayer.options.pane = 'basePane';
@@ -977,7 +996,7 @@ document.addEventListener('DOMContentLoaded', function () {
             };
         }
         
-        // Helper function to find closest point on segment (optimized)
+        // Helper function to find closest point on segment using perpendicular projection
         function findClosestPointOnRoute(latlng) {
             let minDistance = Infinity;
             let closestIndex = 0;
@@ -993,58 +1012,63 @@ document.addEventListener('DOMContentLoaded', function () {
                 const p2Lat = elevationData[i + 1].lat;
                 const p2Lng = elevationData[i + 1].lng;
                 
-                // Vector from p1 to p2
-                const dx = p2Lng - p1Lng;
-                const dy = p2Lat - p1Lat;
+                // Calculate the bearing from p1 to p2
+                const segmentBearing = calculateBearing(p1Lat, p1Lng, p2Lat, p2Lng);
+                const p1LatLng = L.latLng(p1Lat, p1Lng);
+                const p2LatLng = L.latLng(p2Lat, p2Lng);
+                const segmentDistance = p1LatLng.distanceTo(p2LatLng);
                 
-                // Vector from p1 to mouse
-                const px = mouseLng - p1Lng;
-                const py = mouseLat - p1Lat;
+                // Calculate bearing from p1 to mouse point
+                const bearingToMouse = calculateBearing(p1Lat, p1Lng, mouseLat, mouseLng);
                 
-                // Project mouse onto segment using dot product
-                const segmentLengthSq = dx * dx + dy * dy;
+                // Calculate the angle between the segment direction and direction to mouse point
+                let angleDiff = bearingToMouse - segmentBearing;
+                // Normalize the angle difference to [-π, π]
+                angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
                 
-                if (segmentLengthSq === 0) {
-                    // Degenerate segment (p1 == p2)
-                    const distance = latlng.distanceTo(L.latLng(p1Lat, p1Lng));
-                    if (distance < minDistance) {
-                        minDistance = distance;
-                        closestIndex = i;
-                        closestFraction = 0;
-                    }
-                    continue;
+                // Calculate how far along the segment is the closest point
+                // Using the law of cosines in spherical geometry
+                const distToMouse = p1LatLng.distanceTo(latlng);
+                
+                // Project the distance to the segment
+                let projectedDistance = distToMouse * Math.cos(angleDiff);
+                
+                // Calculate the fraction along the segment
+                let fraction;
+                if (segmentDistance > 0) {
+                    fraction = projectedDistance / segmentDistance;
+                    // Clamp the fraction to [0, 1] to stay within the segment
+                    fraction = Math.max(0, Math.min(1, fraction));
+                } else {
+                    fraction = 0; // Degenerate segment
                 }
                 
-                // Calculate projection parameter (0 <= t <= 1)
-                let t = (px * dx + py * dy) / segmentLengthSq;
-                t = Math.max(0, Math.min(1, t));
+                // Calculate the perpendicular point on the segment
+                const closestPoint = calculateDestinationPoint(p1Lat, p1Lng, segmentBearing, segmentDistance * fraction);
                 
-                // Closest point on segment (in lat/lng space - approximation for short segments)
-                const closestLat = p1Lat + t * dy;
-                const closestLng = p1Lng + t * dx;
-                
-                // Calculate distance
-                const distance = latlng.distanceTo(L.latLng(closestLat, closestLng));
+                // Calculate distance from mouse point to the closest point on the segment
+                const distance = latlng.distanceTo(L.latLng(closestPoint.lat, closestPoint.lng));
                 
                 if (distance < minDistance) {
                     minDistance = distance;
                     closestIndex = i;
-                    closestFraction = t;
+                    closestFraction = fraction;
                 }
             }
             
-            // Interpolate using geodesic calculations for final position
+            // Return the interpolated point and associated data
             const p1 = elevationData[closestIndex];
             const p2 = elevationData[closestIndex + 1];
             const p1LatLng = L.latLng(p1.lat, p1.lng);
             const p2LatLng = L.latLng(p2.lat, p2.lng);
+            
+            const segmentBearing = calculateBearing(p1.lat, p1.lng, p2.lat, p2.lng);
             const segmentDistance = p1LatLng.distanceTo(p2LatLng);
-            const bearing = calculateBearing(p1.lat, p1.lng, p2.lat, p2.lng);
-            const interpolatedPoint = calculateDestinationPoint(p1.lat, p1.lng, bearing, segmentDistance * closestFraction);
+            const finalPoint = calculateDestinationPoint(p1.lat, p1.lng, segmentBearing, segmentDistance * closestFraction);
             
             return {
-                lat: interpolatedPoint.lat,
-                lng: interpolatedPoint.lng,
+                lat: finalPoint.lat,
+                lng: finalPoint.lng,
                 elevation: p1.elevation + closestFraction * (p2.elevation - p1.elevation),
                 distance: p1.distance + closestFraction * (p2.distance - p1.distance)
             };
@@ -1112,37 +1136,77 @@ document.addEventListener('DOMContentLoaded', function () {
             elements.tooltipText2.setAttribute('y', textY2);
         }
         
+        // Cache for previous position to prevent excessive updates
+        let lastHoverPosition = null;
+        // Minimum distance threshold (in meters) to update the marker position
+        const MIN_UPDATE_DISTANCE = 10; // 10 meters minimum movement before updating
+        
         // Handle route hover
         function handleRouteHover(e) {
             const latlng = e.latlng;
             const pointData = findClosestPointOnRoute(latlng);
             
-            // Update marker on route
-            if (routeHoverMarker) {
-                routeHoverMarker.setLatLng([pointData.lat, pointData.lng]);
-                routeHoverMarker.setStyle({ opacity: 1, fillOpacity: 0.8 });
+            // Check if we should update the marker position based on distance threshold
+            let shouldUpdate = true;
+            if (lastHoverPosition) {
+                const distanceMoved = L.latLng(pointData.lat, pointData.lng).distanceTo(
+                    L.latLng(lastHoverPosition.lat, lastHoverPosition.lng)
+                );
+                shouldUpdate = distanceMoved >= MIN_UPDATE_DISTANCE;
             }
             
-            // Update chart display
-            updateChartDisplay(pointData);
+            if (shouldUpdate) {
+                // Update marker on route
+                if (routeHoverMarker) {
+                    routeHoverMarker.setLatLng([pointData.lat, pointData.lng]);
+                    routeHoverMarker.setStyle({ opacity: 1, fillOpacity: 0.8 });
+                }
+                
+                // Update chart display
+                updateChartDisplay(pointData);
+                
+                // Save the current position as the last position
+                lastHoverPosition = { lat: pointData.lat, lng: pointData.lng, distance: pointData.distance };
+            }
         }
         
         function hideRouteHover() {
             if (routeHoverMarker) {
                 routeHoverMarker.setStyle({ opacity: 0, fillOpacity: 0 });
             }
+            // Reset the cache when hiding the hover
+            lastHoverPosition = null;
             const elements = getChartElements();
             if (elements && elements.hoverGroup) {
                 elements.hoverGroup.style.display = 'none';
             }
         }
         
-        // Create wide invisible polyline for event capture (40px width)
+        // Create wide invisible polyline for event capture (40px width) using geodesic segments
         if (routeHoverPolyline) {
             map.removeLayer(routeHoverPolyline);
         }
         
-        routeHoverPolyline = L.polyline(routePoints, {
+        // Generate geodesic points for the hover polyline to match the displayed route
+        let geodesicHoverPoints = [];
+        
+        for (let i = 0; i < routePoints.length - 1; i++) {
+            const startPoint = routePoints[i];
+            const endPoint = routePoints[i + 1];
+            
+            // Generate intermediate points for this segment
+            const segmentPoints = generateGeodesicPoints(startPoint, endPoint);
+            
+            if (i === 0) {
+                // For the first segment, include all points
+                geodesicHoverPoints = [...segmentPoints];
+            } else {
+                // For subsequent segments, skip the first point to avoid duplication
+                geodesicHoverPoints = [...geodesicHoverPoints, ...segmentPoints.slice(1)];
+            }
+        }
+        
+        routeHoverPolyline = L.polyline(geodesicHoverPoints, {
             color: 'transparent',
             weight: 40,
             opacity: 0,
@@ -1203,7 +1267,40 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
     
-    // Update route polyline
+    // Function to generate intermediate points along a geodesic line
+    function generateGeodesicPoints(startPoint, endPoint, maxSegmentDistance = 1000) { // max segment distance in meters
+        const points = [startPoint]; // Start with the initial point
+        
+        // Calculate total distance between points
+        const totalDistance = startPoint.distanceTo(endPoint);
+        
+        // If distance is less than max segment distance, return start and end points
+        if (totalDistance <= maxSegmentDistance || totalDistance === 0) {
+            if (points.length === 1) points.push(endPoint);
+            return points;
+        }
+        
+        // Calculate bearing from start to end point
+        const bearing = calculateBearing(startPoint.lat, startPoint.lng, endPoint.lat, endPoint.lng);
+        
+        // Calculate number of segments needed
+        const numSegments = Math.ceil(totalDistance / maxSegmentDistance);
+        const segmentDistance = totalDistance / numSegments;
+        
+        // Generate intermediate points along the geodesic
+        for (let i = 1; i < numSegments; i++) {
+            const distance = segmentDistance * i;
+            const intermediatePoint = calculateDestinationPoint(startPoint.lat, startPoint.lng, bearing, distance);
+            points.push(L.latLng(intermediatePoint.lat, intermediatePoint.lng));
+        }
+        
+        // Add the end point
+        points.push(endPoint);
+        
+        return points;
+    }
+    
+    // Update route polyline with geodesic segments
     function updateRoutePolyline() {
         // Remove existing polyline
         if (routePolyline) {
@@ -1212,7 +1309,26 @@ document.addEventListener('DOMContentLoaded', function () {
         
         // Create new polyline if we have points
         if (routePoints.length > 0) {
-            routePolyline = L.polyline(routePoints, {
+            // For geodesic polyline, we need to create segments with intermediate points
+            let geodesicPoints = [];
+            
+            for (let i = 0; i < routePoints.length - 1; i++) {
+                const startPoint = routePoints[i];
+                const endPoint = routePoints[i + 1];
+                
+                // Generate intermediate points for this segment
+                const segmentPoints = generateGeodesicPoints(startPoint, endPoint);
+                
+                if (i === 0) {
+                    // For the first segment, include all points
+                    geodesicPoints = [...segmentPoints];
+                } else {
+                    // For subsequent segments, skip the first point to avoid duplication
+                    geodesicPoints = [...geodesicPoints, ...segmentPoints.slice(1)];
+                }
+            }
+            
+            routePolyline = L.polyline(geodesicPoints, {
                 color: 'darkorange', // Changed to darkorange
                 weight: 3,
                 opacity: 0.7
@@ -1267,12 +1383,31 @@ document.addEventListener('DOMContentLoaded', function () {
         map.off('click', onMapClickForRoute);
 
         const chartContainer = document.getElementById('profile-chart');
-        chartContainer.innerHTML = '<div class="loading-message">Построение профиля высоты...</div>';
-        elevationProfile.classList.add('visible');
+        chartContainer.innerHTML = `
+            <div class="loading-container">
+                <div class="loading-text">Построение профиля высоты...</div>
+                <div class="progress-container">
+                    <div class="progress-bar" id="progress-bar"></div>
+                </div>
+            </div>
+        `;
 
+        // Get the progress bar element
+        const progressBar = document.getElementById('progress-bar');
+        elevationProfile.classList.add('visible');
+        
+        // Use setTimeout to allow the UI to update before starting the main processing
+        await new Promise(resolve => setTimeout(resolve, 10));
+        
         const SAMPLE_INTERVAL_KM = currentSampleStep / 1000; // Convert meters to kilometers
         const elevationData = [];
         let cumulativeDist = 0;
+
+        // Calculate total distance of the route for more accurate progress tracking
+        let totalRouteDistance = 0;
+        for (let i = 0; i < routePoints.length - 1; i++) {
+            totalRouteDistance += routePoints[i].distanceTo(routePoints[i+1]) / 1000; // Convert to km
+        }
 
         // Add the very first point
         elevationData.push({ 
@@ -1283,6 +1418,16 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         // 1. Generate consistently spaced points along the entire route polyline
+        let totalExpectedPoints = 0;
+        // Calculate approximate total expected points
+        for (let i = 0; i < routePoints.length - 1; i++) {
+            const segmentDist = routePoints[i].distanceTo(routePoints[i+1]) / 1000;
+            const pointsInSegment = Math.ceil(segmentDist / SAMPLE_INTERVAL_KM);
+            totalExpectedPoints += pointsInSegment;
+        }
+        
+        let currentPointIndex = 0;
+
         for (let i = 0; i < routePoints.length - 1; i++) {
             const startPoint = routePoints[i];
             const endPoint = routePoints[i+1];
@@ -1308,6 +1453,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
 
                 nextSampleDist += SAMPLE_INTERVAL_KM;
+                
+                // Update progress based on number of points generated
+                currentPointIndex++;
+                const progress = Math.min(40, Math.floor((currentPointIndex / totalExpectedPoints) * 40));
+                progressBar.style.width = `${progress}%`;
+                
+                // Allow the UI to update by yielding control back to the browser
+                if (currentPointIndex % 50 === 0) { // Update UI every 50 points
+                    await new Promise(resolve => setTimeout(resolve, 1));
+                }
             }
 
             // Always include the user-defined waypoint at the end of the segment
@@ -1328,14 +1483,33 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // 3. Fetch real elevation data from the server
         try {
-            const response = await fetch('https://strekoza-ylfm.onrender.com/api/get_elevation', {
+            // Update progress - 40% for generating points, now moving to 50% before fetching
+            progressBar.style.width = '40%';
+            await new Promise(resolve => setTimeout(resolve, 10));
+            
+            // Start fetch request and update progress during the wait
+            const fetchPromise = fetch('https://strekoza-ylfm.onrender.com/api/get_elevation', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ points: pointsToQuery }),
             });
-
+            
+            // Simulate progress during fetch (since we can't directly monitor fetch progress)
+            // We'll gradually increase progress while waiting for the response
+            let currentProgress = 40;
+            const fetchInterval = setInterval(async () => {
+                if (currentProgress < 80) {
+                    currentProgress += 1;
+                    progressBar.style.width = `${currentProgress}%`;
+                    await new Promise(resolve => setTimeout(resolve, 1));
+                }
+            }, 50); // Update every 50ms
+            
+            const response = await fetchPromise;
+            clearInterval(fetchInterval);
+            
             if (!response.ok) {
                 throw new Error(`Server error: ${response.statusText}`);
             }
@@ -1343,12 +1517,23 @@ document.addEventListener('DOMContentLoaded', function () {
             const data = await response.json();
             const realElevations = data.elevations;
 
+            // Update progress - 80% after receiving data
+            progressBar.style.width = '80%';
+            await new Promise(resolve => setTimeout(resolve, 1));
+            
             // 4. Populate elevationData with real elevations and handle negative values
             if (realElevations.length === uniqueElevationData.length) {
                 // First pass: assign elevations, mark negative as null (invalid SRTM data)
                 for (let i = 0; i < uniqueElevationData.length; i++) {
                     const elev = realElevations[i];
                     uniqueElevationData[i].elevation = (elev < 0) ? null : elev;
+                    
+                    // Update progress during the first pass of processing
+                    if (i % Math.max(1, Math.floor(uniqueElevationData.length / 10)) === 0) {
+                        const progress = 80 + Math.floor((i / uniqueElevationData.length) * 10);
+                        progressBar.style.width = `${Math.min(90, progress)}%`;
+                        await new Promise(resolve => setTimeout(resolve, 1));
+                    }
                 }
                 
                 // Second pass: interpolate null values with smart strategy
@@ -1399,11 +1584,21 @@ document.addEventListener('DOMContentLoaded', function () {
                             uniqueElevationData[i].elevation = 0;
                         }
                     }
+                    
+                    // Update progress during the second pass of processing
+                    if (i % Math.max(1, Math.floor(uniqueElevationData.length / 10)) === 0) {
+                        const progress = 90 + Math.floor((i / uniqueElevationData.length) * 10);
+                        progressBar.style.width = `${Math.min(100, progress)}%`;
+                        await new Promise(resolve => setTimeout(resolve, 1));
+                    }
                 }
             } else {
                 throw new Error('Mismatch between requested points and received elevations.');
             }
 
+            // Update progress - 100% after processing data
+            progressBar.style.width = '100%';
+            
             // Store data for export and build the chart
             currentRouteData = uniqueElevationData;
             buildElevationProfile(uniqueElevationData);
@@ -1413,7 +1608,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
         } catch (error) {
             console.error('Failed to fetch elevation data:', error);
-            chartContainer.innerHTML = `<div class="error-message">Ошибка при загрузке данных о высоте.<br>Обратитесь к разработчику.</div>`;
+            // Stop the fetch interval if still running in case of error
+            if (typeof fetchInterval !== 'undefined') {
+                clearInterval(fetchInterval);
+            }
+            chartContainer.innerHTML = `
+                <div class="loading-container">
+                    <div class="error-message">Ошибка при загрузке данных о высоте.<br>Обратитесь к разработчику.</div>
+                </div>
+            `;
         }
     }
     
