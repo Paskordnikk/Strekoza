@@ -400,21 +400,44 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Base map type change handler
     const baseMapTypeRadios = document.querySelectorAll('input[name="base-map-type"]');
+    const baseRadioTouched = new WeakMap();
+    
+    // Функция для мгновенного переключения радиокнопки
+    function handleBaseRadioToggle(radioInput) {
+        baseRadioTouched.set(radioInput, true);
+        // Мгновенно устанавливаем checked для всех радиокнопок в группе
+        baseMapTypeRadios.forEach(r => r.checked = false);
+        radioInput.checked = true;
+        // Принудительно обновляем DOM
+        void radioInput.offsetWidth;
+        // Триггерим change событие сразу для немедленного выполнения логики
+        radioInput.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    
     baseMapTypeRadios.forEach(radio => {
-        // Добавляем обработчик touchstart для мгновенного визуального отклика на мобильных устройствах
+        // Добавляем обработчик touchstart на сам input
         radio.addEventListener('touchstart', function (e) {
-            // Мгновенно устанавливаем checked для всех радиокнопок в группе
-            baseMapTypeRadios.forEach(r => r.checked = false);
-            e.target.checked = true;
-            // Принудительно обновляем DOM
-            void e.target.offsetWidth;
-            // Триггерим change событие сразу для немедленного выполнения логики
-            e.target.dispatchEvent(new Event('change', { bubbles: true }));
+            handleBaseRadioToggle(e.target);
         }, { passive: true });
         
-        // Добавляем обработчик click для десктопов
+        // Добавляем обработчик touchstart на label для перехвата касаний по тексту
+        const label = document.querySelector(`label[for="${radio.id}"]`);
+        if (label) {
+            label.addEventListener('touchstart', function (e) {
+                e.preventDefault(); // Предотвращаем стандартное поведение label
+                handleBaseRadioToggle(radio);
+            }, { passive: false });
+        }
+        
+        // Добавляем обработчик click для десктопов и предотвращения двойного срабатывания
         radio.addEventListener('click', function (e) {
-            // Мгновенно устанавливаем checked для всех радиокнопок в группе
+            // Если уже обработали через touchstart, предотвращаем стандартное поведение
+            if (baseRadioTouched.get(e.target)) {
+                e.preventDefault();
+                baseRadioTouched.delete(e.target);
+                return;
+            }
+            // Для десктопов мгновенно устанавливаем checked
             baseMapTypeRadios.forEach(r => r.checked = false);
             e.target.checked = true;
         });
@@ -437,21 +460,44 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Overlay map type change handler
     const overlayMapTypeRadios = document.querySelectorAll('input[name="overlay-map-type"]');
+    const overlayRadioTouched = new WeakMap();
+    
+    // Функция для мгновенного переключения радиокнопки
+    function handleOverlayRadioToggle(radioInput) {
+        overlayRadioTouched.set(radioInput, true);
+        // Мгновенно устанавливаем checked для всех радиокнопок в группе
+        overlayMapTypeRadios.forEach(r => r.checked = false);
+        radioInput.checked = true;
+        // Принудительно обновляем DOM
+        void radioInput.offsetWidth;
+        // Триггерим change событие сразу для немедленного выполнения логики
+        radioInput.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    
     overlayMapTypeRadios.forEach(radio => {
-        // Добавляем обработчик touchstart для мгновенного визуального отклика на мобильных устройствах
+        // Добавляем обработчик touchstart на сам input
         radio.addEventListener('touchstart', function (e) {
-            // Мгновенно устанавливаем checked для всех радиокнопок в группе
-            overlayMapTypeRadios.forEach(r => r.checked = false);
-            e.target.checked = true;
-            // Принудительно обновляем DOM
-            void e.target.offsetWidth;
-            // Триггерим change событие сразу для немедленного выполнения логики
-            e.target.dispatchEvent(new Event('change', { bubbles: true }));
+            handleOverlayRadioToggle(e.target);
         }, { passive: true });
         
-        // Добавляем обработчик click для десктопов
+        // Добавляем обработчик touchstart на label для перехвата касаний по тексту
+        const label = document.querySelector(`label[for="${radio.id}"]`);
+        if (label) {
+            label.addEventListener('touchstart', function (e) {
+                e.preventDefault(); // Предотвращаем стандартное поведение label
+                handleOverlayRadioToggle(radio);
+            }, { passive: false });
+        }
+        
+        // Добавляем обработчик click для десктопов и предотвращения двойного срабатывания
         radio.addEventListener('click', function (e) {
-            // Мгновенно устанавливаем checked для всех радиокнопок в группе
+            // Если уже обработали через touchstart, предотвращаем стандартное поведение
+            if (overlayRadioTouched.get(e.target)) {
+                e.preventDefault();
+                overlayRadioTouched.delete(e.target);
+                return;
+            }
+            // Для десктопов мгновенно устанавливаем checked
             overlayMapTypeRadios.forEach(r => r.checked = false);
             e.target.checked = true;
         });
