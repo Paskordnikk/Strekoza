@@ -304,7 +304,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         roadsLayer.setOpacity(lastRoadsOpacity / 100);
         roadsLayer.addTo(map);
-        map.invalidateSize();
         
         roadsOpacitySlider.value = lastRoadsOpacity;
     }
@@ -326,7 +325,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         bordersLayer.setOpacity(lastBordersOpacity / 100);
         bordersLayer.addTo(map);
-        map.invalidateSize();
         
         bordersOpacitySlider.value = lastBordersOpacity;
     }
@@ -348,7 +346,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         labelsLayer.setOpacity(lastLabelsOpacity / 100);
         labelsLayer.addTo(map);
-        map.invalidateSize();
         
         labelsOpacitySlider.value = lastLabelsOpacity;
     }
@@ -459,7 +456,6 @@ document.addEventListener('DOMContentLoaded', function () {
             });
             roadsLayer.setOpacity(roadsOpacitySlider.value / 100);
             roadsLayer.addTo(map);
-            map.invalidateSize();
             
             localStorage.setItem('roadsEnabled', 'true');
         } else {
@@ -495,7 +491,6 @@ document.addEventListener('DOMContentLoaded', function () {
             });
             bordersLayer.setOpacity(bordersOpacitySlider.value / 100);
             bordersLayer.addTo(map);
-            map.invalidateSize();
             
             localStorage.setItem('bordersEnabled', 'true');
         } else {
@@ -531,7 +526,6 @@ document.addEventListener('DOMContentLoaded', function () {
             });
             labelsLayer.setOpacity(labelsOpacitySlider.value / 100);
             labelsLayer.addTo(map);
-            map.invalidateSize();
             
             localStorage.setItem('labelsEnabled', 'true');
         } else {
