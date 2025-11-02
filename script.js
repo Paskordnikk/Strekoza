@@ -300,25 +300,9 @@ document.addEventListener('DOMContentLoaded', function () {
         roadsLayer = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Map style: &copy; <a href="https://www.OpenRailwayMap.org">OpenRailwayMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
-            pane: 'roadsPane',
-            // Optimize for mobile loading
-            updateWhenIdle: false,
-            updateWhenZooming: false,
-            keepBuffer: 2
+            pane: 'roadsPane'
         });
         roadsLayer.setOpacity(lastRoadsOpacity / 100);
-        
-        // Add loading indicator for mobile
-        if (window.innerWidth < 768) {
-            roadsLayer.on('loading', function() {
-                document.body.style.cursor = 'progress';
-            });
-            
-            roadsLayer.on('load', function() {
-                document.body.style.cursor = 'default';
-            });
-        }
-        
         roadsLayer.addTo(map);
         map.invalidateSize();
         
@@ -338,25 +322,9 @@ document.addEventListener('DOMContentLoaded', function () {
             minZoom: 0,
             maxZoom: 20,
             attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            pane: 'roadsPane',
-            // Optimize for mobile loading
-            updateWhenIdle: false,
-            updateWhenZooming: false,
-            keepBuffer: 2
+            pane: 'roadsPane'
         });
         bordersLayer.setOpacity(lastBordersOpacity / 100);
-        
-        // Add loading indicator for mobile
-        if (window.innerWidth < 768) {
-            bordersLayer.on('loading', function() {
-                document.body.style.cursor = 'progress';
-            });
-            
-            bordersLayer.on('load', function() {
-                document.body.style.cursor = 'default';
-            });
-        }
-        
         bordersLayer.addTo(map);
         map.invalidateSize();
         
@@ -376,25 +344,9 @@ document.addEventListener('DOMContentLoaded', function () {
             minZoom: 0,
             maxZoom: 20,
             attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            pane: 'roadsPane',
-            // Optimize for mobile loading
-            updateWhenIdle: false,
-            updateWhenZooming: false,
-            keepBuffer: 2
+            pane: 'roadsPane'
         });
         labelsLayer.setOpacity(lastLabelsOpacity / 100);
-        
-        // Add loading indicator for mobile
-        if (window.innerWidth < 768) {
-            labelsLayer.on('loading', function() {
-                document.body.style.cursor = 'progress';
-            });
-            
-            labelsLayer.on('load', function() {
-                document.body.style.cursor = 'default';
-            });
-        }
-        
         labelsLayer.addTo(map);
         map.invalidateSize();
         
@@ -503,25 +455,9 @@ document.addEventListener('DOMContentLoaded', function () {
             roadsLayer = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
                 maxZoom: 19,
                 attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Map style: &copy; <a href="https://www.OpenRailwayMap.org">OpenRailwayMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
-                pane: 'roadsPane',
-                // Optimize for mobile loading
-                updateWhenIdle: false,
-                updateWhenZooming: false,
-                keepBuffer: 2
+                pane: 'roadsPane'
             });
             roadsLayer.setOpacity(roadsOpacitySlider.value / 100);
-            
-            // Add loading indicator for mobile
-            if (window.innerWidth < 768) {
-                roadsLayer.on('loading', function() {
-                    document.body.style.cursor = 'progress';
-                });
-                
-                roadsLayer.on('load', function() {
-                    document.body.style.cursor = 'default';
-                });
-            }
-            
             roadsLayer.addTo(map);
             map.invalidateSize();
             
@@ -555,25 +491,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 minZoom: 0,
                 maxZoom: 20,
                 attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                pane: 'roadsPane',
-                // Optimize for mobile loading
-                updateWhenIdle: false,
-                updateWhenZooming: false,
-                keepBuffer: 2
+                pane: 'roadsPane'
             });
             bordersLayer.setOpacity(bordersOpacitySlider.value / 100);
-            
-            // Add loading indicator for mobile
-            if (window.innerWidth < 768) {
-                bordersLayer.on('loading', function() {
-                    document.body.style.cursor = 'progress';
-                });
-                
-                bordersLayer.on('load', function() {
-                    document.body.style.cursor = 'default';
-                });
-            }
-            
             bordersLayer.addTo(map);
             map.invalidateSize();
             
@@ -607,25 +527,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 minZoom: 0,
                 maxZoom: 20,
                 attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                pane: 'roadsPane',
-                // Optimize for mobile loading
-                updateWhenIdle: false,
-                updateWhenZooming: false,
-                keepBuffer: 2
+                pane: 'roadsPane'
             });
             labelsLayer.setOpacity(labelsOpacitySlider.value / 100);
-            
-            // Add loading indicator for mobile
-            if (window.innerWidth < 768) {
-                labelsLayer.on('loading', function() {
-                    document.body.style.cursor = 'progress';
-                });
-                
-                labelsLayer.on('load', function() {
-                    document.body.style.cursor = 'default';
-                });
-            }
-            
             labelsLayer.addTo(map);
             map.invalidateSize();
             
