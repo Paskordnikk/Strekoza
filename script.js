@@ -426,30 +426,40 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     
     baseMapTypeRadios.forEach(radio => {
+        // Добавляем обработчик mousedown для мгновенного переключения на ПК (до отпускания кнопки мыши)
+        radio.addEventListener('mousedown', function (e) {
+            e.preventDefault(); // Предотвращаем стандартное поведение браузера
+            handleBaseRadioToggle(e.target);
+        });
+        
         // Добавляем обработчик touchstart на сам input
         radio.addEventListener('touchstart', function (e) {
+            e.preventDefault(); // Предотвращаем стандартное поведение для мгновенного отклика
             handleBaseRadioToggle(e.target);
-        }, { passive: true });
+        }, { passive: false });
         
         // Добавляем обработчик touchstart на label для перехвата касаний по тексту
         const label = document.querySelector(`label[for="${radio.id}"]`);
         if (label) {
+            // Обработчик mousedown на label для мгновенного переключения на ПК
+            label.addEventListener('mousedown', function (e) {
+                e.preventDefault();
+                handleBaseRadioToggle(radio);
+            });
+            
             label.addEventListener('touchstart', function (e) {
                 e.preventDefault(); // Предотвращаем стандартное поведение label
                 handleBaseRadioToggle(radio);
             }, { passive: false });
         }
         
-        // Добавляем обработчик click для десктопов и предотвращения двойного срабатывания
+        // Добавляем обработчик click для предотвращения стандартного поведения
         radio.addEventListener('click', function (e) {
-            // Если уже обработали через touchstart, предотвращаем стандартное поведение
+            // Всегда предотвращаем стандартное поведение, так как уже обработали через mousedown/touchstart
+            e.preventDefault();
             if (baseRadioTouched.get(e.target)) {
-                e.preventDefault();
                 baseRadioTouched.delete(e.target);
-                return;
             }
-            // Для десктопов мгновенно устанавливаем checked и запускаем логику
-            handleBaseRadioToggle(e.target);
         });
         
         // Обработчик change оставляем для случаев, когда состояние меняется программно
@@ -498,30 +508,40 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     
     overlayMapTypeRadios.forEach(radio => {
+        // Добавляем обработчик mousedown для мгновенного переключения на ПК (до отпускания кнопки мыши)
+        radio.addEventListener('mousedown', function (e) {
+            e.preventDefault(); // Предотвращаем стандартное поведение браузера
+            handleOverlayRadioToggle(e.target);
+        });
+        
         // Добавляем обработчик touchstart на сам input
         radio.addEventListener('touchstart', function (e) {
+            e.preventDefault(); // Предотвращаем стандартное поведение для мгновенного отклика
             handleOverlayRadioToggle(e.target);
-        }, { passive: true });
+        }, { passive: false });
         
         // Добавляем обработчик touchstart на label для перехвата касаний по тексту
         const label = document.querySelector(`label[for="${radio.id}"]`);
         if (label) {
+            // Обработчик mousedown на label для мгновенного переключения на ПК
+            label.addEventListener('mousedown', function (e) {
+                e.preventDefault();
+                handleOverlayRadioToggle(radio);
+            });
+            
             label.addEventListener('touchstart', function (e) {
                 e.preventDefault(); // Предотвращаем стандартное поведение label
                 handleOverlayRadioToggle(radio);
             }, { passive: false });
         }
         
-        // Добавляем обработчик click для десктопов и предотвращения двойного срабатывания
+        // Добавляем обработчик click для предотвращения стандартного поведения
         radio.addEventListener('click', function (e) {
-            // Если уже обработали через touchstart, предотвращаем стандартное поведение
+            // Всегда предотвращаем стандартное поведение, так как уже обработали через mousedown/touchstart
+            e.preventDefault();
             if (overlayRadioTouched.get(e.target)) {
-                e.preventDefault();
                 overlayRadioTouched.delete(e.target);
-                return;
             }
-            // Для десктопов мгновенно устанавливаем checked и запускаем логику
-            handleOverlayRadioToggle(e.target);
         });
         
         // Обработчик change оставляем для случаев, когда состояние меняется программно
