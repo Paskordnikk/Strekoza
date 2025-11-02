@@ -19,7 +19,7 @@ body, html {
     z-index: 1000;
     cursor: pointer;
     border: 1px solid darkorange; /* Changed border color */
-    background-color: #32333d;
+    background-color: rgba(50, 51, 61, 0.85);
     padding: 10px 10px 6px 10px;
     border-radius: 10px;
     transition: left 0.3s ease-in-out;
@@ -407,7 +407,7 @@ body, html {
 }
 
 .map-control-btn {
-    background-color: #32333d;
+    background-color: rgba(50, 51, 61, 0.85);
     color: darkorange;
     border: 1px solid darkorange;
     border-radius: 10px;
@@ -645,6 +645,26 @@ body, html {
     border-color: #32333d;
 }
 
+/* Route color selection buttons */
+.route-color-btn {
+    background: #32333d;
+    border: 1px solid darkorange;
+    border-radius: 5px;
+    padding: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    min-height: 28px;
+}
+
+.route-color-btn[data-color="#34353e"] {
+    background: darkorange;
+}
+
 /* Mobile optimization */
 @media (max-width: 768px) {
     #elevation-profile {
@@ -687,6 +707,14 @@ body, html {
         white-space: nowrap;
     }
     
+    .route-color-btn {
+        width: 24px;
+        height: 24px;
+        min-width: 24px;
+        min-height: 24px;
+        padding: 3px;
+    }
+    
     #export-route-btn {
         margin-left: 40px;
     }
@@ -725,6 +753,14 @@ body, html {
     .profile-action-btn {
         font-size: 9px;
         padding: 5px 10px;
+    }
+    
+    .route-color-btn {
+        width: 22px;
+        height: 22px;
+        min-width: 22px;
+        min-height: 22px;
+        padding: 2px;
     }
     
     #export-route-btn {

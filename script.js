@@ -180,6 +180,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 maxZoom: 20,
                 attribution: '<a href="https://github.com/cyclosm/cyclosm-cartocss-style/releases" title="CyclOSM - Open Bicycle render">CyclOSM</a> | Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }),
+            'super-contrast-relief': () => L.tileLayer('https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://github.com/tilezen/joerd">Terrain Tiles</a>',
+                maxZoom: 15
+            }),
+            'contrast-relief': () => L.tileLayer('https://maps-for-free.com/layer/relief/z{z}/row{y}/{z}_{x}-{y}.jpg', {
+                attribution: '&copy; <a href="https://maps-for-free.com">Maps-for-free.com</a>',
+                maxZoom: 15
+            }),
             cartovoyager: () => L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
                 subdomains: 'abcd',
@@ -203,6 +211,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
                 subdomains: 'abcd',
                 maxZoom: 20
+            }),
+            gray: () => L.tileLayer('http://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri &mdash; Source: Esri',
+                maxZoom: 16
+            }),
+            waze: () => L.tileLayer('https://il-livemap-tiles3.waze.com/tiles/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.waze.com">Waze</a>',
+                maxZoom: 18
             }),
         };
         return layers[type] ? layers[type]() : layers.opentopomap();
@@ -623,6 +639,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let currentRouteData = []; // To store data for export
     let currentSampleStep = 50; // Default step in meters
     let routeHoverPolyline = null; // Wide invisible polyline for capturing mouse events
+    let routeLineColor = 'darkorange'; // Default route line color
     
     // Chart elements for route-to-chart interaction
     let chartHoverGroup = null;
@@ -667,31 +684,157 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
     
-    function buildElevationProfile(elevationData) {
+    // Initialize profile header with title and color buttons
+    function initializeProfileHeader() {
         const titleWrapper = document.getElementById('profile-title-wrapper');
-        titleWrapper.innerHTML = ''; // Clear previous title
+        // Only initialize if not already created
+        if (titleWrapper.querySelector('.profile-title-container')) {
+            return;
+        }
 
         // Check if mobile (screen width < 768px) or very small (< 480px)
         const isMobile = window.innerWidth < 768;
         const isVerySmall = window.innerWidth < 480;
 
+        // Create title container for flex layout
+        const titleContainer = document.createElement('div');
+        titleContainer.className = 'profile-title-container';
+        titleContainer.style.display = 'flex';
+        titleContainer.style.alignItems = 'center';
+        titleContainer.style.gap = '10px';
+        titleContainer.style.flexWrap = 'wrap';
+
         if (isMobile) {
             // Mobile: two lines
+            const titleTextContainer = document.createElement('div');
             const h3 = document.createElement('h3');
             h3.className = 'profile-title';
+            h3.id = 'profile-title-h3';
             h3.textContent = `Профиль высоты маршрута`;
-            titleWrapper.appendChild(h3);
+            titleTextContainer.appendChild(h3);
 
             const subtitle = document.createElement('div');
             subtitle.className = 'profile-subtitle';
-            subtitle.textContent = `(Шаг ${currentSampleStep}м, ${elevationData.length} точек)`;
-            titleWrapper.appendChild(subtitle);
+            subtitle.id = 'profile-subtitle';
+            subtitle.textContent = `(Шаг ${currentSampleStep}м, вычисление...)`;
+            titleTextContainer.appendChild(subtitle);
+            
+            titleContainer.appendChild(titleTextContainer);
         } else {
             // Desktop/Tablet: one line
             const h3 = document.createElement('h3');
             h3.className = 'profile-title';
-            h3.textContent = `Профиль высоты маршрута (шаг ${currentSampleStep}м, ${elevationData.length} точек)`;
-            titleWrapper.appendChild(h3);
+            h3.id = 'profile-title-h3';
+            h3.textContent = `Профиль высоты маршрута (шаг ${currentSampleStep}м, вычисление...)`;
+            titleContainer.appendChild(h3);
+        }
+
+        // Create color selection buttons container
+        const colorButtonsContainer = document.createElement('div');
+        colorButtonsContainer.style.display = 'flex';
+        colorButtonsContainer.style.gap = '5px';
+        colorButtonsContainer.style.alignItems = 'center';
+
+        // Orange line button
+        const orangeBtn = document.createElement('button');
+        orangeBtn.className = 'route-color-btn';
+        orangeBtn.setAttribute('data-color', 'darkorange');
+        orangeBtn.title = 'Оранжевая линия (для темных карт)';
+        
+        // Create SVG icon for orange line
+        const orangeSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        orangeSvg.setAttribute('width', '20');
+        orangeSvg.setAttribute('height', '20');
+        orangeSvg.setAttribute('viewBox', '0 0 24 24');
+        orangeSvg.style.display = 'block';
+        const orangeLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        orangeLine.setAttribute('x1', '2');
+        orangeLine.setAttribute('y1', '12');
+        orangeLine.setAttribute('x2', '22');
+        orangeLine.setAttribute('y2', '12');
+        orangeLine.setAttribute('stroke', 'darkorange');
+        orangeLine.setAttribute('stroke-width', '3');
+        orangeLine.setAttribute('stroke-linecap', 'round');
+        orangeSvg.appendChild(orangeLine);
+        orangeBtn.appendChild(orangeSvg);
+
+        // Gray line button
+        const grayBtn = document.createElement('button');
+        grayBtn.className = 'route-color-btn';
+        grayBtn.setAttribute('data-color', '#34353e');
+        grayBtn.title = 'Серая линия (для светлых карт)';
+        
+        // Create SVG icon for gray line
+        const graySvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        graySvg.setAttribute('width', '20');
+        graySvg.setAttribute('height', '20');
+        graySvg.setAttribute('viewBox', '0 0 24 24');
+        graySvg.style.display = 'block';
+        const grayLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        grayLine.setAttribute('x1', '2');
+        grayLine.setAttribute('y1', '12');
+        grayLine.setAttribute('x2', '22');
+        grayLine.setAttribute('y2', '12');
+        grayLine.setAttribute('stroke', '#34353e');
+        grayLine.setAttribute('stroke-width', '3');
+        grayLine.setAttribute('stroke-linecap', 'round');
+        graySvg.appendChild(grayLine);
+        grayBtn.appendChild(graySvg);
+
+        // Add click handlers
+        orangeBtn.addEventListener('click', function() {
+            routeLineColor = 'darkorange';
+            if (routePolyline) {
+                routePolyline.setStyle({ color: routeLineColor });
+            }
+        });
+
+        grayBtn.addEventListener('click', function() {
+            routeLineColor = '#34353e';
+            if (routePolyline) {
+                routePolyline.setStyle({ color: routeLineColor });
+            }
+        });
+
+        colorButtonsContainer.appendChild(orangeBtn);
+        colorButtonsContainer.appendChild(grayBtn);
+        titleContainer.appendChild(colorButtonsContainer);
+        titleWrapper.appendChild(titleContainer);
+    }
+
+    function buildElevationProfile(elevationData) {
+        // Update title text if header already exists, otherwise initialize it
+        const titleH3 = document.getElementById('profile-title-h3');
+        const subtitle = document.getElementById('profile-subtitle');
+        
+        // Check if mobile (screen width < 768px) or very small (< 480px)
+        const isMobile = window.innerWidth < 768;
+        const isVerySmall = window.innerWidth < 480;
+
+        if (titleH3) {
+            // Update existing title
+            if (isMobile) {
+                if (subtitle) {
+                    subtitle.textContent = `(Шаг ${currentSampleStep}м, ${elevationData.length} точек)`;
+                }
+            } else {
+                titleH3.textContent = `Профиль высоты маршрута (шаг ${currentSampleStep}м, ${elevationData.length} точек)`;
+            }
+        } else {
+            // Initialize header if it doesn't exist
+            initializeProfileHeader();
+            // Update title after initialization
+            const updatedTitleH3 = document.getElementById('profile-title-h3');
+            const updatedSubtitle = document.getElementById('profile-subtitle');
+            if (updatedTitleH3) {
+                if (isMobile) {
+                    if (updatedSubtitle) {
+                        updatedSubtitle.textContent = `(Шаг ${currentSampleStep}м, ${elevationData.length} точек)`;
+                    }
+                } else {
+                    updatedTitleH3.textContent = `Профиль высоты маршрута (шаг ${currentSampleStep}м, ${elevationData.length} точек)`;
+                }
+            }
         }
 
         const chartContainer = document.getElementById('profile-chart');
@@ -1337,7 +1480,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             
             routePolyline = L.polyline(geodesicPoints, {
-                color: 'darkorange', // Changed to darkorange
+                color: routeLineColor,
                 weight: 3,
                 opacity: 0.7
             }).addTo(map);
@@ -1389,6 +1532,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         isCalculatingRoute = true;
         map.off('click', onMapClickForRoute);
+
+        // Initialize profile header with title and color buttons before showing the profile
+        initializeProfileHeader();
 
         const chartContainer = document.getElementById('profile-chart');
         chartContainer.innerHTML = `
