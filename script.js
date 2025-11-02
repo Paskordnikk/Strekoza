@@ -156,6 +156,22 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // Helper function to create overlay layer with proper mobile settings
+    function createOverlayLayer(url, options = {}) {
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        const defaultOptions = {
+            pane: 'roadsPane',
+            crossOrigin: true,
+            updateWhenIdle: true,
+            updateWhenZooming: false,
+            keepBuffer: isMobile ? 3 : 2,
+            ...options
+        };
+        
+        return L.tileLayer(url, defaultOptions);
+    }
+
     // Function to create tile layer
     const createTileLayer = (type) => {
         const layers = {
@@ -313,21 +329,22 @@ document.addEventListener('DOMContentLoaded', function () {
         enableRoadsCheckbox.checked = true;
         roadsControls.style.display = 'block';
         
-        roadsLayer = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Map style: &copy; <a href="https://www.OpenRailwayMap.org">OpenRailwayMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
-            pane: 'roadsPane',
-            timeout: 10000,
-            maxRetries: 3,
-            retryDelay: 500,
-            crossOrigin: true,
-            updateWhenIdle: false,
-            updateWhenZooming: true,
-            keepBuffer: 2
-        });
-        roadsLayer.setOpacity(lastRoadsOpacity / 100);
-        roadsLayer.addTo(map);
-        setTimeout(() => map.invalidateSize(), 100);
+        // Асинхронная загрузка слоя при старте
+        setTimeout(() => {
+            roadsLayer = createOverlayLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Map style: &copy; <a href="https://www.OpenRailwayMap.org">OpenRailwayMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+            });
+            roadsLayer.setOpacity(lastRoadsOpacity / 100);
+            roadsLayer.addTo(map);
+            
+            setTimeout(() => {
+                map.invalidateSize();
+                if (roadsLayer && map.hasLayer(roadsLayer)) {
+                    roadsLayer.redraw();
+                }
+            }, 150);
+        }, 100);
         
         roadsOpacitySlider.value = lastRoadsOpacity;
     }
@@ -341,22 +358,23 @@ document.addEventListener('DOMContentLoaded', function () {
         enableBordersCheckbox.checked = true;
         bordersControls.style.display = 'block';
         
-        bordersLayer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_lines/{z}/{x}/{y}{r}.png?api_key=1e09df77-cc36-4be2-8ed9-6c5eaf3476ff', {
-            minZoom: 0,
-            maxZoom: 20,
-            attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            pane: 'roadsPane',
-            timeout: 10000,
-            maxRetries: 3,
-            retryDelay: 500,
-            crossOrigin: true,
-            updateWhenIdle: false,
-            updateWhenZooming: true,
-            keepBuffer: 2
-        });
-        bordersLayer.setOpacity(lastBordersOpacity / 100);
-        bordersLayer.addTo(map);
-        setTimeout(() => map.invalidateSize(), 100);
+        // Асинхронная загрузка слоя при старте
+        setTimeout(() => {
+            bordersLayer = createOverlayLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_lines/{z}/{x}/{y}{r}.png?api_key=1e09df77-cc36-4be2-8ed9-6c5eaf3476ff', {
+                minZoom: 0,
+                maxZoom: 20,
+                attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            });
+            bordersLayer.setOpacity(lastBordersOpacity / 100);
+            bordersLayer.addTo(map);
+            
+            setTimeout(() => {
+                map.invalidateSize();
+                if (bordersLayer && map.hasLayer(bordersLayer)) {
+                    bordersLayer.redraw();
+                }
+            }, 150);
+        }, 100);
         
         bordersOpacitySlider.value = lastBordersOpacity;
     }
@@ -370,22 +388,23 @@ document.addEventListener('DOMContentLoaded', function () {
         enableLabelsCheckbox.checked = true;
         labelsControls.style.display = 'block';
         
-        labelsLayer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_labels/{z}/{x}/{y}{r}.png?api_key=1e09df77-cc36-4be2-8ed9-6c5eaf3476ff', {
-            minZoom: 0,
-            maxZoom: 20,
-            attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            pane: 'roadsPane',
-            timeout: 10000,
-            maxRetries: 3,
-            retryDelay: 500,
-            crossOrigin: true,
-            updateWhenIdle: false,
-            updateWhenZooming: true,
-            keepBuffer: 2
-        });
-        labelsLayer.setOpacity(lastLabelsOpacity / 100);
-        labelsLayer.addTo(map);
-        setTimeout(() => map.invalidateSize(), 100);
+        // Асинхронная загрузка слоя при старте
+        setTimeout(() => {
+            labelsLayer = createOverlayLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_labels/{z}/{x}/{y}{r}.png?api_key=1e09df77-cc36-4be2-8ed9-6c5eaf3476ff', {
+                minZoom: 0,
+                maxZoom: 20,
+                attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            });
+            labelsLayer.setOpacity(lastLabelsOpacity / 100);
+            labelsLayer.addTo(map);
+            
+            setTimeout(() => {
+                map.invalidateSize();
+                if (labelsLayer && map.hasLayer(labelsLayer)) {
+                    labelsLayer.redraw();
+                }
+            }, 150);
+        }, 100);
         
         labelsOpacitySlider.value = lastLabelsOpacity;
     }
@@ -635,24 +654,23 @@ document.addEventListener('DOMContentLoaded', function () {
             if (e.target.checked) {
                 roadsControls.style.display = 'block';
                 
-                roadsLayer = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
-                    maxZoom: 19,
-                    attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Map style: &copy; <a href="https://www.OpenRailwayMap.org">OpenRailwayMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
-                    pane: 'roadsPane',
-                    timeout: 10000,
-                    maxRetries: 3,
-                    retryDelay: 500,
-                    crossOrigin: true,
-                    updateWhenIdle: false,
-                    updateWhenZooming: true,
-                    keepBuffer: 2
-                });
-                roadsLayer.setOpacity(roadsOpacitySlider.value / 100);
-                roadsLayer.addTo(map);
+                // Асинхронная загрузка слоя с задержкой для мобильных устройств
                 setTimeout(() => {
-                    map.invalidateSize();
-                    roadsLayer.redraw();
-                }, 100);
+                    roadsLayer = createOverlayLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
+                        maxZoom: 19,
+                        attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Map style: &copy; <a href="https://www.OpenRailwayMap.org">OpenRailwayMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+                    });
+                    roadsLayer.setOpacity(roadsOpacitySlider.value / 100);
+                    roadsLayer.addTo(map);
+                    
+                    // Даем слою время на инициализацию, затем принудительно обновляем
+                    setTimeout(() => {
+                        map.invalidateSize();
+                        if (roadsLayer && map.hasLayer(roadsLayer)) {
+                            roadsLayer.redraw();
+                        }
+                    }, 150);
+                }, 50);
                 
                 localStorage.setItem('roadsEnabled', 'true');
             } else {
@@ -703,25 +721,23 @@ document.addEventListener('DOMContentLoaded', function () {
             if (e.target.checked) {
                 bordersControls.style.display = 'block';
                 
-                bordersLayer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_lines/{z}/{x}/{y}{r}.png?api_key=1e09df77-cc36-4be2-8ed9-6c5eaf3476ff', {
-                    minZoom: 0,
-                    maxZoom: 20,
-                    attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                    pane: 'roadsPane',
-                    timeout: 10000,
-                    maxRetries: 3,
-                    retryDelay: 500,
-                    crossOrigin: true,
-                    updateWhenIdle: false,
-                    updateWhenZooming: true,
-                    keepBuffer: 2
-                });
-                bordersLayer.setOpacity(bordersOpacitySlider.value / 100);
-                bordersLayer.addTo(map);
+                // Асинхронная загрузка слоя с задержкой для мобильных устройств
                 setTimeout(() => {
-                    map.invalidateSize();
-                    bordersLayer.redraw();
-                }, 100);
+                    bordersLayer = createOverlayLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_lines/{z}/{x}/{y}{r}.png?api_key=1e09df77-cc36-4be2-8ed9-6c5eaf3476ff', {
+                        minZoom: 0,
+                        maxZoom: 20,
+                        attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    });
+                    bordersLayer.setOpacity(bordersOpacitySlider.value / 100);
+                    bordersLayer.addTo(map);
+                    
+                    setTimeout(() => {
+                        map.invalidateSize();
+                        if (bordersLayer && map.hasLayer(bordersLayer)) {
+                            bordersLayer.redraw();
+                        }
+                    }, 150);
+                }, 50);
                 
                 localStorage.setItem('bordersEnabled', 'true');
             } else {
@@ -772,25 +788,23 @@ document.addEventListener('DOMContentLoaded', function () {
             if (e.target.checked) {
                 labelsControls.style.display = 'block';
                 
-                labelsLayer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_labels/{z}/{x}/{y}{r}.png?api_key=1e09df77-cc36-4be2-8ed9-6c5eaf3476ff', {
-                    minZoom: 0,
-                    maxZoom: 20,
-                    attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                    pane: 'roadsPane',
-                    timeout: 10000,
-                    maxRetries: 3,
-                    retryDelay: 500,
-                    crossOrigin: true,
-                    updateWhenIdle: false,
-                    updateWhenZooming: true,
-                    keepBuffer: 2
-                });
-                labelsLayer.setOpacity(labelsOpacitySlider.value / 100);
-                labelsLayer.addTo(map);
+                // Асинхронная загрузка слоя с задержкой для мобильных устройств
                 setTimeout(() => {
-                    map.invalidateSize();
-                    labelsLayer.redraw();
-                }, 100);
+                    labelsLayer = createOverlayLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_labels/{z}/{x}/{y}{r}.png?api_key=1e09df77-cc36-4be2-8ed9-6c5eaf3476ff', {
+                        minZoom: 0,
+                        maxZoom: 20,
+                        attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    });
+                    labelsLayer.setOpacity(labelsOpacitySlider.value / 100);
+                    labelsLayer.addTo(map);
+                    
+                    setTimeout(() => {
+                        map.invalidateSize();
+                        if (labelsLayer && map.hasLayer(labelsLayer)) {
+                            labelsLayer.redraw();
+                        }
+                    }, 150);
+                }, 50);
                 
                 localStorage.setItem('labelsEnabled', 'true');
             } else {
@@ -862,22 +876,41 @@ document.addEventListener('DOMContentLoaded', function () {
         locateUser();
     }
 
+    // Helper function to force redraw of overlay layers
+    function redrawOverlayLayers() {
+        if (roadsLayer && map.hasLayer(roadsLayer)) {
+            roadsLayer.redraw();
+        }
+        if (bordersLayer && map.hasLayer(bordersLayer)) {
+            bordersLayer.redraw();
+        }
+        if (labelsLayer && map.hasLayer(labelsLayer)) {
+            labelsLayer.redraw();
+        }
+    }
+
+    // Add event listeners for map movement and zoom to ensure layers update
+    map.on('moveend', function() {
+        redrawOverlayLayers();
+    });
+
+    map.on('zoomend', function() {
+        redrawOverlayLayers();
+    });
+
+    map.on('viewreset', function() {
+        redrawOverlayLayers();
+    });
+
     // Handle window resize for mobile devices to ensure proper tile loading
     let resizeTimeout;
     window.addEventListener('resize', function() {
         clearTimeout(resizeTimeout);
         resizeTimeout = setTimeout(function() {
             map.invalidateSize();
-            // Force reload of visible layers on resize
-            if (roadsLayer) {
-                roadsLayer.redraw();
-            }
-            if (bordersLayer) {
-                bordersLayer.redraw();
-            }
-            if (labelsLayer) {
-                labelsLayer.redraw();
-            }
+            setTimeout(function() {
+                redrawOverlayLayers();
+            }, 100);
         }, 250);
     });
 
@@ -885,15 +918,9 @@ document.addEventListener('DOMContentLoaded', function () {
     window.addEventListener('orientationchange', function() {
         setTimeout(function() {
             map.invalidateSize();
-            if (roadsLayer) {
-                roadsLayer.redraw();
-            }
-            if (bordersLayer) {
-                bordersLayer.redraw();
-            }
-            if (labelsLayer) {
-                labelsLayer.redraw();
-            }
+            setTimeout(function() {
+                redrawOverlayLayers();
+            }, 200);
         }, 500);
     });
 
