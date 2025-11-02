@@ -163,13 +163,46 @@ document.addEventListener('DOMContentLoaded', function () {
         const defaultOptions = {
             pane: 'roadsPane',
             crossOrigin: true,
-            updateWhenIdle: true,
-            updateWhenZooming: false,
-            keepBuffer: isMobile ? 3 : 2,
+            // Для мобильных: обновляем сразу, не ждем idle
+            updateWhenIdle: !isMobile,
+            updateWhenZooming: isMobile,
+            // Увеличиваем буфер для предзагрузки тайлов
+            keepBuffer: isMobile ? 4 : 2,
+            // Отключаем задержку обновления на мобильных
+            updateInterval: isMobile ? 50 : 200,
             ...options
         };
         
-        return L.tileLayer(url, defaultOptions);
+        const layer = L.tileLayer(url, defaultOptions);
+        
+        // Обработка ошибок загрузки тайлов и принудительная перезагрузка
+        layer.on('tileerror', function(error, tile) {
+            // При ошибке загрузки тайла, попробуем перезагрузить через небольшую задержку
+            setTimeout(() => {
+                if (layer && map.hasLayer(layer)) {
+                    try {
+                        layer.removeTile(tile);
+                        layer._addTile(tile);
+                    } catch (e) {
+                        // Игнорируем ошибки при попытке обновить тайл
+                    }
+                }
+            }, 1000);
+        });
+        
+        // При успешной загрузке тайла обновляем отображение
+        layer.on('tileload', function() {
+            if (isMobile) {
+                // На мобильных принудительно обновляем отображение после загрузки каждого тайла
+                requestAnimationFrame(() => {
+                    if (layer && map.hasLayer(layer)) {
+                        layer._redraw();
+                    }
+                });
+            }
+        });
+        
+        return layer;
     }
 
     // Function to create tile layer
@@ -342,8 +375,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 map.invalidateSize();
                 if (roadsLayer && map.hasLayer(roadsLayer)) {
                     roadsLayer.redraw();
+                    // Дополнительное обновление через небольшую задержку для надежности
+                    setTimeout(() => {
+                        if (roadsLayer && map.hasLayer(roadsLayer)) {
+                            roadsLayer.redraw();
+                        }
+                    }, 300);
                 }
-            }, 150);
+            }, 200);
         }, 100);
         
         roadsOpacitySlider.value = lastRoadsOpacity;
@@ -372,8 +411,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 map.invalidateSize();
                 if (bordersLayer && map.hasLayer(bordersLayer)) {
                     bordersLayer.redraw();
+                    // Дополнительное обновление через небольшую задержку для надежности
+                    setTimeout(() => {
+                        if (bordersLayer && map.hasLayer(bordersLayer)) {
+                            bordersLayer.redraw();
+                        }
+                    }, 300);
                 }
-            }, 150);
+            }, 200);
         }, 100);
         
         bordersOpacitySlider.value = lastBordersOpacity;
@@ -402,8 +447,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 map.invalidateSize();
                 if (labelsLayer && map.hasLayer(labelsLayer)) {
                     labelsLayer.redraw();
+                    // Дополнительное обновление через небольшую задержку для надежности
+                    setTimeout(() => {
+                        if (labelsLayer && map.hasLayer(labelsLayer)) {
+                            labelsLayer.redraw();
+                        }
+                    }, 300);
                 }
-            }, 150);
+            }, 200);
         }, 100);
         
         labelsOpacitySlider.value = lastLabelsOpacity;
@@ -663,13 +714,19 @@ document.addEventListener('DOMContentLoaded', function () {
                     roadsLayer.setOpacity(roadsOpacitySlider.value / 100);
                     roadsLayer.addTo(map);
                     
-                    // Даем слою время на инициализацию, затем принудительно обновляем
+                    // Даем слою время на инициализацию, затем принудительно обновляем несколько раз
                     setTimeout(() => {
                         map.invalidateSize();
                         if (roadsLayer && map.hasLayer(roadsLayer)) {
                             roadsLayer.redraw();
+                            // Дополнительное обновление через небольшую задержку для надежности
+                            setTimeout(() => {
+                                if (roadsLayer && map.hasLayer(roadsLayer)) {
+                                    roadsLayer.redraw();
+                                }
+                            }, 300);
                         }
-                    }, 150);
+                    }, 200);
                 }, 50);
                 
                 localStorage.setItem('roadsEnabled', 'true');
@@ -735,8 +792,14 @@ document.addEventListener('DOMContentLoaded', function () {
                         map.invalidateSize();
                         if (bordersLayer && map.hasLayer(bordersLayer)) {
                             bordersLayer.redraw();
+                            // Дополнительное обновление через небольшую задержку для надежности
+                            setTimeout(() => {
+                                if (bordersLayer && map.hasLayer(bordersLayer)) {
+                                    bordersLayer.redraw();
+                                }
+                            }, 300);
                         }
-                    }, 150);
+                    }, 200);
                 }, 50);
                 
                 localStorage.setItem('bordersEnabled', 'true');
@@ -802,8 +865,14 @@ document.addEventListener('DOMContentLoaded', function () {
                         map.invalidateSize();
                         if (labelsLayer && map.hasLayer(labelsLayer)) {
                             labelsLayer.redraw();
+                            // Дополнительное обновление через небольшую задержку для надежности
+                            setTimeout(() => {
+                                if (labelsLayer && map.hasLayer(labelsLayer)) {
+                                    labelsLayer.redraw();
+                                }
+                            }, 300);
                         }
-                    }, 150);
+                    }, 200);
                 }, 50);
                 
                 localStorage.setItem('labelsEnabled', 'true');
@@ -890,17 +959,62 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Add event listeners for map movement and zoom to ensure layers update
+    // Используем более агрессивное обновление на мобильных устройствах
+    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    // Функция для принудительного обновления слоев с задержкой
+    function forceRedrawOverlayLayers() {
+        requestAnimationFrame(() => {
+            redrawOverlayLayers();
+            // На мобильных также принудительно обновляем все тайлы
+            if (isMobileDevice) {
+                setTimeout(() => {
+                    if (roadsLayer && map.hasLayer(roadsLayer)) {
+                        roadsLayer.redraw();
+                    }
+                    if (bordersLayer && map.hasLayer(bordersLayer)) {
+                        bordersLayer.redraw();
+                    }
+                    if (labelsLayer && map.hasLayer(labelsLayer)) {
+                        labelsLayer.redraw();
+                    }
+                }, 100);
+            }
+        });
+    }
+    
+    // Обработчики для перемещения карты
     map.on('moveend', function() {
-        redrawOverlayLayers();
+        forceRedrawOverlayLayers();
     });
 
+    // Обработчики для масштабирования
     map.on('zoomend', function() {
-        redrawOverlayLayers();
+        forceRedrawOverlayLayers();
     });
 
     map.on('viewreset', function() {
-        redrawOverlayLayers();
+        forceRedrawOverlayLayers();
     });
+    
+    // На мобильных также обновляем во время движения для более плавной работы
+    if (isMobileDevice) {
+        let moveTimeout;
+        map.on('move', function() {
+            clearTimeout(moveTimeout);
+            moveTimeout = setTimeout(() => {
+                redrawOverlayLayers();
+            }, 200);
+        });
+        
+        let zoomTimeout;
+        map.on('zoom', function() {
+            clearTimeout(zoomTimeout);
+            zoomTimeout = setTimeout(() => {
+                redrawOverlayLayers();
+            }, 100);
+        });
+    }
 
     // Handle window resize for mobile devices to ensure proper tile loading
     let resizeTimeout;
