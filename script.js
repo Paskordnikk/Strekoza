@@ -1454,9 +1454,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 nextSampleDist += SAMPLE_INTERVAL_KM;
                 
-                // Update progress based on number of points generated
+                // Update progress based on number of points generated (0% to 30%)
                 currentPointIndex++;
-                const progress = Math.min(40, Math.floor((currentPointIndex / totalExpectedPoints) * 40));
+                const progress = Math.min(30, Math.floor((currentPointIndex / totalExpectedPoints) * 30));
                 progressBar.style.width = `${progress}%`;
                 
                 // Allow the UI to update by yielding control back to the browser
@@ -1482,34 +1482,20 @@ document.addEventListener('DOMContentLoaded', function () {
         const pointsToQuery = uniqueElevationData.map(p => [p.lat, p.lng]);
 
         // 3. Fetch real elevation data from the server
+        // This step will take 30% to 80% of the progress (50% total)
         try {
-            // Update progress - 40% for generating points, now moving to 50% before fetching
-            progressBar.style.width = '40%';
+            progressBar.style.width = '30%';
             await new Promise(resolve => setTimeout(resolve, 10));
-            
-            // Start fetch request and update progress during the wait
-            const fetchPromise = fetch('https://strekoza-ylfm.onrender.com/api/get_elevation', {
+
+            // Make the request to the server
+            const response = await fetch('https://strekoza-ylfm.onrender.com/api/get_elevation', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ points: pointsToQuery }),
+                body: JSON.stringify({ points: pointsToQuery })
             });
-            
-            // Simulate progress during fetch (since we can't directly monitor fetch progress)
-            // We'll gradually increase progress while waiting for the response
-            let currentProgress = 40;
-            const fetchInterval = setInterval(async () => {
-                if (currentProgress < 80) {
-                    currentProgress += 1;
-                    progressBar.style.width = `${currentProgress}%`;
-                    await new Promise(resolve => setTimeout(resolve, 1));
-                }
-            }, 50); // Update every 50ms
-            
-            const response = await fetchPromise;
-            clearInterval(fetchInterval);
-            
+
             if (!response.ok) {
                 throw new Error(`Server error: ${response.statusText}`);
             }
@@ -1517,9 +1503,9 @@ document.addEventListener('DOMContentLoaded', function () {
             const data = await response.json();
             const realElevations = data.elevations;
 
-            // Update progress - 80% after receiving data
+            // Update progress to 80% after receiving data
             progressBar.style.width = '80%';
-            await new Promise(resolve => setTimeout(resolve, 1));
+            await new Promise(resolve => setTimeout(resolve, 10));
             
             // 4. Populate elevationData with real elevations and handle negative values
             if (realElevations.length === uniqueElevationData.length) {
@@ -1528,10 +1514,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     const elev = realElevations[i];
                     uniqueElevationData[i].elevation = (elev < 0) ? null : elev;
                     
-                    // Update progress during the first pass of processing
-                    if (i % Math.max(1, Math.floor(uniqueElevationData.length / 10)) === 0) {
-                        const progress = 80 + Math.floor((i / uniqueElevationData.length) * 10);
-                        progressBar.style.width = `${Math.min(90, progress)}%`;
+                    // Update progress during the first pass of processing (80% to 90%)
+                    const progress = 80 + Math.floor((i / uniqueElevationData.length) * 10);
+                    progressBar.style.width = `${Math.min(90, progress)}%`;
+                    
+                    // Allow the UI to update periodically
+                    if (i % 50 === 0) { // Update UI every 50 points
                         await new Promise(resolve => setTimeout(resolve, 1));
                     }
                 }
@@ -1585,10 +1573,12 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
                     }
                     
-                    // Update progress during the second pass of processing
-                    if (i % Math.max(1, Math.floor(uniqueElevationData.length / 10)) === 0) {
-                        const progress = 90 + Math.floor((i / uniqueElevationData.length) * 10);
-                        progressBar.style.width = `${Math.min(100, progress)}%`;
+                    // Update progress during the second pass of processing (90% to 100%)
+                    const progress = 90 + Math.floor((i / uniqueElevationData.length) * 10);
+                    progressBar.style.width = `${Math.min(100, progress)}%`;
+                    
+                    // Allow the UI to update periodically
+                    if (i % 50 === 0) { // Update UI every 50 points
                         await new Promise(resolve => setTimeout(resolve, 1));
                     }
                 }
@@ -1608,10 +1598,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         } catch (error) {
             console.error('Failed to fetch elevation data:', error);
-            // Stop the fetch interval if still running in case of error
-            if (typeof fetchInterval !== 'undefined') {
-                clearInterval(fetchInterval);
-            }
             chartContainer.innerHTML = `
                 <div class="loading-container">
                     <div class="error-message">Ошибка при загрузке данных о высоте.<br>Обратитесь к разработчику.</div>
