@@ -300,7 +300,8 @@ document.addEventListener('DOMContentLoaded', function () {
         roadsLayer = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Map style: &copy; <a href="https://www.OpenRailwayMap.org">OpenRailwayMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
-            pane: 'roadsPane'
+            pane: 'roadsPane',
+            updateWhenIdle: false
         });
         roadsLayer.setOpacity(lastRoadsOpacity / 100);
         roadsLayer.addTo(map);
@@ -321,7 +322,8 @@ document.addEventListener('DOMContentLoaded', function () {
             minZoom: 0,
             maxZoom: 20,
             attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            pane: 'roadsPane'
+            pane: 'roadsPane',
+            updateWhenIdle: false
         });
         bordersLayer.setOpacity(lastBordersOpacity / 100);
         bordersLayer.addTo(map);
@@ -342,7 +344,8 @@ document.addEventListener('DOMContentLoaded', function () {
             minZoom: 0,
             maxZoom: 20,
             attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            pane: 'roadsPane'
+            pane: 'roadsPane',
+            updateWhenIdle: false
         });
         labelsLayer.setOpacity(lastLabelsOpacity / 100);
         labelsLayer.addTo(map);
@@ -452,7 +455,8 @@ document.addEventListener('DOMContentLoaded', function () {
             roadsLayer = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
                 maxZoom: 19,
                 attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Map style: &copy; <a href="https://www.OpenRailwayMap.org">OpenRailwayMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
-                pane: 'roadsPane'
+                pane: 'roadsPane',
+                updateWhenIdle: false
             });
             roadsLayer.setOpacity(roadsOpacitySlider.value / 100);
             roadsLayer.addTo(map);
@@ -487,7 +491,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 minZoom: 0,
                 maxZoom: 20,
                 attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                pane: 'roadsPane'
+                pane: 'roadsPane',
+                updateWhenIdle: false
             });
             bordersLayer.setOpacity(bordersOpacitySlider.value / 100);
             bordersLayer.addTo(map);
@@ -522,7 +527,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 minZoom: 0,
                 maxZoom: 20,
                 attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                pane: 'roadsPane'
+                pane: 'roadsPane',
+                updateWhenIdle: false
             });
             labelsLayer.setOpacity(labelsOpacitySlider.value / 100);
             labelsLayer.addTo(map);
