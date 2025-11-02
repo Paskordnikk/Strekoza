@@ -879,10 +879,14 @@ document.addEventListener('DOMContentLoaded', function () {
             tooltipText2.textContent = `Расстояние: ${mouseDistance.toFixed(2)} км`;
             
             const padding = 5;
+            const topPadding = padding;        // Отступ сверху
+            const bottomPadding = padding + 6; // Отступ снизу (на 2 больше, чтобы уравновесить)
+            const horizontalPadding = padding;
+            
             const bbox1 = tooltipText1.getBBox();
             const bbox2 = tooltipText2.getBBox();
-            const tooltipWidth = Math.max(bbox1.width, bbox2.width) + 2 * padding;
-            const tooltipHeight = bbox1.height + bbox2.height + 2 * padding;
+            const tooltipWidth = Math.max(bbox1.width, bbox2.width) + 2 * horizontalPadding;
+            const tooltipHeight = bbox1.height + bbox2.height + topPadding + bottomPadding;
 
             let tooltipX, tooltipY, textX, textY1, textY2;
             const offset = 3;
@@ -906,9 +910,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 tooltipY = y + offset;
             }
             
-            textX = tooltipX + padding;
-            textY1 = tooltipY + padding + bbox1.height - 2;
-            textY2 = tooltipY + 2 * padding + bbox1.height + bbox2.height - 2;
+            textX = tooltipX + horizontalPadding;
+            textY1 = tooltipY + topPadding + bbox1.height - 2;
+            textY2 = tooltipY + topPadding + bbox1.height + bbox2.height + 2; // Позиция второго текста с учетом нижнего отступа
 
             tooltipRect.setAttribute('x', tooltipX);
             tooltipRect.setAttribute('y', tooltipY);
@@ -1094,10 +1098,14 @@ document.addEventListener('DOMContentLoaded', function () {
             elements.tooltipText2.textContent = `Расстояние: ${pointData.distance.toFixed(2)} км`;
             
             const padding = 5;
+            const topPadding = padding;        // Отступ сверху
+            const bottomPadding = padding + 6; // Отступ снизу (на 2 больше, чтобы уравновесить)
+            const horizontalPadding = padding;
+            
             const bbox1 = elements.tooltipText1.getBBox();
             const bbox2 = elements.tooltipText2.getBBox();
-            const tooltipWidth = Math.max(bbox1.width, bbox2.width) + 2 * padding;
-            const tooltipHeight = bbox1.height + bbox2.height + 2 * padding;
+            const tooltipWidth = Math.max(bbox1.width, bbox2.width) + 2 * horizontalPadding;
+            const tooltipHeight = bbox1.height + bbox2.height + topPadding + bottomPadding;
             
             let tooltipX, tooltipY, textX, textY1, textY2;
             const offset = 3;
@@ -1121,9 +1129,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 tooltipY = y + offset;
             }
             
-            textX = tooltipX + padding;
-            textY1 = tooltipY + padding + bbox1.height - 2;
-            textY2 = tooltipY + 2 * padding + bbox1.height + bbox2.height - 2;
+            textX = tooltipX + horizontalPadding;
+            textY1 = tooltipY + topPadding + bbox1.height - 2;
+            textY2 = tooltipY + topPadding + bbox1.height + bbox2.height + 2; // Позиция второго текста с учетом нижнего отступа
             
             elements.tooltipRect.setAttribute('x', tooltipX);
             elements.tooltipRect.setAttribute('y', tooltipY);
