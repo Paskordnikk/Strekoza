@@ -163,9 +163,6 @@ body, html {
     background: #32333d;
 }
 
-.radio-option:hover input[type="radio"]:not(:checked) {
-    background: darkorange;
-}
 
 /* Стилизация чекбоксов */
 .checkbox-option {
