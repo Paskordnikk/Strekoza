@@ -4,7 +4,6 @@ document.addEventListener('DOMContentLoaded', function () {
     map.getPane('routeHoverPane').style.zIndex = 650;
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-/*
     // Add distance measurement functionality
     const measureDistanceBtn = document.getElementById('measure-distance-btn');
     
@@ -157,7 +156,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-*/
     // Function to create tile layer
     const createTileLayer = (type) => {
         const layers = {
@@ -306,6 +304,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         roadsLayer.setOpacity(lastRoadsOpacity / 100);
         roadsLayer.addTo(map);
+        map.invalidateSize();
         
         roadsOpacitySlider.value = lastRoadsOpacity;
     }
@@ -327,6 +326,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         bordersLayer.setOpacity(lastBordersOpacity / 100);
         bordersLayer.addTo(map);
+        map.invalidateSize();
         
         bordersOpacitySlider.value = lastBordersOpacity;
     }
@@ -348,6 +348,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         labelsLayer.setOpacity(lastLabelsOpacity / 100);
         labelsLayer.addTo(map);
+        map.invalidateSize();
         
         labelsOpacitySlider.value = lastLabelsOpacity;
     }
@@ -451,28 +452,25 @@ document.addEventListener('DOMContentLoaded', function () {
         if (e.target.checked) {
             roadsControls.style.display = 'block';
             
-            setTimeout(() => {
-                roadsLayer = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
-                    maxZoom: 19,
-                    attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Map style: &copy; <a href="https://www.OpenRailwayMap.org">OpenRailwayMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
-                    pane: 'roadsPane'
-                });
-                roadsLayer.setOpacity(roadsOpacitySlider.value / 100);
-                roadsLayer.addTo(map);
-                
-                localStorage.setItem('roadsEnabled', 'true');
-            }, 0);
+            roadsLayer = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Map style: &copy; <a href="https://www.OpenRailwayMap.org">OpenRailwayMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
+                pane: 'roadsPane'
+            });
+            roadsLayer.setOpacity(roadsOpacitySlider.value / 100);
+            roadsLayer.addTo(map);
+            map.invalidateSize();
+            
+            localStorage.setItem('roadsEnabled', 'true');
         } else {
             roadsControls.style.display = 'none';
             
-            setTimeout(() => {
-                if (roadsLayer) {
-                    map.removeLayer(roadsLayer);
-                    roadsLayer = null;
-                }
-                
-                localStorage.setItem('roadsEnabled', 'false');
-            }, 0);
+            if (roadsLayer) {
+                map.removeLayer(roadsLayer);
+                roadsLayer = null;
+            }
+            
+            localStorage.setItem('roadsEnabled', 'false');
         }
     });
 
@@ -489,29 +487,26 @@ document.addEventListener('DOMContentLoaded', function () {
         if (e.target.checked) {
             bordersControls.style.display = 'block';
             
-            setTimeout(() => {
-                bordersLayer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_lines/{z}/{x}/{y}{r}.png?api_key=1e09df77-cc36-4be2-8ed9-6c5eaf3476ff', {
-                    minZoom: 0,
-                    maxZoom: 20,
-                    attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                    pane: 'roadsPane'
-                });
-                bordersLayer.setOpacity(bordersOpacitySlider.value / 100);
-                bordersLayer.addTo(map);
-                
-                localStorage.setItem('bordersEnabled', 'true');
-            }, 0);
+            bordersLayer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_lines/{z}/{x}/{y}{r}.png?api_key=1e09df77-cc36-4be2-8ed9-6c5eaf3476ff', {
+                minZoom: 0,
+                maxZoom: 20,
+                attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                pane: 'roadsPane'
+            });
+            bordersLayer.setOpacity(bordersOpacitySlider.value / 100);
+            bordersLayer.addTo(map);
+            map.invalidateSize();
+            
+            localStorage.setItem('bordersEnabled', 'true');
         } else {
             bordersControls.style.display = 'none';
             
-            setTimeout(() => {
-                if (bordersLayer) {
-                    map.removeLayer(bordersLayer);
-                    bordersLayer = null;
-                }
-                
-                localStorage.setItem('bordersEnabled', 'false');
-            }, 0);
+            if (bordersLayer) {
+                map.removeLayer(bordersLayer);
+                bordersLayer = null;
+            }
+            
+            localStorage.setItem('bordersEnabled', 'false');
         }
     });
 
@@ -528,29 +523,26 @@ document.addEventListener('DOMContentLoaded', function () {
         if (e.target.checked) {
             labelsControls.style.display = 'block';
             
-            setTimeout(() => {
-                labelsLayer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_labels/{z}/{x}/{y}{r}.png?api_key=1e09df77-cc36-4be2-8ed9-6c5eaf3476ff', {
-                    minZoom: 0,
-                    maxZoom: 20,
-                    attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                    pane: 'roadsPane'
-                });
-                labelsLayer.setOpacity(labelsOpacitySlider.value / 100);
-                labelsLayer.addTo(map);
-                
-                localStorage.setItem('labelsEnabled', 'true');
-            }, 0);
+            labelsLayer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_labels/{z}/{x}/{y}{r}.png?api_key=1e09df77-cc36-4be2-8ed9-6c5eaf3476ff', {
+                minZoom: 0,
+                maxZoom: 20,
+                attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                pane: 'roadsPane'
+            });
+            labelsLayer.setOpacity(labelsOpacitySlider.value / 100);
+            labelsLayer.addTo(map);
+            map.invalidateSize();
+            
+            localStorage.setItem('labelsEnabled', 'true');
         } else {
             labelsControls.style.display = 'none';
             
-            setTimeout(() => {
-                if (labelsLayer) {
-                    map.removeLayer(labelsLayer);
-                    labelsLayer = null;
-                }
-                
-                localStorage.setItem('labelsEnabled', 'false');
-            }, 0);
+            if (labelsLayer) {
+                map.removeLayer(labelsLayer);
+                labelsLayer = null;
+            }
+            
+            localStorage.setItem('labelsEnabled', 'false');
         }
     });
 
@@ -619,7 +611,7 @@ document.addEventListener('DOMContentLoaded', function () {
         console.error("Telegram WebApp is not available.", e);
     }
     
-/*
+
     
     // Route building functionality
     let routePoints = [];
@@ -1132,7 +1124,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } else if (overflowsTop && !overflowsRight) {
                 tooltipX = x + offset;
                 tooltipY = y + offset;
-            } else { 
+            } else {
                 tooltipX = x - offset - tooltipWidth;
                 tooltipY = y + offset;
             }
@@ -1815,5 +1807,4 @@ document.addEventListener('DOMContentLoaded', function () {
         const routeBounds = L.latLngBounds(routePoints);
         map.fitBounds(routeBounds, { padding: [50, 50] });
     }
-*/
 });
