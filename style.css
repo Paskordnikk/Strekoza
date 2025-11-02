@@ -119,6 +119,7 @@ body, html {
 .radio-option label {
     margin-left: 10px;
     margin-bottom: 0;
+    pointer-events: none; /* Отключаем кликабельность label для радиокнопок */
 }
 
 /* Стилизация радиокнопок */
@@ -174,6 +175,7 @@ body, html {
 .checkbox-option label {
     margin-left: 10px;
     margin-bottom: 0;
+    pointer-events: none; /* Отключаем кликабельность label для чекбоксов */
 }
 
 .checkbox-option input[type="checkbox"] {
@@ -218,18 +220,6 @@ body, html {
     background: #32333d;
 }
 
-.checkbox-option:hover input[type="checkbox"] {
-    background: darkorange;
-}
-
-.checkbox-option:hover input[type="checkbox"]:checked {
-    background: #32333d;
-    border-color: darkorange;
-}
-
-.checkbox-option:hover input[type="checkbox"]:checked::after {
-    border-color: darkorange;
-}
 
 /* Стили для кнопок маршрута */
 .map-control-btn.route-btn {
