@@ -402,16 +402,27 @@ document.addEventListener('DOMContentLoaded', function () {
     const baseMapTypeRadios = document.querySelectorAll('input[name="base-map-type"]');
     const baseRadioTouched = new WeakMap();
     
-    // Функция для мгновенного переключения радиокнопки
+    // Функция для мгновенного визуального переключения радиокнопки (только UI)
     function handleBaseRadioToggle(radioInput) {
         baseRadioTouched.set(radioInput, true);
         // Мгновенно устанавливаем checked для всех радиокнопок в группе
         baseMapTypeRadios.forEach(r => r.checked = false);
         radioInput.checked = true;
-        // Принудительно обновляем DOM
+        // Принудительно обновляем DOM для мгновенного визуального отклика
         void radioInput.offsetWidth;
-        // Триггерим change событие сразу для немедленного выполнения логики
-        radioInput.dispatchEvent(new Event('change', { bubbles: true }));
+        
+        // Запускаем логику изменения карты асинхронно, чтобы не блокировать визуальное обновление
+        setTimeout(() => {
+            map.removeLayer(baseLayer);
+            baseLayer = createTileLayer(radioInput.value);
+            baseLayer.options.pane = 'basePane';
+            baseLayer.addTo(map);
+            
+            // Reapply brightness
+            map.getPane('basePane').style.opacity = brightnessSlider.value / 100;
+            
+            localStorage.setItem('baseMapType', radioInput.value);
+        }, 0);
     }
     
     baseMapTypeRadios.forEach(radio => {
@@ -437,11 +448,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 baseRadioTouched.delete(e.target);
                 return;
             }
-            // Для десктопов мгновенно устанавливаем checked
-            baseMapTypeRadios.forEach(r => r.checked = false);
-            e.target.checked = true;
+            // Для десктопов мгновенно устанавливаем checked и запускаем логику
+            handleBaseRadioToggle(e.target);
         });
         
+        // Обработчик change оставляем для случаев, когда состояние меняется программно
         radio.addEventListener('change', function (e) {
             // Выполняем тяжелые операции асинхронно, чтобы не блокировать визуальное обновление
             requestAnimationFrame(() => {
@@ -462,16 +473,28 @@ document.addEventListener('DOMContentLoaded', function () {
     const overlayMapTypeRadios = document.querySelectorAll('input[name="overlay-map-type"]');
     const overlayRadioTouched = new WeakMap();
     
-    // Функция для мгновенного переключения радиокнопки
+    // Функция для мгновенного визуального переключения радиокнопки (только UI)
     function handleOverlayRadioToggle(radioInput) {
         overlayRadioTouched.set(radioInput, true);
         // Мгновенно устанавливаем checked для всех радиокнопок в группе
         overlayMapTypeRadios.forEach(r => r.checked = false);
         radioInput.checked = true;
-        // Принудительно обновляем DOM
+        // Принудительно обновляем DOM для мгновенного визуального отклика
         void radioInput.offsetWidth;
-        // Триггерим change событие сразу для немедленного выполнения логики
-        radioInput.dispatchEvent(new Event('change', { bubbles: true }));
+        
+        // Запускаем логику изменения карты асинхронно, чтобы не блокировать визуальное обновление
+        setTimeout(() => {
+            if (overlayLayer) {
+                map.removeLayer(overlayLayer);
+            }
+            
+            overlayLayer = createTileLayer(radioInput.value);
+            overlayLayer.options.pane = 'overlayPane';
+            overlayLayer.setOpacity(overlayOpacitySlider.value / 100);
+            overlayLayer.addTo(map);
+            
+            localStorage.setItem('overlayMapType', radioInput.value);
+        }, 0);
     }
     
     overlayMapTypeRadios.forEach(radio => {
@@ -497,11 +520,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 overlayRadioTouched.delete(e.target);
                 return;
             }
-            // Для десктопов мгновенно устанавливаем checked
-            overlayMapTypeRadios.forEach(r => r.checked = false);
-            e.target.checked = true;
+            // Для десктопов мгновенно устанавливаем checked и запускаем логику
+            handleOverlayRadioToggle(e.target);
         });
         
+        // Обработчик change оставляем для случаев, когда состояние меняется программно
         radio.addEventListener('change', function (e) {
             // Выполняем тяжелые операции асинхронно, чтобы не блокировать визуальное обновление
             requestAnimationFrame(() => {
