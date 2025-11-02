@@ -401,7 +401,18 @@ document.addEventListener('DOMContentLoaded', function () {
     // Base map type change handler
     const baseMapTypeRadios = document.querySelectorAll('input[name="base-map-type"]');
     baseMapTypeRadios.forEach(radio => {
-        // Добавляем обработчик click для мгновенного визуального отклика на мобильных устройствах
+        // Добавляем обработчик touchstart для мгновенного визуального отклика на мобильных устройствах
+        radio.addEventListener('touchstart', function (e) {
+            // Мгновенно устанавливаем checked для всех радиокнопок в группе
+            baseMapTypeRadios.forEach(r => r.checked = false);
+            e.target.checked = true;
+            // Принудительно обновляем DOM
+            void e.target.offsetWidth;
+            // Триггерим change событие сразу для немедленного выполнения логики
+            e.target.dispatchEvent(new Event('change', { bubbles: true }));
+        }, { passive: true });
+        
+        // Добавляем обработчик click для десктопов
         radio.addEventListener('click', function (e) {
             // Мгновенно устанавливаем checked для всех радиокнопок в группе
             baseMapTypeRadios.forEach(r => r.checked = false);
@@ -427,7 +438,18 @@ document.addEventListener('DOMContentLoaded', function () {
     // Overlay map type change handler
     const overlayMapTypeRadios = document.querySelectorAll('input[name="overlay-map-type"]');
     overlayMapTypeRadios.forEach(radio => {
-        // Добавляем обработчик click для мгновенного визуального отклика на мобильных устройствах
+        // Добавляем обработчик touchstart для мгновенного визуального отклика на мобильных устройствах
+        radio.addEventListener('touchstart', function (e) {
+            // Мгновенно устанавливаем checked для всех радиокнопок в группе
+            overlayMapTypeRadios.forEach(r => r.checked = false);
+            e.target.checked = true;
+            // Принудительно обновляем DOM
+            void e.target.offsetWidth;
+            // Триггерим change событие сразу для немедленного выполнения логики
+            e.target.dispatchEvent(new Event('change', { bubbles: true }));
+        }, { passive: true });
+        
+        // Добавляем обработчик click для десктопов
         radio.addEventListener('click', function (e) {
             // Мгновенно устанавливаем checked для всех радиокнопок в группе
             overlayMapTypeRadios.forEach(r => r.checked = false);
@@ -452,6 +474,26 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Enable/disable overlay map
+    // Добавляем обработчик touchstart для мгновенного визуального отклика на мобильных устройствах
+    let overlayCheckboxTouched = false;
+    enableOverlayCheckbox.addEventListener('touchstart', function (e) {
+        overlayCheckboxTouched = true;
+        // Мгновенно переключаем состояние чекбокса
+        e.target.checked = !e.target.checked;
+        // Принудительно обновляем DOM
+        void e.target.offsetWidth;
+        // Триггерим change событие сразу для немедленного выполнения логики
+        e.target.dispatchEvent(new Event('change', { bubbles: true }));
+    }, { passive: true });
+    
+    enableOverlayCheckbox.addEventListener('click', function (e) {
+        // Если уже обработали через touchstart, предотвращаем стандартное поведение
+        if (overlayCheckboxTouched) {
+            e.preventDefault();
+            overlayCheckboxTouched = false;
+        }
+    });
+    
     enableOverlayCheckbox.addEventListener('change', function (e) {
         // Выполняем тяжелые операции асинхронно, чтобы не блокировать визуальное обновление
         requestAnimationFrame(() => {
@@ -487,6 +529,26 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Enable/disable roads layer
+    // Добавляем обработчик touchstart для мгновенного визуального отклика на мобильных устройствах
+    let roadsCheckboxTouched = false;
+    enableRoadsCheckbox.addEventListener('touchstart', function (e) {
+        roadsCheckboxTouched = true;
+        // Мгновенно переключаем состояние чекбокса
+        e.target.checked = !e.target.checked;
+        // Принудительно обновляем DOM
+        void e.target.offsetWidth;
+        // Триггерим change событие сразу для немедленного выполнения логики
+        e.target.dispatchEvent(new Event('change', { bubbles: true }));
+    }, { passive: true });
+    
+    enableRoadsCheckbox.addEventListener('click', function (e) {
+        // Если уже обработали через touchstart, предотвращаем стандартное поведение
+        if (roadsCheckboxTouched) {
+            e.preventDefault();
+            roadsCheckboxTouched = false;
+        }
+    });
+    
     enableRoadsCheckbox.addEventListener('change', function (e) {
         // Выполняем тяжелые операции асинхронно, чтобы не блокировать визуальное обновление
         requestAnimationFrame(() => {
@@ -525,6 +587,26 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Enable/disable borders layer
+    // Добавляем обработчик touchstart для мгновенного визуального отклика на мобильных устройствах
+    let bordersCheckboxTouched = false;
+    enableBordersCheckbox.addEventListener('touchstart', function (e) {
+        bordersCheckboxTouched = true;
+        // Мгновенно переключаем состояние чекбокса
+        e.target.checked = !e.target.checked;
+        // Принудительно обновляем DOM
+        void e.target.offsetWidth;
+        // Триггерим change событие сразу для немедленного выполнения логики
+        e.target.dispatchEvent(new Event('change', { bubbles: true }));
+    }, { passive: true });
+    
+    enableBordersCheckbox.addEventListener('click', function (e) {
+        // Если уже обработали через touchstart, предотвращаем стандартное поведение
+        if (bordersCheckboxTouched) {
+            e.preventDefault();
+            bordersCheckboxTouched = false;
+        }
+    });
+    
     enableBordersCheckbox.addEventListener('change', function (e) {
         // Выполняем тяжелые операции асинхронно, чтобы не блокировать визуальное обновление
         requestAnimationFrame(() => {
@@ -564,6 +646,26 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Enable/disable labels layer
+    // Добавляем обработчик touchstart для мгновенного визуального отклика на мобильных устройствах
+    let labelsCheckboxTouched = false;
+    enableLabelsCheckbox.addEventListener('touchstart', function (e) {
+        labelsCheckboxTouched = true;
+        // Мгновенно переключаем состояние чекбокса
+        e.target.checked = !e.target.checked;
+        // Принудительно обновляем DOM
+        void e.target.offsetWidth;
+        // Триггерим change событие сразу для немедленного выполнения логики
+        e.target.dispatchEvent(new Event('change', { bubbles: true }));
+    }, { passive: true });
+    
+    enableLabelsCheckbox.addEventListener('click', function (e) {
+        // Если уже обработали через touchstart, предотвращаем стандартное поведение
+        if (labelsCheckboxTouched) {
+            e.preventDefault();
+            labelsCheckboxTouched = false;
+        }
+    });
+    
     enableLabelsCheckbox.addEventListener('change', function (e) {
         // Выполняем тяжелые операции асинхронно, чтобы не блокировать визуальное обновление
         requestAnimationFrame(() => {

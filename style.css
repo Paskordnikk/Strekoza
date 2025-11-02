@@ -135,6 +135,8 @@ body, html {
     position: relative;
     background: #32333d;
     margin: 0 5px 0 0; /* Добавим немного места справа от радиокнопки */
+    transition: none; /* Убираем transitions для мгновенного отклика */
+    -webkit-tap-highlight-color: transparent; /* Убираем подсветку при касании на мобильных */
 }
 
 .radio-option input[type="radio"]:checked {
@@ -194,6 +196,8 @@ body, html {
     position: relative;
     background: #32333d;
     margin: 0 5px 0 0;
+    transition: none; /* Убираем transitions для мгновенного отклика */
+    -webkit-tap-highlight-color: transparent; /* Убираем подсветку при касании на мобильных */
 }
 
 .checkbox-option input[type="checkbox"]:checked {
