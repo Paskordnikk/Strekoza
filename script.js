@@ -401,58 +401,81 @@ document.addEventListener('DOMContentLoaded', function () {
     // Base map type change handler
     const baseMapTypeRadios = document.querySelectorAll('input[name="base-map-type"]');
     baseMapTypeRadios.forEach(radio => {
+        // Добавляем обработчик click для мгновенного визуального отклика на мобильных устройствах
+        radio.addEventListener('click', function (e) {
+            // Мгновенно устанавливаем checked для всех радиокнопок в группе
+            baseMapTypeRadios.forEach(r => r.checked = false);
+            e.target.checked = true;
+        });
+        
         radio.addEventListener('change', function (e) {
-            map.removeLayer(baseLayer);
-            baseLayer = createTileLayer(e.target.value);
-            baseLayer.options.pane = 'basePane';
-            baseLayer.addTo(map);
-            
-            // Reapply brightness
-            map.getPane('basePane').style.opacity = brightnessSlider.value / 100;
-            
-            localStorage.setItem('baseMapType', e.target.value);
+            // Выполняем тяжелые операции асинхронно, чтобы не блокировать визуальное обновление
+            requestAnimationFrame(() => {
+                map.removeLayer(baseLayer);
+                baseLayer = createTileLayer(e.target.value);
+                baseLayer.options.pane = 'basePane';
+                baseLayer.addTo(map);
+                
+                // Reapply brightness
+                map.getPane('basePane').style.opacity = brightnessSlider.value / 100;
+                
+                localStorage.setItem('baseMapType', e.target.value);
+            });
         });
     });
 
     // Overlay map type change handler
     const overlayMapTypeRadios = document.querySelectorAll('input[name="overlay-map-type"]');
     overlayMapTypeRadios.forEach(radio => {
+        // Добавляем обработчик click для мгновенного визуального отклика на мобильных устройствах
+        radio.addEventListener('click', function (e) {
+            // Мгновенно устанавливаем checked для всех радиокнопок в группе
+            overlayMapTypeRadios.forEach(r => r.checked = false);
+            e.target.checked = true;
+        });
+        
         radio.addEventListener('change', function (e) {
-            if (overlayLayer) {
-                map.removeLayer(overlayLayer);
-            }
-            
-            overlayLayer = createTileLayer(e.target.value);
-            overlayLayer.options.pane = 'overlayPane';
-            overlayLayer.setOpacity(overlayOpacitySlider.value / 100);
-            overlayLayer.addTo(map);
-            
-            localStorage.setItem('overlayMapType', e.target.value);
+            // Выполняем тяжелые операции асинхронно, чтобы не блокировать визуальное обновление
+            requestAnimationFrame(() => {
+                if (overlayLayer) {
+                    map.removeLayer(overlayLayer);
+                }
+                
+                overlayLayer = createTileLayer(e.target.value);
+                overlayLayer.options.pane = 'overlayPane';
+                overlayLayer.setOpacity(overlayOpacitySlider.value / 100);
+                overlayLayer.addTo(map);
+                
+                localStorage.setItem('overlayMapType', e.target.value);
+            });
         });
     });
 
     // Enable/disable overlay map
     enableOverlayCheckbox.addEventListener('change', function (e) {
-        if (e.target.checked) {
-            overlayControls.style.display = 'block';
-            
-            const selectedOverlayType = document.querySelector('input[name="overlay-map-type"]:checked').value;
-            overlayLayer = createTileLayer(selectedOverlayType);
-            overlayLayer.options.pane = 'overlayPane';
-            overlayLayer.setOpacity(overlayOpacitySlider.value / 100);
-            overlayLayer.addTo(map);
-            
-            localStorage.setItem('overlayEnabled', 'true');
-        } else {
-            overlayControls.style.display = 'none';
-            
-            if (overlayLayer) {
-                map.removeLayer(overlayLayer);
-                overlayLayer = null;
+        // Выполняем тяжелые операции асинхронно, чтобы не блокировать визуальное обновление
+        requestAnimationFrame(() => {
+            if (e.target.checked) {
+                overlayControls.style.display = 'block';
+                
+                const selectedOverlayType = document.querySelector('input[name="overlay-map-type"]:checked').value;
+                overlayLayer = createTileLayer(selectedOverlayType);
+                overlayLayer.options.pane = 'overlayPane';
+                overlayLayer.setOpacity(overlayOpacitySlider.value / 100);
+                overlayLayer.addTo(map);
+                
+                localStorage.setItem('overlayEnabled', 'true');
+            } else {
+                overlayControls.style.display = 'none';
+                
+                if (overlayLayer) {
+                    map.removeLayer(overlayLayer);
+                    overlayLayer = null;
+                }
+                
+                localStorage.setItem('overlayEnabled', 'false');
             }
-            
-            localStorage.setItem('overlayEnabled', 'false');
-        }
+        });
     });
 
     // Overlay opacity control
@@ -465,29 +488,32 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Enable/disable roads layer
     enableRoadsCheckbox.addEventListener('change', function (e) {
-        if (e.target.checked) {
-            roadsControls.style.display = 'block';
-            
-            roadsLayer = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Map style: &copy; <a href="https://www.OpenRailwayMap.org">OpenRailwayMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
-                pane: 'roadsPane'
-            });
-            roadsLayer.setOpacity(roadsOpacitySlider.value / 100);
-            roadsLayer.addTo(map);
-            map.invalidateSize();
-            
-            localStorage.setItem('roadsEnabled', 'true');
-        } else {
-            roadsControls.style.display = 'none';
-            
-            if (roadsLayer) {
-                map.removeLayer(roadsLayer);
-                roadsLayer = null;
+        // Выполняем тяжелые операции асинхронно, чтобы не блокировать визуальное обновление
+        requestAnimationFrame(() => {
+            if (e.target.checked) {
+                roadsControls.style.display = 'block';
+                
+                roadsLayer = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Map style: &copy; <a href="https://www.OpenRailwayMap.org">OpenRailwayMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
+                    pane: 'roadsPane'
+                });
+                roadsLayer.setOpacity(roadsOpacitySlider.value / 100);
+                roadsLayer.addTo(map);
+                map.invalidateSize();
+                
+                localStorage.setItem('roadsEnabled', 'true');
+            } else {
+                roadsControls.style.display = 'none';
+                
+                if (roadsLayer) {
+                    map.removeLayer(roadsLayer);
+                    roadsLayer = null;
+                }
+                
+                localStorage.setItem('roadsEnabled', 'false');
             }
-            
-            localStorage.setItem('roadsEnabled', 'false');
-        }
+        });
     });
 
     // Roads opacity control
@@ -500,30 +526,33 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Enable/disable borders layer
     enableBordersCheckbox.addEventListener('change', function (e) {
-        if (e.target.checked) {
-            bordersControls.style.display = 'block';
-            
-            bordersLayer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_lines/{z}/{x}/{y}{r}.png?api_key=1e09df77-cc36-4be2-8ed9-6c5eaf3476ff', {
-                minZoom: 0,
-                maxZoom: 20,
-                attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                pane: 'roadsPane'
-            });
-            bordersLayer.setOpacity(bordersOpacitySlider.value / 100);
-            bordersLayer.addTo(map);
-            map.invalidateSize();
-            
-            localStorage.setItem('bordersEnabled', 'true');
-        } else {
-            bordersControls.style.display = 'none';
-            
-            if (bordersLayer) {
-                map.removeLayer(bordersLayer);
-                bordersLayer = null;
+        // Выполняем тяжелые операции асинхронно, чтобы не блокировать визуальное обновление
+        requestAnimationFrame(() => {
+            if (e.target.checked) {
+                bordersControls.style.display = 'block';
+                
+                bordersLayer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_lines/{z}/{x}/{y}{r}.png?api_key=1e09df77-cc36-4be2-8ed9-6c5eaf3476ff', {
+                    minZoom: 0,
+                    maxZoom: 20,
+                    attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    pane: 'roadsPane'
+                });
+                bordersLayer.setOpacity(bordersOpacitySlider.value / 100);
+                bordersLayer.addTo(map);
+                map.invalidateSize();
+                
+                localStorage.setItem('bordersEnabled', 'true');
+            } else {
+                bordersControls.style.display = 'none';
+                
+                if (bordersLayer) {
+                    map.removeLayer(bordersLayer);
+                    bordersLayer = null;
+                }
+                
+                localStorage.setItem('bordersEnabled', 'false');
             }
-            
-            localStorage.setItem('bordersEnabled', 'false');
-        }
+        });
     });
 
     // Borders opacity control
@@ -536,30 +565,33 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Enable/disable labels layer
     enableLabelsCheckbox.addEventListener('change', function (e) {
-        if (e.target.checked) {
-            labelsControls.style.display = 'block';
-            
-            labelsLayer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_labels/{z}/{x}/{y}{r}.png?api_key=1e09df77-cc36-4be2-8ed9-6c5eaf3476ff', {
-                minZoom: 0,
-                maxZoom: 20,
-                attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                pane: 'roadsPane'
-            });
-            labelsLayer.setOpacity(labelsOpacitySlider.value / 100);
-            labelsLayer.addTo(map);
-            map.invalidateSize();
-            
-            localStorage.setItem('labelsEnabled', 'true');
-        } else {
-            labelsControls.style.display = 'none';
-            
-            if (labelsLayer) {
-                map.removeLayer(labelsLayer);
-                labelsLayer = null;
+        // Выполняем тяжелые операции асинхронно, чтобы не блокировать визуальное обновление
+        requestAnimationFrame(() => {
+            if (e.target.checked) {
+                labelsControls.style.display = 'block';
+                
+                labelsLayer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_labels/{z}/{x}/{y}{r}.png?api_key=1e09df77-cc36-4be2-8ed9-6c5eaf3476ff', {
+                    minZoom: 0,
+                    maxZoom: 20,
+                    attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    pane: 'roadsPane'
+                });
+                labelsLayer.setOpacity(labelsOpacitySlider.value / 100);
+                labelsLayer.addTo(map);
+                map.invalidateSize();
+                
+                localStorage.setItem('labelsEnabled', 'true');
+            } else {
+                labelsControls.style.display = 'none';
+                
+                if (labelsLayer) {
+                    map.removeLayer(labelsLayer);
+                    labelsLayer = null;
+                }
+                
+                localStorage.setItem('labelsEnabled', 'false');
             }
-            
-            localStorage.setItem('labelsEnabled', 'false');
-        }
+        });
     });
 
     // Labels opacity control

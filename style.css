@@ -152,6 +152,15 @@ body, html {
     background: #32333d;
 }
 
+.radio-option input[type="radio"]:active {
+    background: darkorange;
+    transform: scale(0.95);
+}
+
+.radio-option input[type="radio"]:active:checked {
+    background: #32333d;
+}
+
 .radio-option:hover input[type="radio"] {
     background: darkorange;
 }
@@ -201,6 +210,15 @@ body, html {
     border: solid #32333d;
     border-width: 0 2px 2px 0;
     transform: rotate(45deg);
+}
+
+.checkbox-option input[type="checkbox"]:active {
+    background: darkorange;
+    transform: scale(0.95);
+}
+
+.checkbox-option input[type="checkbox"]:active:checked {
+    background: #32333d;
 }
 
 .checkbox-option:hover input[type="checkbox"] {
