@@ -438,21 +438,6 @@ document.addEventListener('DOMContentLoaded', function () {
             handleBaseRadioToggle(e.target);
         }, { passive: false });
         
-        // Добавляем обработчик touchstart на label для перехвата касаний по тексту
-        const label = document.querySelector(`label[for="${radio.id}"]`);
-        if (label) {
-            // Обработчик mousedown на label для мгновенного переключения на ПК
-            label.addEventListener('mousedown', function (e) {
-                e.preventDefault();
-                handleBaseRadioToggle(radio);
-            });
-            
-            label.addEventListener('touchstart', function (e) {
-                e.preventDefault(); // Предотвращаем стандартное поведение label
-                handleBaseRadioToggle(radio);
-            }, { passive: false });
-        }
-        
         // Добавляем обработчик click для предотвращения стандартного поведения
         radio.addEventListener('click', function (e) {
             // Всегда предотвращаем стандартное поведение, так как уже обработали через mousedown/touchstart
@@ -519,21 +504,6 @@ document.addEventListener('DOMContentLoaded', function () {
             e.preventDefault(); // Предотвращаем стандартное поведение для мгновенного отклика
             handleOverlayRadioToggle(e.target);
         }, { passive: false });
-        
-        // Добавляем обработчик touchstart на label для перехвата касаний по тексту
-        const label = document.querySelector(`label[for="${radio.id}"]`);
-        if (label) {
-            // Обработчик mousedown на label для мгновенного переключения на ПК
-            label.addEventListener('mousedown', function (e) {
-                e.preventDefault();
-                handleOverlayRadioToggle(radio);
-            });
-            
-            label.addEventListener('touchstart', function (e) {
-                e.preventDefault(); // Предотвращаем стандартное поведение label
-                handleOverlayRadioToggle(radio);
-            }, { passive: false });
-        }
         
         // Добавляем обработчик click для предотвращения стандартного поведения
         radio.addEventListener('click', function (e) {
