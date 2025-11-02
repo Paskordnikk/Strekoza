@@ -316,11 +316,18 @@ document.addEventListener('DOMContentLoaded', function () {
         roadsLayer = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Map style: &copy; <a href="https://www.OpenRailwayMap.org">OpenRailwayMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
-            pane: 'roadsPane'
+            pane: 'roadsPane',
+            timeout: 10000,
+            maxRetries: 3,
+            retryDelay: 500,
+            crossOrigin: true,
+            updateWhenIdle: false,
+            updateWhenZooming: true,
+            keepBuffer: 2
         });
         roadsLayer.setOpacity(lastRoadsOpacity / 100);
         roadsLayer.addTo(map);
-        map.invalidateSize();
+        setTimeout(() => map.invalidateSize(), 100);
         
         roadsOpacitySlider.value = lastRoadsOpacity;
     }
@@ -338,11 +345,18 @@ document.addEventListener('DOMContentLoaded', function () {
             minZoom: 0,
             maxZoom: 20,
             attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            pane: 'roadsPane'
+            pane: 'roadsPane',
+            timeout: 10000,
+            maxRetries: 3,
+            retryDelay: 500,
+            crossOrigin: true,
+            updateWhenIdle: false,
+            updateWhenZooming: true,
+            keepBuffer: 2
         });
         bordersLayer.setOpacity(lastBordersOpacity / 100);
         bordersLayer.addTo(map);
-        map.invalidateSize();
+        setTimeout(() => map.invalidateSize(), 100);
         
         bordersOpacitySlider.value = lastBordersOpacity;
     }
@@ -360,11 +374,18 @@ document.addEventListener('DOMContentLoaded', function () {
             minZoom: 0,
             maxZoom: 20,
             attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            pane: 'roadsPane'
+            pane: 'roadsPane',
+            timeout: 10000,
+            maxRetries: 3,
+            retryDelay: 500,
+            crossOrigin: true,
+            updateWhenIdle: false,
+            updateWhenZooming: true,
+            keepBuffer: 2
         });
         labelsLayer.setOpacity(lastLabelsOpacity / 100);
         labelsLayer.addTo(map);
-        map.invalidateSize();
+        setTimeout(() => map.invalidateSize(), 100);
         
         labelsOpacitySlider.value = lastLabelsOpacity;
     }
@@ -617,11 +638,21 @@ document.addEventListener('DOMContentLoaded', function () {
                 roadsLayer = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
                     maxZoom: 19,
                     attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Map style: &copy; <a href="https://www.OpenRailwayMap.org">OpenRailwayMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
-                    pane: 'roadsPane'
+                    pane: 'roadsPane',
+                    timeout: 10000,
+                    maxRetries: 3,
+                    retryDelay: 500,
+                    crossOrigin: true,
+                    updateWhenIdle: false,
+                    updateWhenZooming: true,
+                    keepBuffer: 2
                 });
                 roadsLayer.setOpacity(roadsOpacitySlider.value / 100);
                 roadsLayer.addTo(map);
-                map.invalidateSize();
+                setTimeout(() => {
+                    map.invalidateSize();
+                    roadsLayer.redraw();
+                }, 100);
                 
                 localStorage.setItem('roadsEnabled', 'true');
             } else {
@@ -676,11 +707,21 @@ document.addEventListener('DOMContentLoaded', function () {
                     minZoom: 0,
                     maxZoom: 20,
                     attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                    pane: 'roadsPane'
+                    pane: 'roadsPane',
+                    timeout: 10000,
+                    maxRetries: 3,
+                    retryDelay: 500,
+                    crossOrigin: true,
+                    updateWhenIdle: false,
+                    updateWhenZooming: true,
+                    keepBuffer: 2
                 });
                 bordersLayer.setOpacity(bordersOpacitySlider.value / 100);
                 bordersLayer.addTo(map);
-                map.invalidateSize();
+                setTimeout(() => {
+                    map.invalidateSize();
+                    bordersLayer.redraw();
+                }, 100);
                 
                 localStorage.setItem('bordersEnabled', 'true');
             } else {
@@ -735,11 +776,21 @@ document.addEventListener('DOMContentLoaded', function () {
                     minZoom: 0,
                     maxZoom: 20,
                     attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                    pane: 'roadsPane'
+                    pane: 'roadsPane',
+                    timeout: 10000,
+                    maxRetries: 3,
+                    retryDelay: 500,
+                    crossOrigin: true,
+                    updateWhenIdle: false,
+                    updateWhenZooming: true,
+                    keepBuffer: 2
                 });
                 labelsLayer.setOpacity(labelsOpacitySlider.value / 100);
                 labelsLayer.addTo(map);
-                map.invalidateSize();
+                setTimeout(() => {
+                    map.invalidateSize();
+                    labelsLayer.redraw();
+                }, 100);
                 
                 localStorage.setItem('labelsEnabled', 'true');
             } else {
@@ -810,6 +861,41 @@ document.addEventListener('DOMContentLoaded', function () {
     if (localStorage.getItem('hideGeoError') !== 'true') {
         locateUser();
     }
+
+    // Handle window resize for mobile devices to ensure proper tile loading
+    let resizeTimeout;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(function() {
+            map.invalidateSize();
+            // Force reload of visible layers on resize
+            if (roadsLayer) {
+                roadsLayer.redraw();
+            }
+            if (bordersLayer) {
+                bordersLayer.redraw();
+            }
+            if (labelsLayer) {
+                labelsLayer.redraw();
+            }
+        }, 250);
+    });
+
+    // Also handle orientation change on mobile devices
+    window.addEventListener('orientationchange', function() {
+        setTimeout(function() {
+            map.invalidateSize();
+            if (roadsLayer) {
+                roadsLayer.redraw();
+            }
+            if (bordersLayer) {
+                bordersLayer.redraw();
+            }
+            if (labelsLayer) {
+                labelsLayer.redraw();
+            }
+        }, 500);
+    });
 
 
 
