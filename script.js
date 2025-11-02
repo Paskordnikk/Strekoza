@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', function () {
     map.getPane('routeHoverPane').style.zIndex = 650;
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
+/*
     // Add distance measurement functionality
     const measureDistanceBtn = document.getElementById('measure-distance-btn');
     
@@ -156,6 +157,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+*/
     // Function to create tile layer
     const createTileLayer = (type) => {
         const layers = {
@@ -617,7 +619,7 @@ document.addEventListener('DOMContentLoaded', function () {
         console.error("Telegram WebApp is not available.", e);
     }
     
-
+/*
     
     // Route building functionality
     let routePoints = [];
@@ -1130,7 +1132,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } else if (overflowsTop && !overflowsRight) {
                 tooltipX = x + offset;
                 tooltipY = y + offset;
-            } else {
+            } else { 
                 tooltipX = x - offset - tooltipWidth;
                 tooltipY = y + offset;
             }
@@ -1813,4 +1815,5 @@ document.addEventListener('DOMContentLoaded', function () {
         const routeBounds = L.latLngBounds(routePoints);
         map.fitBounds(routeBounds, { padding: [50, 50] });
     }
+*/
 });
