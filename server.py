@@ -70,6 +70,16 @@ else:
     # Иначе используем переменные окружения или значение по умолчанию
     SITE_PASSWORD = get_password_from_env()
 
+# Логирование при загрузке модуля (работает и при запуске через gunicorn)
+if password_from_args:
+    password_source = "аргумент командной строки (--password)"
+elif os.getenv("SITE_PASSWORD"):
+    password_source = "переменная окружения (SITE_PASSWORD)"
+else:
+    password_source = "по умолчанию (⚠️ НЕ БЕЗОПАСНО для продакшена!)"
+
+print(f"[INFO] Пароль установлен: {password_source}, длина пароля: {len(SITE_PASSWORD)} символов")
+
 def get_site_password():
     """Получает текущий пароль"""
     return SITE_PASSWORD
@@ -149,10 +159,12 @@ def login(login_request: LoginRequest):
     received_password_length = len(login_request.password) if login_request.password else 0
     expected_password_length = len(current_password) if current_password else 0
     print(f"[DEBUG] Login attempt: received password length={received_password_length}, expected length={expected_password_length}")
+    print(f"[DEBUG] Current password from env: {bool(os.getenv('SITE_PASSWORD'))}")
     print(f"[DEBUG] Password match: {login_request.password == current_password}")
     
     if login_request.password != current_password:
-        print(f"[DEBUG] Password mismatch. Received: '{login_request.password[:3]}...' (length={received_password_length})")
+        print(f"[DEBUG] Password mismatch. Received: '{login_request.password[:3] if len(login_request.password) > 3 else login_request.password}...' (length={received_password_length})")
+        print(f"[DEBUG] Expected password length: {expected_password_length}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Неверный пароль"
