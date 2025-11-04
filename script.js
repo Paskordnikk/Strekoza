@@ -130,6 +130,9 @@ document.addEventListener('DOMContentLoaded', function () {
             
             // Add click event to map
             map.on('click', onMapClick);
+            
+            // Update cursor for all point markers
+            updateAllPointMarkersCursor();
         } else {
             // Stop measuring
             isMeasuring = false;
@@ -139,6 +142,9 @@ document.addEventListener('DOMContentLoaded', function () {
             
             // Remove click event from map
             map.off('click', onMapClick);
+            
+            // Update cursor for all point markers
+            updateAllPointMarkersCursor();
             
             // Clear all measurement elements
             measurementPoints = [];
@@ -293,6 +299,10 @@ document.addEventListener('DOMContentLoaded', function () {
         e.stopPropagation(); // Prevent click from bubbling to the map
         sideMenu.classList.toggle('open');
         hamburgerMenu.classList.toggle('hidden');
+        // Initialize route color buttons when menu opens
+        if (sideMenu.classList.contains('open')) {
+            initializeRouteColorButtons();
+        }
     });
 
     closeMenuBtn.addEventListener('click', closeMenu);
@@ -965,13 +975,46 @@ document.addEventListener('DOMContentLoaded', function () {
     
     // Get DOM elements
     const buildRouteBtn = document.getElementById('build-route-btn');
+    const cancelRouteBtn = document.getElementById('cancel-route-btn');
     const calculateRouteBtn = document.getElementById('calculate-route-btn');
-    const routeCalcControl = document.getElementById('route-calc-control');
+    const routeSubmenu = document.getElementById('route-submenu');
+    const routeControl = document.getElementById('route-control');
+    const pointsControl = document.getElementById('points-control');
+    const measureControl = document.getElementById('measure-control');
     const elevationProfile = document.getElementById('elevation-profile');
     const profileCloseBtn = document.getElementById('profile-close-btn');
     const exportRouteBtn = document.getElementById('export-route-btn');
     const importRouteBtn = document.getElementById('import-route-btn');
     const csvImporter = document.getElementById('csv-importer');
+    
+    // Function to update points control position based on route submenu state
+    function updatePointsControlPosition() {
+        // Calculate the distance between "Измерить расстояние" and "Построить маршрут"
+        const measureControlTop = parseInt(measureControl.style.top) || 10;
+        const measureControlHeight = measureControl.offsetHeight;
+        const measureControlBottom = measureControlTop + measureControlHeight;
+        
+        const routeControlTop = parseInt(routeControl.style.top) || 60;
+        const distanceBetweenMeasureAndRoute = routeControlTop - measureControlBottom;
+        
+        // Calculate route control bottom (including submenu if visible)
+        let routeControlHeight = buildRouteBtn.offsetHeight;
+        const submenuStyle = window.getComputedStyle(routeSubmenu);
+        if (submenuStyle.display !== 'none') {
+            routeControlHeight += routeSubmenu.offsetHeight;
+            const marginTop = parseInt(submenuStyle.marginTop) || 0;
+            routeControlHeight += marginTop;
+        }
+        const routeControlBottom = routeControlTop + routeControlHeight;
+        
+        // Apply the same distance between route control and points control
+        const newTop = routeControlBottom + distanceBetweenMeasureAndRoute;
+        pointsControl.style.top = newTop + 'px';
+    }
+    
+    // Initialize points control position on page load
+    setTimeout(updatePointsControlPosition, 0);
+    
     const stepButtons = document.querySelectorAll('.step-btn');
     
     // Function to calculate distance between two points in kilometers
@@ -999,53 +1042,18 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
     
-    // Initialize profile header with title and color buttons
-    function initializeProfileHeader() {
-        const titleWrapper = document.getElementById('profile-title-wrapper');
+    // Initialize route color buttons in side menu
+    function initializeRouteColorButtons() {
+        const colorButtonsContainer = document.getElementById('route-color-buttons-container');
+        if (!colorButtonsContainer) {
+            return;
+        }
         // Only initialize if not already created
-        if (titleWrapper.querySelector('.profile-title-container')) {
+        if (colorButtonsContainer.querySelector('.route-color-btn')) {
             return;
         }
 
-        // Check if mobile (screen width < 768px) or very small (< 480px)
-        const isMobile = window.innerWidth < 768;
-        const isVerySmall = window.innerWidth < 480;
-
-        // Create title container for flex layout
-        const titleContainer = document.createElement('div');
-        titleContainer.className = 'profile-title-container';
-        titleContainer.style.display = 'flex';
-        titleContainer.style.alignItems = 'center';
-        titleContainer.style.gap = '10px';
-        titleContainer.style.flexWrap = 'wrap';
-
-        if (isMobile) {
-            // Mobile: two lines
-            const titleTextContainer = document.createElement('div');
-            const h3 = document.createElement('h3');
-            h3.className = 'profile-title';
-            h3.id = 'profile-title-h3';
-            h3.textContent = `Профиль высоты маршрута`;
-            titleTextContainer.appendChild(h3);
-
-            const subtitle = document.createElement('div');
-            subtitle.className = 'profile-subtitle';
-            subtitle.id = 'profile-subtitle';
-            subtitle.textContent = `(Шаг ${currentSampleStep}м, вычисление...)`;
-            titleTextContainer.appendChild(subtitle);
-            
-            titleContainer.appendChild(titleTextContainer);
-        } else {
-            // Desktop/Tablet: one line
-            const h3 = document.createElement('h3');
-            h3.className = 'profile-title';
-            h3.id = 'profile-title-h3';
-            h3.textContent = `Профиль высоты маршрута (шаг ${currentSampleStep}м, вычисление...)`;
-            titleContainer.appendChild(h3);
-        }
-
         // Create color selection buttons container
-        const colorButtonsContainer = document.createElement('div');
         colorButtonsContainer.style.display = 'flex';
         colorButtonsContainer.style.gap = '5px';
         colorButtonsContainer.style.alignItems = 'center';
@@ -1096,12 +1104,22 @@ document.addEventListener('DOMContentLoaded', function () {
         graySvg.appendChild(grayLine);
         grayBtn.appendChild(graySvg);
 
+        // Set initial active state based on current routeLineColor
+        if (routeLineColor === '#34353e') {
+            grayBtn.classList.add('active');
+        } else {
+            orangeBtn.classList.add('active');
+        }
+
         // Add click handlers
         orangeBtn.addEventListener('click', function() {
             routeLineColor = 'darkorange';
             if (routePolyline) {
                 routePolyline.setStyle({ color: routeLineColor });
             }
+            // Update active state
+            grayBtn.classList.remove('active');
+            orangeBtn.classList.add('active');
         });
 
         grayBtn.addEventListener('click', function() {
@@ -1109,11 +1127,60 @@ document.addEventListener('DOMContentLoaded', function () {
             if (routePolyline) {
                 routePolyline.setStyle({ color: routeLineColor });
             }
+            // Update active state
+            orangeBtn.classList.remove('active');
+            grayBtn.classList.add('active');
         });
 
         colorButtonsContainer.appendChild(orangeBtn);
         colorButtonsContainer.appendChild(grayBtn);
-        titleContainer.appendChild(colorButtonsContainer);
+    }
+
+    // Initialize profile header with title
+    function initializeProfileHeader() {
+        const titleWrapper = document.getElementById('profile-title-wrapper');
+        // Only initialize if not already created
+        if (titleWrapper.querySelector('.profile-title-container')) {
+            return;
+        }
+
+        // Check if mobile (screen width < 768px) or very small (< 480px)
+        const isMobile = window.innerWidth < 768;
+        const isVerySmall = window.innerWidth < 480;
+
+        // Create title container for flex layout
+        const titleContainer = document.createElement('div');
+        titleContainer.className = 'profile-title-container';
+        titleContainer.style.display = 'flex';
+        titleContainer.style.alignItems = 'center';
+        titleContainer.style.gap = '10px';
+        titleContainer.style.flexWrap = 'wrap';
+
+        if (isMobile) {
+            // Mobile: two lines
+            const titleTextContainer = document.createElement('div');
+            const h3 = document.createElement('h3');
+            h3.className = 'profile-title';
+            h3.id = 'profile-title-h3';
+            h3.textContent = `Профиль высоты маршрута`;
+            titleTextContainer.appendChild(h3);
+
+            const subtitle = document.createElement('div');
+            subtitle.className = 'profile-subtitle';
+            subtitle.id = 'profile-subtitle';
+            subtitle.textContent = `(Шаг ${currentSampleStep}м, вычисление...)`;
+            titleTextContainer.appendChild(subtitle);
+            
+            titleContainer.appendChild(titleTextContainer);
+        } else {
+            // Desktop/Tablet: one line
+            const h3 = document.createElement('h3');
+            h3.className = 'profile-title';
+            h3.id = 'profile-title-h3';
+            h3.textContent = `Профиль высоты маршрута (шаг ${currentSampleStep}м, вычисление...)`;
+            titleContainer.appendChild(h3);
+        }
+
         titleWrapper.appendChild(titleContainer);
     }
 
@@ -1727,10 +1794,18 @@ document.addEventListener('DOMContentLoaded', function () {
         // Update the route polyline
         updateRoutePolyline();
         
-        // Enable calculate button if we have at least 2 points
+        // Show calculate button in submenu if we have at least 2 points
         if (routePoints.length >= 2) {
-            routeCalcControl.style.display = 'block';
+            calculateRouteBtn.style.display = 'block';
+        } else {
+            calculateRouteBtn.style.display = 'none';
         }
+        
+        // Update build route button active state
+        updateBuildRouteButtonState();
+        
+        // Update points control position after button visibility change
+        setTimeout(updatePointsControlPosition, 0);
     }
     
     // Function to generate intermediate points along a geodesic line
@@ -1846,6 +1921,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (routePoints.length < 2) return;
 
         isCalculatingRoute = true;
+        updateBuildRouteButtonState();
         map.off('click', onMapClickForRoute);
 
         // Initialize profile header with title and color buttons before showing the profile
@@ -2130,34 +2206,90 @@ document.addEventListener('DOMContentLoaded', function () {
         routePoints.length = 0;
         currentRouteData = []; // Clear exported data
         isCalculatingRoute = false;
+        updateBuildRouteButtonState();
 
-        routeCalcControl.style.display = 'none';
+        // Remove active state from calculate route button when profile closes
+        calculateRouteBtn.classList.remove('active');
+        routeSubmenu.style.display = 'none';
         elevationProfile.classList.remove('visible');
+        
+        // Hide calculate button after profile is closed
+        calculateRouteBtn.style.display = 'none';
+        
+        // Update points control position after closing submenu
+        setTimeout(updatePointsControlPosition, 0);
 
         map.off('click', onMapClickForRoute);
         isBuildingRoute = false;
+        
+        // Update active state
+        updateBuildRouteButtonState();
+        
+        // Update cursor for all point markers
+        updateAllPointMarkersCursor();
+    }
+    
+    // Function to update build route button active state
+    function updateBuildRouteButtonState() {
+        if (isBuildingRoute || isCalculatingRoute || routePoints.length > 0) {
+            buildRouteBtn.classList.add('active');
+        } else {
+            buildRouteBtn.classList.remove('active');
+        }
+    }
+    
+    // Function to update add points button active state
+    function updateAddPointsButtonState() {
+        if (isPlacingPoints || customPoints.length > 0) {
+            addPointBtn.classList.add('active');
+        } else {
+            addPointBtn.classList.remove('active');
+        }
     }
     
     // Event listeners for route buttons
     buildRouteBtn.addEventListener('click', function() {
-        // Enable route building mode
-        isBuildingRoute = true;
+        // Toggle submenu
+        if (routeSubmenu.style.display === 'none') {
+            routeSubmenu.style.display = 'block';
+            
+            // Ensure cancel button is visible when submenu opens
+            cancelRouteBtn.style.display = 'block';
+            
+            // If not already building, start route building mode
+            if (!isBuildingRoute && routePoints.length === 0) {
+                isBuildingRoute = true;
+                map.on('click', onMapClickForRoute);
+                updateAllPointMarkersCursor();
+            }
+        } else {
+            routeSubmenu.style.display = 'none';
+        }
         
-        // Add map click handler for adding route points
-        map.on('click', onMapClickForRoute);
+        // Update active state
+        updateBuildRouteButtonState();
         
-        // Hide build button
-        buildRouteBtn.style.display = 'none';
+        // Update points control position after toggle
+        setTimeout(updatePointsControlPosition, 0);
+    });
+    
+    // Event listener for cancel route button
+    cancelRouteBtn.addEventListener('click', function() {
+        resetRouteBuilding();
     });
     
     calculateRouteBtn.addEventListener('click', async function() {
         if (routePoints.length < 2) return;
         
+        // Set calculate button as active
+        calculateRouteBtn.classList.add('active');
+        
         // Calculate and show elevation profile
         await calculateRouteElevation();
         
-        // Hide calculate button
-        routeCalcControl.style.display = 'none';
+        // Keep active state until profile is closed
+        // Don't remove active class here - it will be removed when profile closes
+        // Keep button visible while profile is open to show active state
     });
     
     exportRouteBtn.addEventListener('click', exportRouteToCSV);
@@ -2165,11 +2297,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
     profileCloseBtn.addEventListener('click', function() {
-        // Reset route building
+        // Reset route building (this will also handle button visibility)
         resetRouteBuilding();
-        
-        // Show build route button again
-        buildRouteBtn.style.display = 'block';
     });
 
     // --- IMPORT LOGIC ---
@@ -2261,11 +2390,652 @@ document.addEventListener('DOMContentLoaded', function () {
 
         await calculateRouteElevation();
 
-        buildRouteBtn.style.display = 'none';
-        routeCalcControl.style.display = 'none';
+        // Show submenu and hide calculate button
+        routeSubmenu.style.display = 'block';
+        calculateRouteBtn.style.display = 'none';
         isBuildingRoute = true;
+        
+        // Update build route button active state
+        updateBuildRouteButtonState();
+        
+        // Update points control position after showing submenu
+        setTimeout(updatePointsControlPosition, 0);
 
         const routeBounds = L.latLngBounds(routePoints);
         map.fitBounds(routeBounds, { padding: [50, 50] });
+    }
+
+    // --- Points Management Functionality ---
+    let customPoints = []; // Array to store all custom points
+    let isPlacingPoints = false; // Flag to track if we're in point placing mode
+    let pendingPointLatLng = null; // Store coordinates of point being created
+    let pointPopup = null; // Leaflet popup for point info
+    
+    // Get DOM elements for points
+    const addPointBtn = document.getElementById('add-point-btn');
+    const pointsSubmenu = document.getElementById('points-submenu');
+    const enterCoordsBtn = document.getElementById('enter-coords-btn');
+    const placePointBtn = document.getElementById('place-point-btn');
+    const coordsInputSubmenu = document.getElementById('coords-input-submenu');
+    const latInput = document.getElementById('lat-input');
+    const lngInput = document.getElementById('lng-input');
+    const cancelCoordsBtn = document.getElementById('cancel-coords-btn');
+    const enterCoordsSubmitBtn = document.getElementById('enter-coords-submit-btn');
+    const finishPlacingBtn = document.getElementById('finish-placing-btn');
+    const resetPointsBtn = document.getElementById('reset-points-btn');
+    const exportPointsBtn = document.getElementById('export-points-btn');
+    const importPointsBtn = document.getElementById('import-points-btn');
+    const pointsCsvImporter = document.getElementById('points-csv-importer');
+    const pointInfoPopup = document.getElementById('point-info-popup');
+    const pointNameInput = document.getElementById('point-name-input');
+    const pointDescriptionInput = document.getElementById('point-description-input');
+    const pointLatInput = document.getElementById('point-lat-input');
+    const pointLngInput = document.getElementById('point-lng-input');
+    const savePointBtn = document.getElementById('save-point-btn');
+    const cancelPointBtn = document.getElementById('cancel-point-btn');
+    
+    let editingPointData = null; // Текущая редактируемая точка
+    
+    // Function to create a point marker on the map
+    function createPointMarker(pointData) {
+        const marker = L.marker([pointData.lat, pointData.lng], {
+            icon: L.divIcon({
+                className: 'custom-point-marker',
+                html: '<div style="background-color: #32333d; border: 2px solid darkorange; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;"><div style="background-color: darkorange; border-radius: 50%; width: 10px; height: 10px;"></div></div>',
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            })
+        }).addTo(map);
+        
+        // Create popup content using DOM elements for better event handling
+        const popupDiv = L.DomUtil.create('div');
+        popupDiv.innerHTML = '';
+        
+        if (pointData.name) {
+            const nameDiv = L.DomUtil.create('strong', '', popupDiv);
+            nameDiv.textContent = pointData.name;
+            L.DomUtil.create('br', '', popupDiv);
+        }
+        if (pointData.description) {
+            const descDiv = L.DomUtil.create('div', '', popupDiv);
+            descDiv.textContent = pointData.description;
+            L.DomUtil.create('br', '', popupDiv);
+        }
+        const coordsDiv = L.DomUtil.create('div', '', popupDiv);
+        coordsDiv.textContent = `Координаты: ${pointData.lat.toFixed(6)}, ${pointData.lng.toFixed(6)}`;
+        
+        const editBtn = L.DomUtil.create('button', 'edit-point-btn', popupDiv);
+        editBtn.textContent = 'Изменить';
+        editBtn.style.cssText = 'margin-top: 10px; padding: 5px 10px; background-color: darkorange; color: #32333d; border: 1px solid #2f2f38; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%;';
+        
+        L.DomEvent.on(editBtn, 'click', function(e) {
+            L.DomEvent.stopPropagation(e);
+            map.closePopup(marker.getPopup());
+            openEditPointPopup(pointData);
+        });
+        
+        marker.bindPopup(popupDiv, {
+            closeOnClick: false,
+            autoClose: false
+        });
+        
+        // Prevent popup from opening when measuring distance or building route
+        marker.on('click', function(e) {
+            if (isMeasuring || isBuildingRoute) {
+                // Prevent popup from opening
+                marker.closePopup();
+                
+                // Simulate map click for measurement or route building
+                if (isMeasuring) {
+                    onMapClick({ latlng: marker.getLatLng() });
+                } else if (isBuildingRoute) {
+                    onMapClickForRoute({ latlng: marker.getLatLng() });
+                }
+            } else {
+                // Open popup normally when not in measurement/route mode
+                marker.openPopup();
+            }
+        });
+        
+        // Change cursor style based on active mode
+        function updateMarkerCursor(markerElement) {
+            if (isMeasuring || isBuildingRoute) {
+                markerElement.style.cursor = 'crosshair';
+            } else {
+                markerElement.style.cursor = 'pointer';
+            }
+        }
+        
+        // Set initial cursor when marker is added to map
+        marker.on('add', function() {
+            setTimeout(() => {
+                const markerElement = marker._icon || marker.getElement();
+                if (markerElement) {
+                    updateMarkerCursor(markerElement);
+                }
+            }, 0);
+        });
+        
+        marker.on('mouseover', function() {
+            const markerElement = marker._icon || marker.getElement();
+            if (markerElement) {
+                updateMarkerCursor(markerElement);
+            }
+        });
+        
+        marker.on('mouseout', function() {
+            const markerElement = marker._icon || marker.getElement();
+            if (markerElement) {
+                markerElement.style.cursor = '';
+            }
+        });
+        
+        return marker;
+    }
+    
+    // Function to update cursor for all point markers
+    function updateAllPointMarkersCursor() {
+        customPoints.forEach(pointData => {
+            if (pointData.marker) {
+                const markerElement = pointData.marker._icon || pointData.marker.getElement();
+                if (markerElement) {
+                    if (isMeasuring || isBuildingRoute) {
+                        markerElement.style.cursor = 'crosshair';
+                    } else {
+                        markerElement.style.cursor = 'pointer';
+                    }
+                }
+            }
+        });
+    }
+    
+    // Function to add a point to the map
+    function addPoint(lat, lng, name = '', description = '') {
+        const pointData = {
+            lat: lat,
+            lng: lng,
+            name: name || '',
+            description: description || '',
+            marker: null
+        };
+        
+        pointData.marker = createPointMarker(pointData);
+        customPoints.push(pointData);
+        
+        // Update add points button active state
+        updateAddPointsButtonState();
+        
+        return pointData;
+    }
+    
+    // Function to remove a point
+    function removePoint(pointData) {
+        if (pointData.marker) {
+            map.removeLayer(pointData.marker);
+        }
+        const index = customPoints.indexOf(pointData);
+        if (index > -1) {
+            customPoints.splice(index, 1);
+        }
+        updateExportButtonVisibility();
+        
+        // Update add points button active state
+        updateAddPointsButtonState();
+    }
+    
+    // Function to open edit point popup
+    function openEditPointPopup(pointData) {
+        editingPointData = pointData;
+        pointNameInput.value = pointData.name || '';
+        pointDescriptionInput.value = pointData.description || '';
+        pointLatInput.value = pointData.lat;
+        pointLngInput.value = pointData.lng;
+        // Show coordinate inputs when editing
+        pointLatInput.style.display = 'block';
+        pointLngInput.style.display = 'block';
+        pointInfoPopup.style.display = 'block';
+    }
+    
+    // Function to update a point
+    function updatePoint(pointData, newLat, newLng, newName, newDescription) {
+        // Update data
+        pointData.lat = newLat;
+        pointData.lng = newLng;
+        pointData.name = newName || '';
+        pointData.description = newDescription || '';
+        
+        // Remove old marker
+        if (pointData.marker) {
+            map.removeLayer(pointData.marker);
+        }
+        
+        // Create new marker with updated data
+        pointData.marker = createPointMarker(pointData);
+    }
+    
+    // Function to handle map click when placing points
+    function onMapClickForPoint(e) {
+        if (!isPlacingPoints) return;
+        
+        pendingPointLatLng = e.latlng;
+        
+        // Show popup near the clicked point
+        if (pointPopup) {
+            pointPopup.remove();
+        }
+        
+        pointPopup = L.popup()
+            .setLatLng(e.latlng)
+            .setContent('<div>Введите информацию о точке</div>')
+            .openOn(map);
+        
+        // Show the info popup
+        pointNameInput.value = '';
+        pointDescriptionInput.value = '';
+        pointLatInput.value = '';
+        pointLngInput.value = '';
+        // Hide coordinate inputs when adding new point (coordinates come from map click)
+        pointLatInput.style.display = 'none';
+        pointLngInput.style.display = 'none';
+        pointInfoPopup.style.display = 'block';
+        
+        // Close Leaflet popup
+        setTimeout(() => {
+            if (pointPopup) {
+                map.closePopup(pointPopup);
+            }
+        }, 100);
+    }
+    
+    // Handle "Add Point" button click
+    addPointBtn.addEventListener('click', function() {
+        if (pointsSubmenu.style.display === 'none') {
+            pointsSubmenu.style.display = 'block';
+            coordsInputSubmenu.style.display = 'none';
+        } else {
+            pointsSubmenu.style.display = 'none';
+        }
+    });
+    
+    // Handle "Enter Coordinates" button click
+    enterCoordsBtn.addEventListener('click', function() {
+        pointsSubmenu.style.display = 'none';
+        coordsInputSubmenu.style.display = 'block';
+        latInput.value = '';
+        lngInput.value = '';
+    });
+    
+    // Handle "Cancel" button in coordinates input submenu
+    cancelCoordsBtn.addEventListener('click', function() {
+        coordsInputSubmenu.style.display = 'none';
+        pointsSubmenu.style.display = 'block';
+        latInput.value = '';
+        lngInput.value = '';
+    });
+    
+    // Function to update export button visibility
+    function updateExportButtonVisibility() {
+        if (customPoints.length > 0) {
+            exportPointsBtn.style.display = 'block';
+            resetPointsBtn.style.display = 'block';
+        } else {
+            exportPointsBtn.style.display = 'none';
+            resetPointsBtn.style.display = 'none';
+        }
+    }
+    
+    // Function to reset all points
+    function resetAllPoints() {
+        // Remove all markers from map
+        customPoints.forEach(pointData => {
+            if (pointData.marker) {
+                map.removeLayer(pointData.marker);
+            }
+        });
+        // Clear the array
+        customPoints = [];
+        // Update button visibility
+        updateExportButtonVisibility();
+        
+        // Update add points button active state
+        updateAddPointsButtonState();
+    }
+    
+    // Function to reset placement mode
+    function resetPlacementMode() {
+        isPlacingPoints = false;
+        map.off('click', onMapClickForPoint);
+        map.getContainer().style.cursor = '';
+        if (pointPopup) {
+            map.closePopup(pointPopup);
+            pointPopup = null;
+        }
+        pendingPointLatLng = null;
+        
+        // Update add points button active state
+        updateAddPointsButtonState();
+    }
+    
+    // Handle "Place Point on Map" button click
+    placePointBtn.addEventListener('click', function() {
+        pointsSubmenu.style.display = 'none';
+        isPlacingPoints = true;
+        updateExportButtonVisibility();
+        map.on('click', onMapClickForPoint);
+        map.getContainer().style.cursor = 'crosshair';
+        
+        // Update add points button active state
+        updateAddPointsButtonState();
+    });
+    
+    // Handle "Finish Placing" button click
+    finishPlacingBtn.addEventListener('click', function() {
+        resetPlacementMode();
+        placePointBtn.style.display = 'block';
+        finishPlacingBtn.style.display = 'none';
+        pointInfoPopup.style.display = 'none';
+    });
+    
+    // Handle coordinate input submit
+    enterCoordsSubmitBtn.addEventListener('click', function() {
+        const lat = parseFloat(latInput.value);
+        const lng = parseFloat(lngInput.value);
+        
+        if (isNaN(lat) || isNaN(lng)) {
+            alert('Пожалуйста, введите корректные координаты');
+            return;
+        }
+        
+        if (lat < -90 || lat > 90) {
+            alert('Широта должна быть в диапазоне от -90 до 90');
+            return;
+        }
+        
+        if (lng < -180 || lng > 180) {
+            alert('Долгота должна быть в диапазоне от -180 до 180');
+            return;
+        }
+        
+        // Show info popup
+        pendingPointLatLng = L.latLng(lat, lng);
+        pointNameInput.value = '';
+        pointDescriptionInput.value = '';
+        pointLatInput.value = '';
+        pointLngInput.value = '';
+        // Hide coordinate inputs when adding new point (coordinates already entered)
+        pointLatInput.style.display = 'none';
+        pointLngInput.style.display = 'none';
+        pointInfoPopup.style.display = 'block';
+        coordsInputSubmenu.style.display = 'none';
+        
+        // Center map on the point
+        map.setView([lat, lng], map.getZoom());
+    });
+    
+    // Handle save point button
+    savePointBtn.addEventListener('click', function() {
+        const name = pointNameInput.value.trim();
+        const description = pointDescriptionInput.value.trim();
+        
+        // Check if we're editing an existing point
+        if (editingPointData) {
+            const lat = parseFloat(pointLatInput.value);
+            const lng = parseFloat(pointLngInput.value);
+            
+            if (isNaN(lat) || isNaN(lng)) {
+                alert('Пожалуйста, введите корректные координаты');
+                return;
+            }
+            
+            if (lat < -90 || lat > 90) {
+                alert('Широта должна быть в диапазоне от -90 до 90');
+                return;
+            }
+            
+            if (lng < -180 || lng > 180) {
+                alert('Долгота должна быть в диапазоне от -180 до 180');
+                return;
+            }
+            
+            updatePoint(editingPointData, lat, lng, name, description);
+            editingPointData = null;
+        } else {
+            // Adding a new point
+            if (!pendingPointLatLng) return;
+            
+            addPoint(pendingPointLatLng.lat, pendingPointLatLng.lng, name, description);
+            
+            // Reset placement mode if it was active (point was added by clicking on map)
+            if (isPlacingPoints) {
+                resetPlacementMode();
+            }
+            pendingPointLatLng = null;
+        }
+        
+        pointInfoPopup.style.display = 'none';
+        
+        // Show export button if we have points
+        updateExportButtonVisibility();
+    });
+    
+    // Handle cancel point button
+    cancelPointBtn.addEventListener('click', function() {
+        pointInfoPopup.style.display = 'none';
+        
+        // Reset placement mode if it was active (point was being added by clicking on map)
+        if (isPlacingPoints) {
+            resetPlacementMode();
+        }
+        
+        // Clear editing state
+        editingPointData = null;
+        pendingPointLatLng = null;
+    });
+    
+    // Handle export points button
+    exportPointsBtn.addEventListener('click', function() {
+        if (customPoints.length === 0) {
+            alert('Нет точек для экспорта');
+            return;
+        }
+        
+        const headers = ['координаты_точки', 'название_точки', 'описание_точки'];
+        const rows = customPoints.map(point => {
+            // Escape commas and quotes in text fields
+            const escapeCSV = (text) => {
+                if (!text) return '';
+                // If text contains comma, quote or newline, wrap in quotes and escape quotes
+                if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+                    return '"' + text.replace(/"/g, '""') + '"';
+                }
+                return text;
+            };
+            
+            return [
+                `${point.lat.toFixed(6)},${point.lng.toFixed(6)}`,
+                escapeCSV(point.name || ''),
+                escapeCSV(point.description || '')
+            ].join(',');
+        });
+        
+        let csvContent = headers.join(',') + '\n' + rows.join('\n');
+        
+        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'points.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    });
+    
+    // Handle reset points button
+    resetPointsBtn.addEventListener('click', function() {
+        if (customPoints.length === 0) {
+            return;
+        }
+        
+        resetAllPoints();
+    });
+    
+    // Handle import points button
+    importPointsBtn.addEventListener('click', function() {
+        pointsCsvImporter.click();
+    });
+    
+    // Handle CSV file import
+    pointsCsvImporter.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const text = e.target.result;
+            try {
+                const parsedPoints = parsePointsCsv(text);
+                
+                // Remove existing points if needed (or merge)
+                // For now, we'll add to existing points
+                parsedPoints.forEach(point => {
+                    addPoint(point.lat, point.lng, point.name, point.description);
+                });
+                
+                updateExportButtonVisibility();
+            } catch (error) {
+                console.error('Ошибка при парсинге CSV:', error);
+                alert(`Не удалось прочитать файл. Убедитесь, что это корректный CSV-файл.\nДетали: ${error.message}`);
+            }
+        };
+        reader.readAsText(file);
+        
+        event.target.value = '';
+    });
+    
+    // Function to parse CSV line with proper handling of quoted fields
+    function parseCSVLine(line) {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            const nextChar = line[i + 1];
+            
+            if (char === '"') {
+                if (inQuotes && nextChar === '"') {
+                    // Escaped quote
+                    current += '"';
+                    i++; // Skip next quote
+                } else {
+                    // Toggle quote state
+                    inQuotes = !inQuotes;
+                }
+            } else if (char === ',' && !inQuotes) {
+                // Field separator
+                result.push(current.trim());
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        
+        // Add last field
+        result.push(current.trim());
+        return result;
+    }
+    
+    // Function to check if a string looks like a coordinate (number in valid range)
+    function isCoordinate(str) {
+        const num = parseFloat(str.trim());
+        return !isNaN(num) && num >= -180 && num <= 180;
+    }
+    
+    // Function to parse points CSV
+    function parsePointsCsv(text) {
+        const lines = text.trim().split(/\r\n|\n/);
+        if (lines.length < 2) {
+            throw new Error('CSV файл должен содержать заголовок и хотя бы одну строку данных.');
+        }
+        
+        const headers = parseCSVLine(lines[0]).map(h => h.trim());
+        const coordsIndex = headers.indexOf('координаты_точки');
+        const nameIndex = headers.indexOf('название_точки');
+        const descIndex = headers.indexOf('описание_точки');
+        
+        if (coordsIndex === -1) {
+            throw new Error('CSV файл должен содержать столбец: координаты_точки');
+        }
+        
+        const points = [];
+        for (let i = 1; i < lines.length; i++) {
+            if (!lines[i].trim()) continue; // Skip empty lines
+            
+            let values = parseCSVLine(lines[i]);
+            
+            // Handle case where coordinates field contains comma but is not quoted
+            // If coordsIndex points to a single number and next value is also a number,
+            // they are likely the two parts of coordinates
+            let coordValue = values[coordsIndex] || '';
+            let lat, lng;
+            
+            // Try to parse coordinates
+            let coordsWereSplit = false;
+            if (coordValue.includes(',')) {
+                // Coordinates are in a single field (quoted or already combined)
+                const coords = coordValue.split(',').map(c => parseFloat(c.trim()));
+                if (coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
+                    lat = coords[0];
+                    lng = coords[1];
+                }
+            } else {
+                // Coordinates might be split across two fields
+                // Check if current field and next field are both valid coordinates
+                if (isCoordinate(values[coordsIndex]) && 
+                    coordsIndex + 1 < values.length && 
+                    isCoordinate(values[coordsIndex + 1])) {
+                    lat = parseFloat(values[coordsIndex].trim());
+                    lng = parseFloat(values[coordsIndex + 1].trim());
+                    coordsWereSplit = true;
+                    // Remove both coordinate fields and replace with empty string
+                    // This keeps array length consistent with headers
+                    values.splice(coordsIndex, 2, '');
+                } else {
+                    // Try to parse as single coordinate field
+                    const coordNum = parseFloat(coordValue);
+                    if (!isNaN(coordNum)) {
+                        // This shouldn't happen with proper CSV, but handle it
+                        continue;
+                    }
+                }
+            }
+            
+            if (lat !== undefined && lng !== undefined) {
+                const point = {
+                    lat: lat,
+                    lng: lng,
+                    name: '',
+                    description: ''
+                };
+                
+                // Get name
+                if (nameIndex !== -1 && nameIndex < values.length) {
+                    point.name = (values[nameIndex] || '').replace(/^"|"$/g, '').trim();
+                }
+                
+                // Get description
+                if (descIndex !== -1 && descIndex < values.length) {
+                    point.description = (values[descIndex] || '').replace(/^"|"$/g, '').trim();
+                }
+                
+                points.push(point);
+            }
+        }
+        
+        if (points.length === 0) {
+            throw new Error('В файле не найдено ни одной корректной точки.');
+        }
+        
+        return points;
     }
 });

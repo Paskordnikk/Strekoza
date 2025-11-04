@@ -18,21 +18,41 @@
     </div>
     <div id="route-control" class="map-control-button" style="top: 60px;">
         <button id="build-route-btn" class="map-control-btn">Построить маршрут</button>
+        <div id="route-submenu" class="points-submenu" style="display: none;">
+            <button id="cancel-route-btn" class="points-submenu-btn">Отменить маршрут</button>
+            <button id="import-route-btn" class="points-submenu-btn">Загрузить маршрут</button>
+            <button id="calculate-route-btn" class="points-submenu-btn" style="display: none;">Рассчитать маршрут</button>
+        </div>
     </div>
-    <div id="import-control" class="map-control-button" style="top: 110px;">
-        <button id="import-route-btn" class="map-control-btn">Загрузить маршрут</button>
+    <div id="points-control" class="map-control-button" style="top: 110px;">
+        <button id="add-point-btn" class="map-control-btn">Добавить точки</button>
+        <div id="points-submenu" class="points-submenu" style="display: none;">
+            <button id="place-point-btn" class="points-submenu-btn">Показать точку на карте</button>
+            <button id="enter-coords-btn" class="points-submenu-btn">Ввести координаты точки</button>
+            <button id="import-points-btn" class="points-submenu-btn">Загрузить точки</button>
+        </div>
+        <div id="coords-input-submenu" class="points-submenu" style="display: none;">
+            <input type="number" id="lat-input" class="coords-input" placeholder="Широта" step="any">
+            <input type="number" id="lng-input" class="coords-input" placeholder="Долгота" step="any">
+            <button id="cancel-coords-btn" class="points-submenu-btn">Отмена</button>
+            <button id="enter-coords-submit-btn" class="points-submenu-btn">Ввести</button>
+        </div>
+        <button id="finish-placing-btn" class="map-control-btn" style="display: none;">Закончить установку точек</button>
+        <button id="reset-points-btn" class="map-control-btn" style="display: none;">Сбросить точки</button>
+        <button id="export-points-btn" class="map-control-btn" style="display: none;">Выгрузить точки</button>
     </div>
     <input type="file" id="csv-importer" accept=".csv" style="display: none;">
-    <div id="route-calc-control" class="map-control-button" style="display: none; top: 60px;">
-        <button id="calculate-route-btn" class="map-control-btn">Рассчитать маршрут</button>
-    </div>
+    <input type="file" id="points-csv-importer" accept=".csv" style="display: none;">
     <div id="hamburger-menu" class="menu-button">
         <span></span>
         <span></span>
         <span></span>
     </div>
     <div id="side-menu">
-        <div id="close-menu-btn">&times;</div>
+        <div id="side-menu-header">
+            <div id="route-color-buttons-container"></div>
+            <div id="close-menu-btn">&times;</div>
+        </div>
         
         <!-- Основная карта -->
         <div class="menu-section">
@@ -239,6 +259,19 @@
         <div>
             <input type="checkbox" id="geo-error-dont-show">
             <label for="geo-error-dont-show">Больше не показывать</label>
+        </div>
+    </div>
+    
+    <!-- Попап для ввода названия и описания точки -->
+    <div id="point-info-popup" class="point-info-popup" style="display: none;">
+        <div class="point-info-content">
+            <h3>Информация о точке</h3>
+            <input type="text" id="point-name-input" class="point-info-input" placeholder="Название точки">
+            <textarea id="point-description-input" class="point-info-input" placeholder="Описание точки" rows="3"></textarea>
+            <input type="number" id="point-lat-input" class="point-info-input" placeholder="Широта" step="any">
+            <input type="number" id="point-lng-input" class="point-info-input" placeholder="Долгота" step="any">
+            <button id="save-point-btn" class="point-info-btn">Сохранить</button>
+            <button id="cancel-point-btn" class="point-info-btn cancel-btn">Отмена</button>
         </div>
     </div>
 </body>
