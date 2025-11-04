@@ -1,4 +1,77 @@
-document.addEventListener('DOMContentLoaded', function () {
+// API Configuration
+const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? 'http://127.0.0.1:8000' 
+    : 'https://strekoza-ylfm.onrender.com';
+
+// Authentication functions
+function getAuthToken() {
+    return localStorage.getItem('auth_token');
+}
+
+function getAuthHeaders() {
+    const token = getAuthToken();
+    const headers = {
+        'Content-Type': 'application/json',
+    };
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+}
+
+async function checkAuthentication() {
+    const token = getAuthToken();
+    if (!token) {
+        // Нет токена - перенаправляем на страницу входа
+        window.location.href = 'login.html';
+        return false;
+    }
+    
+    // Проверяем валидность токена, делая тестовый запрос
+    try {
+        const response = await fetch(`${API_URL}/api/get_elevation`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ points: [] })
+        });
+        
+        if (response.status === 401) {
+            // Токен невалидный - удаляем и перенаправляем на вход
+            localStorage.removeItem('auth_token');
+            window.location.href = 'login.html';
+            return false;
+        }
+        
+        // Токен валидный (даже если запрос вернул ошибку валидации 422 - это нормально для пустого массива)
+        // Любой статус кроме 401 означает, что токен принят сервером
+        return true;
+    } catch (error) {
+        console.error('Ошибка проверки аутентификации:', error);
+        // При ошибке соединения разрешаем доступ (может быть сервер недоступен)
+        // Пользователь сможет увидеть ошибку при реальном запросе
+        return true;
+    }
+}
+
+// Проверяем аутентификацию сразу при загрузке скрипта
+(async function() {
+    const isAuthenticated = await checkAuthentication();
+    if (!isAuthenticated) {
+        // Перенаправление уже произошло в checkAuthentication
+        return;
+    }
+    
+    // Если пользователь аутентифицирован, продолжаем загрузку страницы
+    // Ждем загрузки DOM
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initMap);
+    } else {
+        initMap();
+    }
+})();
+
+function initMap() {
+    // Инициализация карты происходит здесь, когда DOM уже загружен
     const map = L.map('map', { zoomControl: false }).setView([55.751244, 37.618423], 10); // Default to Moscow
     map.createPane('routeHoverPane');
     map.getPane('routeHoverPane').style.zIndex = 650;
@@ -307,6 +380,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     closeMenuBtn.addEventListener('click', closeMenu);
     map.on('click', closeMenu);
+
+    // Обработчик кнопки выхода
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', function() {
+            // Удаляем токен из localStorage
+            localStorage.removeItem('auth_token');
+            // Перенаправляем на страницу входа
+            window.location.href = 'login.html';
+        });
+    }
 
     // Brightness control for base layer
     const brightnessSlider = document.getElementById('brightness-slider');
@@ -2033,13 +2117,18 @@ document.addEventListener('DOMContentLoaded', function () {
             await new Promise(resolve => setTimeout(resolve, 10));
 
             // Make the request to the server
-            const response = await fetch('https://strekoza-ylfm.onrender.com/api/get_elevation', {
+            const response = await fetch(`${API_URL}/api/get_elevation`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: getAuthHeaders(),
                 body: JSON.stringify({ points: pointsToQuery })
             });
+
+            if (response.status === 401) {
+                // Токен невалидный - удаляем и перенаправляем на вход
+                localStorage.removeItem('auth_token');
+                window.location.href = 'login.html';
+                return;
+            }
 
             if (!response.ok) {
                 throw new Error(`Server error: ${response.statusText}`);
@@ -3038,4 +3127,4 @@ document.addEventListener('DOMContentLoaded', function () {
         
         return points;
     }
-});
+}

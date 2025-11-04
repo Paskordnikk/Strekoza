@@ -1,8 +1,14 @@
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 import os
+import sys
+import argparse
+from datetime import datetime, timedelta
+from jose import JWTError, jwt
+from passlib.context import CryptContext
 from srtm import Srtm3HeightMapCollection
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
@@ -10,6 +16,66 @@ import uvicorn
 # Set the environment variable for the SRTM data directory
 # This must be done before creating the collection object.
 os.environ['SRTM3_DIR'] = 'strm'
+
+# JWT Configuration
+# Секретный ключ будет установлен позже, если передан через аргумент
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-this-in-production")  # Измените на безопасный ключ в продакшене!
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 1  # Срок действия токена в минутах (последняя цифра - количество дней).
+
+# Password configuration
+# Пароль можно установить несколькими способами (в порядке приоритета):
+# 1. Через аргумент командной строки: python server.py --password "ваш_пароль"
+# 2. Через переменную окружения SITE_PASSWORD
+# 3. Через файл .env (если установлен python-dotenv)
+# 4. По умолчанию (не рекомендуется для продакшена)
+
+def get_password_from_env():
+    """Получает пароль из переменных окружения или .env файла"""
+    # Приоритет 1: переменная окружения
+    env_password = os.getenv("SITE_PASSWORD")
+    if env_password:
+        return env_password
+    
+    # Приоритет 2: файл .env (если есть)
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+        env_password = os.getenv("SITE_PASSWORD")
+        if env_password:
+            return env_password
+    except ImportError:
+        pass  # python-dotenv не установлен
+    
+    # Приоритет 3: значение по умолчанию
+    return "admin123"
+
+def get_password_from_args():
+    """Получает пароль из аргументов командной строки (если есть)"""
+    try:
+        parser = argparse.ArgumentParser(description='Запуск сервера карты', add_help=False)
+        parser.add_argument('--password', type=str, help='Пароль для доступа к сайту')
+        args, unknown = parser.parse_known_args()
+        if args.password:
+            return args.password
+    except:
+        pass
+    return None
+
+# Проверяем аргументы командной строки сначала
+password_from_args = get_password_from_args()
+if password_from_args:
+    SITE_PASSWORD = password_from_args
+else:
+    # Иначе используем переменные окружения или значение по умолчанию
+    SITE_PASSWORD = get_password_from_env()
+
+def get_site_password():
+    """Получает текущий пароль"""
+    return SITE_PASSWORD
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+security = HTTPBearer()
 
 app = FastAPI()
 
@@ -26,6 +92,9 @@ app.add_middleware(
 class RouteData(BaseModel):
     points: List[List[float]]  # A list of [lat, lng] pairs
 
+class LoginRequest(BaseModel):
+    password: str
+
 # Create an instance of the Srtm3HeightMapCollection
 # It will use the SRTM3_DIR environment variable to find the .hgt files.
 try:
@@ -36,8 +105,67 @@ except Exception as e:
     print(f"Error details: {e}")
     srtm_data = None
 
+# JWT Helper Functions
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Проверяет пароль"""
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password: str) -> str:
+    """Хеширует пароль"""
+    return pwd_context.hash(password)
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    """Создает JWT токен"""
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Проверяет JWT токен из заголовка Authorization"""
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Неверный или истекший токен",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+# Login endpoint
+@app.post("/api/login")
+def login(login_request: LoginRequest):
+    """Эндпоинт для входа. Проверяет пароль и возвращает JWT токен."""
+    # Получаем текущий пароль (может быть изменен через аргумент командной строки)
+    current_password = get_site_password()
+    
+    # Логирование для отладки (не показываем пароль полностью)
+    received_password_length = len(login_request.password) if login_request.password else 0
+    expected_password_length = len(current_password) if current_password else 0
+    print(f"[DEBUG] Login attempt: received password length={received_password_length}, expected length={expected_password_length}")
+    print(f"[DEBUG] Password match: {login_request.password == current_password}")
+    
+    if login_request.password != current_password:
+        print(f"[DEBUG] Password mismatch. Received: '{login_request.password[:3]}...' (length={received_password_length})")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Неверный пароль"
+        )
+    
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": "user"}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
 @app.post("/api/get_elevation")
-def get_elevation_profile(route_data: RouteData):
+def get_elevation_profile(route_data: RouteData, token: dict = Depends(verify_token)):
     elevations = []
     if not srtm_data:
         return {"error": "SRTM data not initialized. Check server logs."}
@@ -110,4 +238,32 @@ def get_elevation_profile(route_data: RouteData):
     return {"elevations": elevations}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    # Парсим аргументы командной строки для логирования и секретного ключа
+    parser = argparse.ArgumentParser(description='Запуск сервера карты')
+    parser.add_argument('--password', type=str, help='Пароль для доступа к сайту')
+    parser.add_argument('--secret-key', type=str, help='Секретный ключ для JWT')
+    args = parser.parse_args()
+    
+    # Определяем источник пароля для логирования
+    if args.password:
+        # Пароль уже установлен в get_password_from_args() при инициализации
+        password_source = "аргумент командной строки (--password)"
+    elif os.getenv("SITE_PASSWORD"):
+        password_source = "переменная окружения (SITE_PASSWORD)"
+    else:
+        password_source = "по умолчанию (⚠️ НЕ БЕЗОПАСНО для продакшена!)"
+    
+    # Выводим информацию о пароле при старте (безопасно, только длину)
+    print(f"[INFO] Пароль установлен: {password_source}, длина пароля: {len(SITE_PASSWORD)} символов")
+    
+    # Обрабатываем секретный ключ JWT
+    if args.secret_key:
+        SECRET_KEY = args.secret_key
+        print(f"[INFO] JWT секретный ключ установлен через аргумент командной строки")
+    
+    # Настройка для продакшена (Render.com, Heroku и т.д.)
+    # Render.com использует переменную окружения PORT
+    port = int(os.getenv("PORT", 8000))
+    host = "0.0.0.0" if os.getenv("PORT") else "127.0.0.1"  # 0.0.0.0 для продакшена, 127.0.0.1 для локальной разработки
+    
+    uvicorn.run(app, host=host, port=port)
