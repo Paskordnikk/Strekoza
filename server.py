@@ -87,7 +87,29 @@ def get_site_password():
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
-app = FastAPI()
+app = FastAPI(
+    title="Karta API",
+    description="API для работы с картой и высотами",
+    version="1.0.0"
+)
+
+# Добавляем тестовые эндпоинты для проверки
+@app.get("/", tags=["test"])
+def root():
+    return {
+        "message": "Server is running",
+        "endpoints": ["/api/login", "/api/get_elevation"],
+        "docs": "/docs",
+        "openapi": "/openapi.json"
+    }
+
+@app.get("/health", tags=["test"])
+def health():
+    return {
+        "status": "ok",
+        "password_set": bool(os.getenv("SITE_PASSWORD")),
+        "password_length": len(SITE_PASSWORD) if SITE_PASSWORD else 0
+    }
 
 # Allow CORS for local development
 app.add_middleware(
@@ -149,7 +171,7 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
         )
 
 # Login endpoint
-@app.post("/api/login")
+@app.post("/api/login", tags=["authentication"])
 def login(login_request: LoginRequest):
     """Эндпоинт для входа. Проверяет пароль и возвращает JWT токен."""
     # Получаем текущий пароль (может быть изменен через аргумент командной строки)
@@ -176,7 +198,7 @@ def login(login_request: LoginRequest):
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
-@app.post("/api/get_elevation")
+@app.post("/api/get_elevation", tags=["elevation"])
 def get_elevation_profile(route_data: RouteData, token: dict = Depends(verify_token)):
     elevations = []
     if not srtm_data:
@@ -248,6 +270,12 @@ def get_elevation_profile(route_data: RouteData, token: dict = Depends(verify_to
             elevations.append(raw_elevations[i])
             
     return {"elevations": elevations}
+
+# Логирование зарегистрированных эндпоинтов при загрузке модуля
+print(f"[INFO] FastAPI app created. Registered routes:")
+for route in app.routes:
+    if hasattr(route, 'methods') and hasattr(route, 'path'):
+        print(f"[INFO]   {list(route.methods)} {route.path}")
 
 if __name__ == "__main__":
     # Парсим аргументы командной строки для логирования и секретного ключа
