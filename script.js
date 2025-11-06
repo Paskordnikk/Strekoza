@@ -237,7 +237,11 @@ function initMap() {
 
     // Helper function to create overlay layer with proper mobile settings
     function createOverlayLayer(url, options = {}) {
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        // Более надежное определение мобильного устройства
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                         ('ontouchstart' in window) ||
+                         (navigator.maxTouchPoints > 0) ||
+                         (window.innerWidth <= 768);
         
         const defaultOptions = {
             pane: 'roadsPane',
@@ -737,27 +741,29 @@ function initMap() {
     // Добавляем обработчик touchstart для мгновенного визуального отклика на мобильных устройствах
     let roadsCheckboxTouched = false;
     enableRoadsCheckbox.addEventListener('touchstart', function (e) {
+        e.preventDefault(); // Предотвращаем стандартное поведение
         roadsCheckboxTouched = true;
-        // Мгновенно переключаем состояние чекбокса
-        e.target.checked = !e.target.checked;
+        // Мгновенно переключаем состояние чекбокса (используем сам элемент, а не e.target)
+        enableRoadsCheckbox.checked = !enableRoadsCheckbox.checked;
         // Принудительно обновляем DOM
-        void e.target.offsetWidth;
+        void enableRoadsCheckbox.offsetWidth;
         // Триггерим change событие сразу для немедленного выполнения логики
-        e.target.dispatchEvent(new Event('change', { bubbles: true }));
-    }, { passive: true });
+        enableRoadsCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+    }, { passive: false });
     
     enableRoadsCheckbox.addEventListener('click', function (e) {
         // Если уже обработали через touchstart, предотвращаем стандартное поведение
         if (roadsCheckboxTouched) {
             e.preventDefault();
             roadsCheckboxTouched = false;
+            return;
         }
     });
     
     enableRoadsCheckbox.addEventListener('change', function (e) {
         // Выполняем тяжелые операции асинхронно, чтобы не блокировать визуальное обновление
         requestAnimationFrame(() => {
-            if (e.target.checked) {
+            if (enableRoadsCheckbox.checked) {
                 roadsControls.style.display = 'block';
                 
                 // Асинхронная загрузка слоя с задержкой для мобильных устройств
@@ -801,27 +807,29 @@ function initMap() {
     // Добавляем обработчик touchstart для мгновенного визуального отклика на мобильных устройствах
     let bordersCheckboxTouched = false;
     enableBordersCheckbox.addEventListener('touchstart', function (e) {
+        e.preventDefault(); // Предотвращаем стандартное поведение
         bordersCheckboxTouched = true;
-        // Мгновенно переключаем состояние чекбокса
-        e.target.checked = !e.target.checked;
+        // Мгновенно переключаем состояние чекбокса (используем сам элемент, а не e.target)
+        enableBordersCheckbox.checked = !enableBordersCheckbox.checked;
         // Принудительно обновляем DOM
-        void e.target.offsetWidth;
+        void enableBordersCheckbox.offsetWidth;
         // Триггерим change событие сразу для немедленного выполнения логики
-        e.target.dispatchEvent(new Event('change', { bubbles: true }));
-    }, { passive: true });
+        enableBordersCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+    }, { passive: false });
     
     enableBordersCheckbox.addEventListener('click', function (e) {
         // Если уже обработали через touchstart, предотвращаем стандартное поведение
         if (bordersCheckboxTouched) {
             e.preventDefault();
             bordersCheckboxTouched = false;
+            return;
         }
     });
     
     enableBordersCheckbox.addEventListener('change', function (e) {
         // Выполняем тяжелые операции асинхронно, чтобы не блокировать визуальное обновление
         requestAnimationFrame(() => {
-            if (e.target.checked) {
+            if (enableBordersCheckbox.checked) {
                 bordersControls.style.display = 'block';
                 
                 // Асинхронная загрузка слоя с задержкой для мобильных устройств
@@ -865,27 +873,29 @@ function initMap() {
     // Добавляем обработчик touchstart для мгновенного визуального отклика на мобильных устройствах
     let labelsCheckboxTouched = false;
     enableLabelsCheckbox.addEventListener('touchstart', function (e) {
+        e.preventDefault(); // Предотвращаем стандартное поведение
         labelsCheckboxTouched = true;
-        // Мгновенно переключаем состояние чекбокса
-        e.target.checked = !e.target.checked;
+        // Мгновенно переключаем состояние чекбокса (используем сам элемент, а не e.target)
+        enableLabelsCheckbox.checked = !enableLabelsCheckbox.checked;
         // Принудительно обновляем DOM
-        void e.target.offsetWidth;
+        void enableLabelsCheckbox.offsetWidth;
         // Триггерим change событие сразу для немедленного выполнения логики
-        e.target.dispatchEvent(new Event('change', { bubbles: true }));
-    }, { passive: true });
+        enableLabelsCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+    }, { passive: false });
     
     enableLabelsCheckbox.addEventListener('click', function (e) {
         // Если уже обработали через touchstart, предотвращаем стандартное поведение
         if (labelsCheckboxTouched) {
             e.preventDefault();
             labelsCheckboxTouched = false;
+            return;
         }
     });
     
     enableLabelsCheckbox.addEventListener('change', function (e) {
         // Выполняем тяжелые операции асинхронно, чтобы не блокировать визуальное обновление
         requestAnimationFrame(() => {
-            if (e.target.checked) {
+            if (enableLabelsCheckbox.checked) {
                 labelsControls.style.display = 'block';
                 
                 // Асинхронная загрузка слоя с задержкой для мобильных устройств
