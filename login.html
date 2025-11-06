@@ -13,8 +13,8 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: sans-serif;
+            background-color: #32333d;
             min-height: 100vh;
             display: flex;
             justify-content: center;
@@ -23,17 +23,18 @@
         }
 
         .login-container {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            background-color: rgba(50, 51, 61, 0.95);
+            border: 1px solid darkorange;
+            border-radius: 10px;
             padding: 40px;
             width: 100%;
             max-width: 400px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
         }
 
         .login-title {
             text-align: center;
-            color: #333;
+            color: darkorange;
             margin-bottom: 30px;
             font-size: 28px;
             font-weight: 600;
@@ -52,56 +53,68 @@
         }
 
         .form-label {
-            color: #555;
+            color: darkorange;
             font-size: 14px;
             font-weight: 500;
         }
 
         .form-input {
             padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
+            background-color: #32333d;
+            color: white;
+            border: 1px solid darkorange;
+            border-radius: 5px;
             font-size: 16px;
+            font-family: sans-serif;
             transition: border-color 0.3s;
+        }
+
+        .form-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
         }
 
         .form-input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #ffaa33;
         }
 
         .login-button {
             padding: 12px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
+            background-color: rgba(50, 51, 61, 0.85);
+            color: darkorange;
+            border: 1px solid darkorange;
+            border-radius: 10px;
             font-size: 16px;
             font-weight: 600;
+            font-family: sans-serif;
             cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: background-color 0.2s, color 0.2s, border-color 0.2s;
         }
 
         .login-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            background-color: darkorange;
+            color: #32333d;
+            border-color: #32333d;
         }
 
         .login-button:active {
-            transform: translateY(0);
+            transform: scale(0.98);
         }
 
         .login-button:disabled {
             opacity: 0.6;
             cursor: not-allowed;
-            transform: none;
+            background-color: rgba(50, 51, 61, 0.85);
+            color: darkorange;
+            border-color: darkorange;
         }
 
         .error-message {
-            background: #fee;
-            color: #c33;
+            background-color: rgba(204, 51, 51, 0.2);
+            color: #ff6666;
             padding: 12px;
-            border-radius: 8px;
+            border: 1px solid #ff6666;
+            border-radius: 5px;
             font-size: 14px;
             display: none;
         }
@@ -113,7 +126,7 @@
         .loading {
             display: none;
             text-align: center;
-            color: #667eea;
+            color: darkorange;
             font-size: 14px;
         }
 

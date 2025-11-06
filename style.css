@@ -67,6 +67,14 @@ body, html {
     background-color: rgba(255, 69, 0, 1);
 }
 
+#close-menu-btn {
+    color: darkorange;
+    font-size: 28px;
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-right: 10px;
+}
+
 #side-menu-header {
     position: absolute;
     top: 10px;
