@@ -3,6 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex, nocache">
+    <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+    <meta name="bingbot" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+    <meta name="yandex" content="noindex, nofollow, noarchive">
+    <meta name="slurp" content="noindex, nofollow">
+    <meta name="duckduckbot" content="noindex, nofollow">
     <title>Interactive Map</title>
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -226,6 +232,13 @@
             </div>
         </div>
 
+        <!-- Краткая инструкция -->
+        <div class="menu-section">
+            <div class="menu-item instruction-item">
+                <label class="instruction-label" id="instruction-label">Информация о приложении</label>
+            </div>
+        </div>
+
     </div>
     
     <!-- Контейнер для графика профиля высоты -->
@@ -273,6 +286,32 @@
             <input type="number" id="point-lng-input" class="point-info-input" placeholder="Долгота" step="any">
             <button id="save-point-btn" class="point-info-btn">Сохранить</button>
             <button id="cancel-point-btn" class="point-info-btn cancel-btn">Отмена</button>
+        </div>
+    </div>
+
+    <!-- Модальное окно с инструкцией -->
+    <div id="instruction-modal" class="instruction-modal" style="display: none;">
+        <div class="instruction-modal-content">
+            <div class="instruction-modal-close" id="instruction-close-btn">&times;</div>
+            <div class="instruction-modal-text">
+                <p>
+                Привет, братья! Рад представить программу против хохла. <br><br>
+                Ничего сложного, все должно быть интуитивно понятно. <br><br>
+
+                Умеет строить профиль выстоты по заданному маршруту, добавлять точки с описаниями, измерять расстояние по карте. <br>
+                Есть возможность выгружать и загружать точки или маршруты с профилем высоты в CSV файл (открывается в обычном блокноте).<br><br>
+                Таким образом можно осуществлять обмен данными с другими пользователями<br>
+                
+                Из особенностей: <br>
+                - Данные по высотам уже скачаны и хранятся отдельно (а не подгружаются из интернета). <br>
+                Загружены данные по высотам для страны 404 и немного восточнее (условная зона начала построения маршрута).<br>
+                Это защищает от применения программы против нас самих, если она случайно попадет не в те руки. <br><br>
+
+                Если вместо карты вы видите белый экран - уменьшите масштаб (не для всех карт есть отображение на большом зуме). <br>
+
+                Для обратной связи, предложений и замечаний, пишите: bwxzaklg@strekozoid.anonaddy.me
+                </p>
+            </div>
         </div>
     </div>
 </body>

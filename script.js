@@ -391,6 +391,32 @@ function initMap() {
         });
     }
 
+    // Обработчик для модального окна инструкции
+    const instructionLabel = document.getElementById('instruction-label');
+    const instructionModal = document.getElementById('instruction-modal');
+    const instructionCloseBtn = document.getElementById('instruction-close-btn');
+
+    if (instructionLabel && instructionModal && instructionCloseBtn) {
+        // Открытие модального окна
+        instructionLabel.addEventListener('click', function(e) {
+            e.stopPropagation();
+            instructionModal.style.display = 'flex';
+        });
+
+        // Закрытие модального окна по клику на крестик
+        instructionCloseBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            instructionModal.style.display = 'none';
+        });
+
+        // Закрытие модального окна по клику вне его области
+        instructionModal.addEventListener('click', function(e) {
+            if (e.target === instructionModal) {
+                instructionModal.style.display = 'none';
+            }
+        });
+    }
+
     // Brightness control for base layer
     const brightnessSlider = document.getElementById('brightness-slider');
     brightnessSlider.addEventListener('input', function (e) {

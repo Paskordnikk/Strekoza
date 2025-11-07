@@ -120,6 +120,13 @@ app.add_middleware(
     allow_headers=["*"],   # Allows all headers
 )
 
+# Middleware для предотвращения индексации поисковыми системами
+@app.middleware("http")
+async def add_noindex_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["X-Robots-Tag"] = "noindex, nofollow, noarchive, nosnippet, noimageindex"
+    return response
+
 # Define the request body structure
 class RouteData(BaseModel):
     points: List[List[float]]  # A list of [lat, lng] pairs

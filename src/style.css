@@ -1066,6 +1066,11 @@ body, html {
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
+    color: darkorange;
+    display: block;
+    margin: 0;
+    font-family: sans-serif;
+    font-size: 14px;
 }
 
 .instruction-label:hover {
