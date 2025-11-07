@@ -177,16 +177,7 @@ def login(login_request: LoginRequest):
     # Получаем текущий пароль (может быть изменен через аргумент командной строки)
     current_password = get_site_password()
     
-    # Логирование для отладки (не показываем пароль полностью)
-    received_password_length = len(login_request.password) if login_request.password else 0
-    expected_password_length = len(current_password) if current_password else 0
-    print(f"[DEBUG] Login attempt: received password length={received_password_length}, expected length={expected_password_length}")
-    print(f"[DEBUG] Current password from env: {bool(os.getenv('SITE_PASSWORD'))}")
-    print(f"[DEBUG] Password match: {login_request.password == current_password}")
-    
     if login_request.password != current_password:
-        print(f"[DEBUG] Password mismatch. Received: '{login_request.password[:3] if len(login_request.password) > 3 else login_request.password}...' (length={received_password_length})")
-        print(f"[DEBUG] Expected password length: {expected_password_length}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Неверный пароль"
@@ -211,17 +202,13 @@ def get_elevation_profile(route_data: RouteData, token: dict = Depends(verify_to
         try:
             elevation = srtm_data.get_altitude(latitude=lat, longitude=lng)
             
-            # Log problematic elevations for debugging
             if elevation is None:
-                print(f"Warning: SRTM returned None for coordinates ({lat}, {lng})")
                 raw_elevations.append(None)
             elif elevation < 0:
-                print(f"Warning: Negative elevation {elevation} at ({lat}, {lng}) - likely SRTM void data (missing/corrupted)")
                 raw_elevations.append(None)
             else:
                 raw_elevations.append(elevation)
         except Exception as e:
-            print(f"Error: Could not get altitude for ({lat}, {lng}): {e}")
             raw_elevations.append(None)
     
     # Second pass: interpolate missing values with smart strategy
@@ -251,7 +238,6 @@ def get_elevation_profile(route_data: RouteData, token: dict = Depends(verify_to
                 # If both neighbors are very low (< 5m), use 0 (sea level)
                 if prev_val < 5 and next_val < 5:
                     elevations.append(0)
-                    print(f"  → Using sea level (0m) for void between low points ({prev_val}m, {next_val}m)")
                 else:
                     # Linear interpolation for normal terrain
                     weight = (i - prev_idx) / (next_idx - prev_idx)

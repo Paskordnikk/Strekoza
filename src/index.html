@@ -226,6 +226,13 @@
             </div>
         </div>
 
+        <!-- Краткая инструкция -->
+        <div class="menu-section">
+            <div class="menu-item instruction-item">
+                <label class="instruction-label" id="instruction-label">Краткая инструкция</label>
+            </div>
+        </div>
+
     </div>
     
     <!-- Контейнер для графика профиля высоты -->
@@ -273,6 +280,16 @@
             <input type="number" id="point-lng-input" class="point-info-input" placeholder="Долгота" step="any">
             <button id="save-point-btn" class="point-info-btn">Сохранить</button>
             <button id="cancel-point-btn" class="point-info-btn cancel-btn">Отмена</button>
+        </div>
+    </div>
+
+    <!-- Модальное окно с инструкцией -->
+    <div id="instruction-modal" class="instruction-modal" style="display: none;">
+        <div class="instruction-modal-content">
+            <div class="instruction-modal-close" id="instruction-close-btn">&times;</div>
+            <div class="instruction-modal-text">
+                <p>Это тестовый текст для краткой инструкции. Здесь будет размещена информация о том, как пользоваться приложением.</p>
+            </div>
         </div>
     </div>
 </body>

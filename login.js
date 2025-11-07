@@ -55,7 +55,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 passwordInput.focus();
             }
         } catch (error) {
-            console.error('Ошибка при входе:', error);
             showError('Ошибка подключения к серверу. Проверьте, что сервер запущен.');
         } finally {
             showLoading(false);
@@ -104,7 +103,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 window.location.href = 'index.html';
             }
         } catch (error) {
-            console.error('Ошибка проверки токена:', error);
             // При ошибке соединения оставляем пользователя на странице входа
         }
     }

@@ -46,7 +46,6 @@ async function checkAuthentication() {
         // Любой статус кроме 401 означает, что токен принят сервером
         return true;
     } catch (error) {
-        console.error('Ошибка проверки аутентификации:', error);
         // При ошибке соединения разрешаем доступ (может быть сервер недоступен)
         // Пользователь сможет увидеть ошибку при реальном запросе
         return true;
@@ -178,14 +177,11 @@ function initMap() {
     }
     
     measureDistanceBtn.addEventListener('click', function() {
-        console.log('Measure button clicked, current isMeasuring state:', isMeasuring);
-        
         if (!isMeasuring) {
             // Start measuring
             isMeasuring = true;
             measureDistanceBtn.classList.add('active');
             measureDistanceBtn.textContent = 'Остановить измерение';
-            console.log('Started measuring, button text changed to: Остановить измерение');
             
             // Clear previous measurements if any
             measurementPoints = [];
@@ -211,7 +207,6 @@ function initMap() {
             isMeasuring = false;
             measureDistanceBtn.classList.remove('active');
             measureDistanceBtn.textContent = 'Измерить расстояние';
-            console.log('Stopped measuring, button text changed to: Измерить расстояние');
             
             // Remove click event from map
             map.off('click', onMapClick);
@@ -1043,7 +1038,7 @@ function initMap() {
         let tg = window.Telegram.WebApp;
         tg.ready();
     } catch (e) {
-        console.error("Telegram WebApp is not available.", e);
+        // Telegram WebApp is not available
     }
     
 
@@ -2199,7 +2194,6 @@ function initMap() {
                             // If both neighbors are very low (< 5m), use 0 (sea level)
                             if (prevVal < 5 && nextVal < 5) {
                                 uniqueElevationData[i].elevation = 0;
-                                console.log(`Void data at ${uniqueElevationData[i].distance.toFixed(1)}km: using sea level (0m) between low points (${prevVal}m, ${nextVal}m)`);
                             } else {
                                 // Linear interpolation for normal terrain
                                 const weight = (i - prevIdx) / (nextIdx - prevIdx);
@@ -2241,7 +2235,6 @@ function initMap() {
             setupRouteToChartInteraction(uniqueElevationData);
 
         } catch (error) {
-            console.error('Failed to fetch elevation data:', error);
             chartContainer.innerHTML = `
                 <div class="loading-container">
                     <div class="error-message">Ошибка при загрузке данных о высоте.<br>Обратитесь к разработчику.</div>
@@ -2418,7 +2411,6 @@ function initMap() {
                 const parsedData = parseCsv(text);
                 await reconstructRouteFromData(parsedData);
             } catch (error) {
-                console.error("Ошибка при парсинге CSV:", error);
                 alert(`Не удалось прочитать файл. Убедитесь, что это корректный CSV-файл.\nДетали: ${error.message}`);
             }
         };
@@ -3002,7 +2994,6 @@ function initMap() {
                 
                 updateExportButtonVisibility();
             } catch (error) {
-                console.error('Ошибка при парсинге CSV:', error);
                 alert(`Не удалось прочитать файл. Убедитесь, что это корректный CSV-файл.\nДетали: ${error.message}`);
             }
         };
