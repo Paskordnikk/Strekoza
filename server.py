@@ -273,16 +273,31 @@ def get_elevation_profile(route_data: RouteData, token: dict = Depends(verify_to
 
 # Telegram Bot API Configuration
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_BOT_API_URL = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
+if TELEGRAM_BOT_TOKEN:
+    TELEGRAM_BOT_API_URL = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
+    print(f"[INFO] Telegram Bot Token установлен (первые 10 символов: {TELEGRAM_BOT_TOKEN[:10]}...)")
+else:
+    TELEGRAM_BOT_API_URL = ""
+    print("[WARNING] Telegram Bot Token не установлен. Выгрузка через бота будет недоступна.")
 
 @app.post("/api/send_file", tags=["telegram"])
 def send_file_via_bot(file_request: SendFileRequest, token: dict = Depends(verify_token)):
     """Отправляет файл пользователю через Telegram Bot API"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # Логируем запрос
+    print(f"[INFO] Получен запрос на отправку файла: filename={file_request.filename}, user_id={file_request.user_id}, content_length={len(file_request.content)}")
+    
     if not TELEGRAM_BOT_TOKEN:
+        error_msg = "Telegram Bot Token не настроен. Установите переменную окружения TELEGRAM_BOT_TOKEN."
+        print(f"[ERROR] {error_msg}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Telegram Bot Token не настроен. Установите переменную окружения TELEGRAM_BOT_TOKEN."
+            detail=error_msg
         )
+    
+    print(f"[INFO] Telegram Bot Token установлен (длина: {len(TELEGRAM_BOT_TOKEN)} символов)")
     
     try:
         # Создаем файл в памяти
@@ -290,8 +305,18 @@ def send_file_via_bot(file_request: SendFileRequest, token: dict = Depends(verif
         file_obj = io.BytesIO(file_content)
         file_obj.name = file_request.filename
         
+        print(f"[INFO] Файл создан в памяти: {len(file_content)} байт")
+        
         # Отправляем файл через Telegram Bot API
+        if not TELEGRAM_BOT_API_URL:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Telegram Bot API URL не настроен"
+            )
         url = f"{TELEGRAM_BOT_API_URL}/sendDocument"
+        print(f"[INFO] Отправка файла через Telegram Bot API: {url}")
+        print(f"[INFO] Chat ID: {file_request.user_id}")
+        
         files = {
             'document': (file_request.filename, file_obj, 'text/csv')
         }
@@ -301,25 +326,44 @@ def send_file_via_bot(file_request: SendFileRequest, token: dict = Depends(verif
         
         response = requests.post(url, files=files, data=data, timeout=30)
         
+        print(f"[INFO] Ответ от Telegram API: status={response.status_code}")
+        
         if response.status_code == 200:
+            print(f"[INFO] Файл успешно отправлен пользователю {file_request.user_id}")
             return {"success": True, "message": "Файл успешно отправлен"}
         else:
-            error_data = response.json() if response.text else {}
+            error_data = {}
+            try:
+                error_data = response.json() if response.text else {}
+            except:
+                error_data = {"description": response.text or f"Ошибка {response.status_code}"}
+            
             error_message = error_data.get('description', f'Ошибка {response.status_code}')
+            print(f"[ERROR] Ошибка отправки файла: {error_message}")
+            print(f"[ERROR] Полный ответ: {error_data}")
+            
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Не удалось отправить файл через бота: {error_message}"
             )
             
     except requests.exceptions.RequestException as e:
+        error_msg = f"Ошибка при отправке файла: {str(e)}"
+        print(f"[ERROR] {error_msg}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Ошибка при отправке файла: {str(e)}"
+            detail=error_msg
         )
+    except HTTPException:
+        raise
     except Exception as e:
+        error_msg = f"Неожиданная ошибка: {str(e)}"
+        print(f"[ERROR] {error_msg}")
+        import traceback
+        print(f"[ERROR] Трассировка: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Неожиданная ошибка: {str(e)}"
+            detail=error_msg
         )
 
 # Логирование зарегистрированных эндпоинтов при загрузке модуля

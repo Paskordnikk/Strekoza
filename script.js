@@ -2279,15 +2279,51 @@ function initMap() {
         }
     }
     
-    // Получение user ID из Telegram Web App
+    // Получение user ID из Telegram Web App (несколько способов)
     const getTelegramUserId = () => {
         try {
-            if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe) {
-                const user = window.Telegram.WebApp.initDataUnsafe.user;
-                if (user && user.id) {
-                    return user.id;
+            const tg = window.Telegram?.WebApp;
+            if (!tg) {
+                console.log('Telegram WebApp не найден');
+                return null;
+            }
+            
+            // Способ 1: через initDataUnsafe.user
+            if (tg.initDataUnsafe?.user?.id) {
+                const userId = tg.initDataUnsafe.user.id;
+                console.log('User ID получен через initDataUnsafe:', userId);
+                return userId;
+            }
+            
+            // Способ 2: через initData (нужно распарсить)
+            if (tg.initData) {
+                try {
+                    const params = new URLSearchParams(tg.initData);
+                    const userParam = params.get('user');
+                    if (userParam) {
+                        const user = JSON.parse(decodeURIComponent(userParam));
+                        if (user.id) {
+                            console.log('User ID получен через initData:', user.id);
+                            return user.id;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Не удалось распарсить initData:', e);
                 }
             }
+            
+            // Способ 3: через version (для старых версий API)
+            if (tg.version && tg.platform) {
+                console.warn('Telegram WebApp найден, но user ID недоступен. Версия:', tg.version);
+            }
+            
+            console.error('Не удалось получить user ID из Telegram WebApp');
+            console.log('Доступные данные:', {
+                hasInitDataUnsafe: !!tg.initDataUnsafe,
+                hasInitData: !!tg.initData,
+                initDataUnsafe: tg.initDataUnsafe,
+                version: tg.version
+            });
         } catch (e) {
             console.error('Ошибка при получении user ID:', e);
         }
@@ -2304,10 +2340,15 @@ function initMap() {
         
         if (isTelegram) {
             // Для Telegram Web App отправляем файл через бота
+            console.log('Обнаружен Telegram Web App, пытаемся получить user ID...');
             const userId = getTelegramUserId();
+            console.log('Полученный user ID:', userId);
+            
             if (userId) {
+                console.log('Отправка файла через бота для user ID:', userId);
                 await sendFileViaBot(content, filename, userId);
             } else {
+                console.warn('Не удалось получить user ID, показываем модальное окно для скачивания');
                 // Если не удалось получить user ID, показываем модальное окно
                 showDownloadModal(url, filename, content, mimeType);
             }
@@ -2319,43 +2360,72 @@ function initMap() {
     
     // Отправка файла через Telegram Bot API
     async function sendFileViaBot(content, filename, userId) {
+        let loadingModal = null;
         try {
+            console.log('Начало отправки файла через бота:', { filename, userId, contentLength: content.length });
+            
             // Показываем индикатор загрузки
-            const loadingModal = showLoadingModal('Отправка файла через бота...');
+            loadingModal = showLoadingModal('Отправка файла через бота...');
+            
+            const requestBody = {
+                filename: filename,
+                content: content,
+                user_id: userId
+            };
+            
+            console.log('Отправка запроса на:', `${API_URL}/api/send_file`);
+            console.log('Тело запроса:', { ...requestBody, content: `[${content.length} символов]` });
+            
+            const authHeaders = getAuthHeaders();
+            console.log('Заголовки авторизации:', { hasToken: !!authHeaders.Authorization });
             
             const response = await fetch(`${API_URL}/api/send_file`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...getAuthHeaders()
+                    ...authHeaders
                 },
-                body: JSON.stringify({
-                    filename: filename,
-                    content: content,
-                    user_id: userId
-                })
+                body: JSON.stringify(requestBody)
             });
             
-            const data = await response.json();
+            console.log('Ответ сервера:', { status: response.status, statusText: response.statusText });
+            
+            let data;
+            try {
+                data = await response.json();
+                console.log('Данные ответа:', data);
+            } catch (e) {
+                const text = await response.text();
+                console.error('Не удалось распарсить JSON ответ:', text);
+                throw new Error(`Ошибка сервера: ${response.status} ${response.statusText}`);
+            }
             
             // Убираем индикатор загрузки
-            loadingModal.remove();
+            if (loadingModal) {
+                loadingModal.remove();
+                loadingModal = null;
+            }
             
             if (response.ok) {
                 // Показываем сообщение об успехе
                 showSuccessModal('Файл успешно отправлен через бота! Проверьте чат с ботом @Streko_Zza_bot');
             } else {
-                // Показываем ошибку
-                showErrorModal(data.detail || 'Не удалось отправить файл через бота');
+                // Показываем ошибку с деталями
+                const errorMessage = data.detail || data.message || `Ошибка ${response.status}: ${response.statusText}`;
+                console.error('Ошибка отправки файла:', errorMessage);
+                showErrorModal(`Не удалось отправить файл: ${errorMessage}`);
             }
         } catch (error) {
-            console.error('Ошибка при отправке файла:', error);
+            console.error('Исключение при отправке файла:', error);
+            console.error('Стек ошибки:', error.stack);
+            
             // Убираем индикатор загрузки если он есть
-            const loadingModal = document.getElementById('loading-modal');
             if (loadingModal) {
                 loadingModal.remove();
             }
-            showErrorModal('Ошибка при отправке файла. Проверьте подключение к интернету.');
+            
+            const errorMessage = error.message || 'Неизвестная ошибка';
+            showErrorModal(`Ошибка при отправке файла: ${errorMessage}. Проверьте подключение к интернету и логи сервера.`);
         }
     }
     
