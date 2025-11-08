@@ -17,7 +17,7 @@ import telegram
 # --- CONFIGURATION ---
 
 # WARNING: Do not hardcode tokens in production. Use environment variables.
-BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8007666541:AAEoLdA0VxHOREXh1nq6KXaDdIkl8JytTEQ")
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
 
 # Set the environment variable for the SRTM data directory
 os.environ['SRTM3_DIR'] = 'strm'

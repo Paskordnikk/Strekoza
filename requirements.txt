@@ -3,7 +3,7 @@ uvicorn
 python-jose[cryptography]
 passlib[bcrypt]
 python-multipart
-gdal
+gdal==3.6.4
 numpy
 geojson
 hgt-reader
