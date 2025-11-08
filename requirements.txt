@@ -5,8 +5,5 @@ passlib[bcrypt]
 python-multipart
 gdal==3.6.4
 numpy==1.26.4
-geojson
-hgt-reader
-scipy
 python-telegram-bot
 requests
