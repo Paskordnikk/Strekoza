@@ -1060,6 +1060,16 @@ function initMap() {
 
 
 
+    // Проверка, открыто ли приложение в Telegram Web App
+    const isTelegramWebApp = () => {
+        try {
+            return typeof window.Telegram !== 'undefined' && 
+                   typeof window.Telegram.WebApp !== 'undefined';
+        } catch (e) {
+            return false;
+        }
+    };
+
     try {
         let tg = window.Telegram.WebApp;
         tg.ready();
@@ -2269,33 +2279,178 @@ function initMap() {
         }
     }
     
-    function exportRouteToCSV() {
-        if (currentRouteData.length === 0) {
-            alert("Нет данных для экспорта.");
-            return;
-        }
-
-        const headers = ["широта", "долгота", "высота_м", "расстояние_км", "is_waypoint"];
-        // Export all points from elevation profile with current step
-        const dataToExport = currentRouteData;
-
-        const rows = dataToExport.map(p => 
-            [
-                p.lat.toFixed(6), 
-                p.lng.toFixed(6), 
-                p.elevation.toFixed(1), 
-                p.distance.toFixed(3),
-                p.isWaypoint ? '1' : '0' // Add the waypoint flag
-            ].join(',')
-        );
-
-        let csvContent = headers.join(",") + "\n" + rows.join("\n");
-
-        const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    // Универсальная функция для скачивания файла (работает в обычном браузере и Telegram Web App)
+    function downloadFile(content, filename, mimeType = 'text/csv;charset=utf-8;') {
+        const blob = new Blob(["\uFEFF" + content], { type: mimeType });
         const url = URL.createObjectURL(blob);
+        
+        // Если открыто в Telegram Web App, используем альтернативный метод
+        if (isTelegramWebApp()) {
+            // Пробуем использовать Web Share API, если доступно
+            if (navigator.share && navigator.canShare) {
+                const file = new File([blob], filename, { type: mimeType });
+                if (navigator.canShare({ files: [file] })) {
+                    navigator.share({
+                        files: [file],
+                        title: filename
+                    }).then(() => {
+                        URL.revokeObjectURL(url);
+                    }).catch(() => {
+                        // Если share не сработал, используем модальное окно
+                        showDownloadModal(url, filename);
+                    });
+                    return;
+                }
+            }
+            
+            // Fallback для Telegram Web App: показываем модальное окно с кнопкой
+            showDownloadModal(url, filename);
+        } else {
+            // Стандартный метод для обычного браузера
+            downloadFileFallback(url, filename);
+        }
+    }
+    
+    // Модальное окно для скачивания файла в Telegram Web App
+    function showDownloadModal(url, filename) {
+        // Удаляем предыдущее модальное окно, если оно есть
+        const existingModal = document.getElementById('download-modal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        const modal = document.createElement('div');
+        modal.id = 'download-modal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `;
+        
+        const modalContent = document.createElement('div');
+        modalContent.style.cssText = `
+            background: rgba(50, 51, 61, 0.95);
+            border: 2px solid darkorange;
+            border-radius: 10px;
+            padding: 20px;
+            max-width: 90%;
+            text-align: center;
+        `;
+        
+        const title = document.createElement('h3');
+        title.textContent = 'Скачать файл';
+        title.style.cssText = `
+            color: darkorange;
+            margin: 0 0 15px 0;
+            font-family: sans-serif;
+            font-size: 18px;
+        `;
+        
+        const fileName = document.createElement('p');
+        fileName.textContent = filename;
+        fileName.style.cssText = `
+            color: white;
+            margin: 0 0 20px 0;
+            font-family: sans-serif;
+            font-size: 14px;
+            word-break: break-all;
+        `;
+        
+        // Создаем настоящую ссылку для скачивания (работает в Telegram Web App)
+        const downloadLink = document.createElement('a');
+        downloadLink.href = url;
+        downloadLink.download = filename;
+        downloadLink.textContent = 'Скачать';
+        downloadLink.style.cssText = `
+            background: darkorange;
+            color: #32333d;
+            border: 1px solid darkorange;
+            border-radius: 5px;
+            padding: 10px 20px;
+            font-family: sans-serif;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-right: 10px;
+            touch-action: manipulation;
+            text-decoration: none;
+            display: inline-block;
+        `;
+        
+        // Обработчик для закрытия модального окна после скачивания
+        downloadLink.addEventListener('click', () => {
+            setTimeout(() => {
+                modal.remove();
+                URL.revokeObjectURL(url);
+            }, 500);
+        });
+        
+        downloadLink.addEventListener('touchend', (e) => {
+            e.stopPropagation();
+            setTimeout(() => {
+                modal.remove();
+                URL.revokeObjectURL(url);
+            }, 500);
+        });
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = 'Закрыть';
+        closeBtn.style.cssText = `
+            background: #32333d;
+            color: darkorange;
+            border: 1px solid darkorange;
+            border-radius: 5px;
+            padding: 10px 20px;
+            font-family: sans-serif;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            touch-action: manipulation;
+        `;
+        
+        const buttonContainer = document.createElement('div');
+        buttonContainer.style.cssText = 'display: flex; justify-content: center;';
+        buttonContainer.appendChild(downloadLink);
+        buttonContainer.appendChild(closeBtn);
+        
+        modalContent.appendChild(title);
+        modalContent.appendChild(fileName);
+        modalContent.appendChild(buttonContainer);
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+        
+        // Обработчик для закрытия
+        const handleClose = () => {
+            modal.remove();
+            URL.revokeObjectURL(url);
+        };
+        
+        closeBtn.addEventListener('click', handleClose);
+        closeBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            handleClose();
+        });
+        
+        // Закрытие при клике на фон
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                handleClose();
+            }
+        });
+    }
+    
+    // Вспомогательная функция для скачивания файла (для обычного браузера)
+    function downloadFileFallback(url, filename) {
         const link = document.createElement("a");
         link.setAttribute("href", url);
-        link.setAttribute("download", `route_profile_step${currentSampleStep}m.csv`);
+        link.setAttribute("download", filename);
         link.style.display = 'none';
         document.body.appendChild(link);
         
@@ -2319,6 +2474,32 @@ function initMap() {
                 URL.revokeObjectURL(url);
             }, 100);
         }, 0);
+    }
+
+    function exportRouteToCSV() {
+        if (currentRouteData.length === 0) {
+            alert("Нет данных для экспорта.");
+            return;
+        }
+
+        const headers = ["широта", "долгота", "высота_м", "расстояние_км", "is_waypoint"];
+        // Export all points from elevation profile with current step
+        const dataToExport = currentRouteData;
+
+        const rows = dataToExport.map(p => 
+            [
+                p.lat.toFixed(6), 
+                p.lng.toFixed(6), 
+                p.elevation.toFixed(1), 
+                p.distance.toFixed(3),
+                p.isWaypoint ? '1' : '0' // Add the waypoint flag
+            ].join(',')
+        );
+
+        let csvContent = headers.join(",") + "\n" + rows.join("\n");
+        const filename = `route_profile_step${currentSampleStep}m.csv`;
+        
+        downloadFile(csvContent, filename);
     }
 
     function resetRouteBuilding() {
@@ -3030,36 +3211,10 @@ function initMap() {
         });
         
         let csvContent = headers.join(',') + '\n' + rows.join('\n');
+        const filename = 'points.csv';
         
-        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute('href', url);
-        link.setAttribute('download', 'points.csv');
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        
-        // Используем setTimeout для обеспечения работы на мобильных устройствах
-        setTimeout(() => {
-            try {
-                link.click();
-            } catch (e) {
-                // Fallback для старых браузеров
-                const clickEvent = new MouseEvent('click', {
-                    view: window,
-                    bubbles: true,
-                    cancelable: true
-                });
-                link.dispatchEvent(clickEvent);
-            }
-            
-            // Очистка после небольшой задержки
-            setTimeout(() => {
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
-                isExportingPoints = false;
-            }, 100);
-        }, 0);
+        downloadFile(csvContent, filename);
+        isExportingPoints = false;
     };
     
     exportPointsBtn.addEventListener('click', handleExportPoints);
