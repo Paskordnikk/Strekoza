@@ -12,6 +12,8 @@ from passlib.context import CryptContext
 from srtm import Srtm3HeightMapCollection
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+import requests
+import io
 
 # Set the environment variable for the SRTM data directory
 # This must be done before creating the collection object.
@@ -133,6 +135,11 @@ class RouteData(BaseModel):
 
 class LoginRequest(BaseModel):
     password: str
+
+class SendFileRequest(BaseModel):
+    filename: str
+    content: str  # CSV content as string
+    user_id: int  # Telegram user ID
 
 # Create an instance of the Srtm3HeightMapCollection
 # It will use the SRTM3_DIR environment variable to find the .hgt files.
@@ -263,6 +270,57 @@ def get_elevation_profile(route_data: RouteData, token: dict = Depends(verify_to
             elevations.append(raw_elevations[i])
             
     return {"elevations": elevations}
+
+# Telegram Bot API Configuration
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_BOT_API_URL = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
+
+@app.post("/api/send_file", tags=["telegram"])
+def send_file_via_bot(file_request: SendFileRequest, token: dict = Depends(verify_token)):
+    """Отправляет файл пользователю через Telegram Bot API"""
+    if not TELEGRAM_BOT_TOKEN:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Telegram Bot Token не настроен. Установите переменную окружения TELEGRAM_BOT_TOKEN."
+        )
+    
+    try:
+        # Создаем файл в памяти
+        file_content = file_request.content.encode('utf-8-sig')  # UTF-8 with BOM
+        file_obj = io.BytesIO(file_content)
+        file_obj.name = file_request.filename
+        
+        # Отправляем файл через Telegram Bot API
+        url = f"{TELEGRAM_BOT_API_URL}/sendDocument"
+        files = {
+            'document': (file_request.filename, file_obj, 'text/csv')
+        }
+        data = {
+            'chat_id': file_request.user_id
+        }
+        
+        response = requests.post(url, files=files, data=data, timeout=30)
+        
+        if response.status_code == 200:
+            return {"success": True, "message": "Файл успешно отправлен"}
+        else:
+            error_data = response.json() if response.text else {}
+            error_message = error_data.get('description', f'Ошибка {response.status_code}')
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Не удалось отправить файл через бота: {error_message}"
+            )
+            
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Ошибка при отправке файла: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Неожиданная ошибка: {str(e)}"
+        )
 
 # Логирование зарегистрированных эндпоинтов при загрузке модуля
 print(f"[INFO] FastAPI app created. Registered routes:")

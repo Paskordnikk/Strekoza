@@ -2279,8 +2279,23 @@ function initMap() {
         }
     }
     
+    // Получение user ID из Telegram Web App
+    const getTelegramUserId = () => {
+        try {
+            if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe) {
+                const user = window.Telegram.WebApp.initDataUnsafe.user;
+                if (user && user.id) {
+                    return user.id;
+                }
+            }
+        } catch (e) {
+            console.error('Ошибка при получении user ID:', e);
+        }
+        return null;
+    };
+
     // Универсальная функция для скачивания файла (работает в обычном браузере и Telegram Web App)
-    function downloadFile(content, filename, mimeType = 'text/csv;charset=utf-8;') {
+    async function downloadFile(content, filename, mimeType = 'text/csv;charset=utf-8;') {
         const blob = new Blob(["\uFEFF" + content], { type: mimeType });
         const url = URL.createObjectURL(blob);
         
@@ -2288,12 +2303,257 @@ function initMap() {
         const isTelegram = isTelegramWebApp();
         
         if (isTelegram) {
-            // Для Telegram Web App используем модальное окно с прямой ссылкой
-            showDownloadModal(url, filename, content, mimeType);
+            // Для Telegram Web App отправляем файл через бота
+            const userId = getTelegramUserId();
+            if (userId) {
+                await sendFileViaBot(content, filename, userId);
+            } else {
+                // Если не удалось получить user ID, показываем модальное окно
+                showDownloadModal(url, filename, content, mimeType);
+            }
         } else {
             // Стандартный метод для обычного браузера
             downloadFileFallback(url, filename);
         }
+    }
+    
+    // Отправка файла через Telegram Bot API
+    async function sendFileViaBot(content, filename, userId) {
+        try {
+            // Показываем индикатор загрузки
+            const loadingModal = showLoadingModal('Отправка файла через бота...');
+            
+            const response = await fetch(`${API_URL}/api/send_file`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...getAuthHeaders()
+                },
+                body: JSON.stringify({
+                    filename: filename,
+                    content: content,
+                    user_id: userId
+                })
+            });
+            
+            const data = await response.json();
+            
+            // Убираем индикатор загрузки
+            loadingModal.remove();
+            
+            if (response.ok) {
+                // Показываем сообщение об успехе
+                showSuccessModal('Файл успешно отправлен через бота! Проверьте чат с ботом @Streko_Zza_bot');
+            } else {
+                // Показываем ошибку
+                showErrorModal(data.detail || 'Не удалось отправить файл через бота');
+            }
+        } catch (error) {
+            console.error('Ошибка при отправке файла:', error);
+            // Убираем индикатор загрузки если он есть
+            const loadingModal = document.getElementById('loading-modal');
+            if (loadingModal) {
+                loadingModal.remove();
+            }
+            showErrorModal('Ошибка при отправке файла. Проверьте подключение к интернету.');
+        }
+    }
+    
+    // Модальное окно с индикатором загрузки
+    function showLoadingModal(message) {
+        const existingModal = document.getElementById('loading-modal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        const modal = document.createElement('div');
+        modal.id = 'loading-modal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 10001;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `;
+        
+        const modalContent = document.createElement('div');
+        modalContent.style.cssText = `
+            background: rgba(50, 51, 61, 0.95);
+            border: 2px solid darkorange;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            min-width: 200px;
+        `;
+        
+        const messageEl = document.createElement('p');
+        messageEl.textContent = message;
+        messageEl.style.cssText = `
+            color: darkorange;
+            margin: 0 0 15px 0;
+            font-family: sans-serif;
+            font-size: 16px;
+        `;
+        
+        const spinner = document.createElement('div');
+        spinner.style.cssText = `
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(50, 51, 61, 0.3);
+            border-top: 4px solid darkorange;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        `;
+        
+        // Добавляем CSS анимацию если её еще нет
+        if (!document.getElementById('spinner-style')) {
+            const style = document.createElement('style');
+            style.id = 'spinner-style';
+            style.textContent = `
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        modalContent.appendChild(messageEl);
+        modalContent.appendChild(spinner);
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+        
+        return modal;
+    }
+    
+    // Модальное окно с сообщением об успехе
+    function showSuccessModal(message) {
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 10001;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `;
+        
+        const modalContent = document.createElement('div');
+        modalContent.style.cssText = `
+            background: rgba(50, 51, 61, 0.95);
+            border: 2px solid darkorange;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            max-width: 90%;
+        `;
+        
+        const messageEl = document.createElement('p');
+        messageEl.textContent = message;
+        messageEl.style.cssText = `
+            color: darkorange;
+            margin: 0 0 20px 0;
+            font-family: sans-serif;
+            font-size: 16px;
+        `;
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = 'ОК';
+        closeBtn.style.cssText = `
+            background: darkorange;
+            color: #32333d;
+            border: 1px solid darkorange;
+            border-radius: 5px;
+            padding: 10px 20px;
+            font-family: sans-serif;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            touch-action: manipulation;
+        `;
+        
+        closeBtn.addEventListener('click', () => modal.remove());
+        closeBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            modal.remove();
+        });
+        
+        modalContent.appendChild(messageEl);
+        modalContent.appendChild(closeBtn);
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+    }
+    
+    // Модальное окно с сообщением об ошибке
+    function showErrorModal(message) {
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 10001;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `;
+        
+        const modalContent = document.createElement('div');
+        modalContent.style.cssText = `
+            background: rgba(50, 51, 61, 0.95);
+            border: 2px solid #ff4444;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            max-width: 90%;
+        `;
+        
+        const messageEl = document.createElement('p');
+        messageEl.textContent = message;
+        messageEl.style.cssText = `
+            color: #ff4444;
+            margin: 0 0 20px 0;
+            font-family: sans-serif;
+            font-size: 16px;
+        `;
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = 'ОК';
+        closeBtn.style.cssText = `
+            background: #32333d;
+            color: #ff4444;
+            border: 1px solid #ff4444;
+            border-radius: 5px;
+            padding: 10px 20px;
+            font-family: sans-serif;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            touch-action: manipulation;
+        `;
+        
+        closeBtn.addEventListener('click', () => modal.remove());
+        closeBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            modal.remove();
+        });
+        
+        modalContent.appendChild(messageEl);
+        modalContent.appendChild(closeBtn);
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
     }
     
     // Модальное окно для скачивания файла в Telegram Web App
@@ -2538,7 +2798,7 @@ function initMap() {
         }, 0);
     }
 
-    function exportRouteToCSV() {
+    async function exportRouteToCSV() {
         if (currentRouteData.length === 0) {
             alert("Нет данных для экспорта.");
             return;
@@ -2561,7 +2821,7 @@ function initMap() {
         let csvContent = headers.join(",") + "\n" + rows.join("\n");
         const filename = `route_profile_step${currentSampleStep}m.csv`;
         
-        downloadFile(csvContent, filename);
+        await downloadFile(csvContent, filename);
     }
 
     function resetRouteBuilding() {
@@ -2675,7 +2935,7 @@ function initMap() {
     
     // Обработка клика для выгрузки маршрута (поддержка мобильных устройств)
     let isExportingRoute = false;
-    const handleExportRoute = (event) => {
+    const handleExportRoute = async (event) => {
         if (isExportingRoute) return;
         isExportingRoute = true;
         
@@ -2684,7 +2944,7 @@ function initMap() {
             event.stopPropagation();
         }
         
-        exportRouteToCSV();
+        await exportRouteToCSV();
         
         // Сброс флага после небольшой задержки для предотвращения двойного вызова
         setTimeout(() => {
@@ -3238,7 +3498,7 @@ function initMap() {
     
     // Handle export points button (с поддержкой мобильных устройств)
     let isExportingPoints = false;
-    const handleExportPoints = function(event) {
+    const handleExportPoints = async function(event) {
         if (isExportingPoints) return;
         isExportingPoints = true;
         
@@ -3275,7 +3535,7 @@ function initMap() {
         let csvContent = headers.join(',') + '\n' + rows.join('\n');
         const filename = 'points.csv';
         
-        downloadFile(csvContent, filename);
+        await downloadFile(csvContent, filename);
         isExportingPoints = false;
     };
     
