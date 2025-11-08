@@ -1,8 +1,12 @@
 fastapi
-uvicorn[standard]
-python-srtm
-numpy
-gunicorn
+uvicorn
 python-jose[cryptography]
 passlib[bcrypt]
 python-multipart
+gdal
+numpy
+geojson
+hgt-reader
+scipy
+python-telegram-bot
+requests

@@ -2,167 +2,52 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex, nocache">
-    <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
-    <meta name="bingbot" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
-    <meta name="yandex" content="noindex, nofollow, noarchive">
-    <meta name="slurp" content="noindex, nofollow">
-    <meta name="duckduckbot" content="noindex, nofollow">
-    <title>Вход в систему</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Аутентификация</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --tg-theme-bg-color: #212121;
+            --tg-theme-text-color: #ffffff;
+            --tg-theme-hint-color: #aaaaaa;
+            --tg-theme-link-color: #8774e1;
+            --tg-theme-button-color: #8774e1;
+            --tg-theme-button-text-color: #ffffff;
+            --tg-theme-secondary-bg-color: #181818;
         }
-
         body {
-            font-family: sans-serif;
-            background-color: #32333d;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
+            text-align: center;
+            margin: 0;
+        }
+        .container {
             padding: 20px;
         }
-
-        .login-container {
-            background-color: rgba(50, 51, 61, 0.95);
-            border: 1px solid darkorange;
-            border-radius: 10px;
-            padding: 40px;
-            width: 100%;
-            max-width: 400px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        .status-message {
+            font-size: 18px;
+            color: var(--tg-theme-hint-color);
         }
-
-        .login-title {
-            text-align: center;
-            color: darkorange;
-            margin-bottom: 30px;
-            font-size: 28px;
-            font-weight: 600;
-        }
-
-        .login-form {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .form-label {
-            color: darkorange;
-            font-size: 14px;
-            font-weight: 500;
-        }
-
-        .form-input {
-            padding: 12px;
-            background-color: #32333d;
-            color: white;
-            border: 1px solid darkorange;
-            border-radius: 5px;
-            font-size: 16px;
-            font-family: sans-serif;
-            transition: border-color 0.3s;
-        }
-
-        .form-input::placeholder {
-            color: rgba(255, 255, 255, 0.5);
-        }
-
-        .form-input:focus {
-            outline: none;
-            border-color: #ffaa33;
-        }
-
-        .login-button {
-            padding: 12px;
-            background-color: rgba(50, 51, 61, 0.85);
-            color: darkorange;
-            border: 1px solid darkorange;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            font-family: sans-serif;
-            cursor: pointer;
-            transition: background-color 0.2s, color 0.2s, border-color 0.2s;
-        }
-
-        .login-button:hover {
-            background-color: darkorange;
-            color: #32333d;
-            border-color: #32333d;
-        }
-
-        .login-button:active {
-            transform: scale(0.98);
-        }
-
-        .login-button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            background-color: rgba(50, 51, 61, 0.85);
-            color: darkorange;
-            border-color: darkorange;
-        }
-
         .error-message {
-            background-color: rgba(204, 51, 51, 0.2);
             color: #ff6666;
-            padding: 12px;
-            border: 1px solid #ff6666;
-            border-radius: 5px;
-            font-size: 14px;
-            display: none;
-        }
-
-        .error-message.show {
-            display: block;
-        }
-
-        .loading {
-            display: none;
-            text-align: center;
-            color: darkorange;
-            font-size: 14px;
-        }
-
-        .loading.show {
-            display: block;
+            margin-top: 15px;
+            font-size: 16px;
         }
     </style>
 </head>
 <body>
-    <div class="login-container">
-        <h1 class="login-title">Вход в систему</h1>
-        <form id="login-form" class="login-form">
-            <div class="error-message" id="error-message"></div>
-            <div class="loading" id="loading">Проверка пароля...</div>
-            <div class="form-group">
-                <label for="password" class="form-label">Пароль</label>
-                <input 
-                    type="password" 
-                    id="password" 
-                    class="form-input" 
-                    placeholder="Введите пароль" 
-                    required
-                    autocomplete="current-password"
-                >
-            </div>
-            <button type="submit" class="login-button" id="login-button">Войти</button>
-        </form>
+    <div class="container">
+        <p id="status-message" class="status-message">Аутентификация через Telegram...</p>
+        <p id="error-message" class="error-message" style="display: none;"></p>
     </div>
 
     <script src="login.js"></script>
 </body>
 </html>
-

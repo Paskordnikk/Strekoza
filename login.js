@@ -3,108 +3,91 @@ const API_URL = window.location.hostname === 'localhost' || window.location.host
     ? 'http://127.0.0.1:8000' 
     : 'https://strekoza-ylfm.onrender.com';
 
-document.addEventListener('DOMContentLoaded', function() {
-    const loginForm = document.getElementById('login-form');
-    const passwordInput = document.getElementById('password');
+function showError(message) {
     const errorMessage = document.getElementById('error-message');
-    const loading = document.getElementById('loading');
-    const loginButton = document.getElementById('login-button');
-
-    // Проверяем, есть ли уже токен
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-        // Если токен есть, проверяем его валидность
-        verifyToken(token);
+    const statusMessage = document.getElementById('status-message');
+    if (errorMessage) {
+        errorMessage.textContent = `Ошибка: ${message}`;
+        errorMessage.style.display = 'block';
     }
+    if (statusMessage) {
+        statusMessage.style.display = 'none';
+    }
+}
 
-    loginForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
+function setStatus(message) {
+    const statusMessage = document.getElementById('status-message');
+    if (statusMessage) {
+        statusMessage.textContent = message;
+    }
+}
+
+async function authenticate() {
+    try {
+        const tg = window.Telegram.WebApp;
+        tg.ready();
         
-        const password = passwordInput.value.trim();
+        setStatus('Проверка данных Telegram...');
         
-        if (!password) {
-            showError('Введите пароль');
+        // Данные для аутентификации
+        const initData = tg.initData;
+
+        if (!initData) {
+            showError('Не удалось получить данные Telegram. Убедитесь, что приложение запущено через Telegram.');
+            tg.close();
             return;
         }
 
-        // Показываем загрузку
-        showLoading(true);
-        hideError();
-        loginButton.disabled = true;
+        setStatus('Отправка данных на сервер...');
+        const response = await fetch(`${API_URL}/api/auth_telegram`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ initData: initData })
+        });
 
-        try {
-            const response = await fetch(`${API_URL}/api/login`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ password: password })
+        const data = await response.json();
+
+        if (response.ok) {
+            setStatus('Сохранение сессии...');
+            // Сохраняем токен в CloudStorage
+            tg.CloudStorage.setItem('auth_token', data.access_token, (error, success) => {
+                if (success) {
+                    setStatus('Вход выполнен. Перенаправление...');
+                    window.location.href = 'index.html';
+                } else {
+                    showError('Не удалось сохранить сессию в облако Telegram. Попробуйте перезапустить приложение.');
+                }
             });
+        } else {
+            showError(data.detail || 'Не удалось войти. Сервер отклонил запрос.');
+            tg.close();
+        }
+    } catch (error) {
+        console.error('Authentication error:', error);
+        showError('Критическая ошибка подключения к серверу. Попробуйте позже.');
+        if (window.Telegram.WebApp) {
+            window.Telegram.WebApp.close();
+        }
+    }
+}
 
-            const data = await response.json();
-
-            if (response.ok) {
-                // Сохраняем токен
-                localStorage.setItem('auth_token', data.access_token);
-                
-                // Перенаправляем на главную страницу
-                window.location.href = 'index.html';
-            } else {
-                showError(data.detail || 'Неверный пароль');
-                passwordInput.value = '';
-                passwordInput.focus();
-            }
-        } catch (error) {
-            showError('Ошибка подключения к серверу. Проверьте, что сервер запущен.');
-        } finally {
-            showLoading(false);
-            loginButton.disabled = false;
+// Проверяем, есть ли уже токен в облаке
+try {
+    window.Telegram.WebApp.ready();
+    window.Telegram.WebApp.CloudStorage.getItem('auth_token', (error, value) => {
+        if (value) {
+            // Если токен есть, можно сразу перенаправить,
+            // а основное приложение проверит его валидность.
+            setStatus('Сессия найдена. Перенаправление...');
+            window.location.href = 'index.html';
+        } else {
+            // Если токена нет, начинаем процесс аутентификации
+            authenticate();
         }
     });
-
-    function showError(message) {
-        errorMessage.textContent = message;
-        errorMessage.classList.add('show');
-    }
-
-    function hideError() {
-        errorMessage.classList.remove('show');
-    }
-
-    function showLoading(show) {
-        if (show) {
-            loading.classList.add('show');
-        } else {
-            loading.classList.remove('show');
-        }
-    }
-
-    async function verifyToken(token) {
-        try {
-            // Пытаемся использовать токен для запроса к защищенному эндпоинту
-            // Если токен валидный, перенаправляем на главную страницу
-            const response = await fetch(`${API_URL}/api/get_elevation`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ points: [] })
-            });
-
-            if (response.status === 401) {
-                // Токен невалидный, удаляем его
-                localStorage.removeItem('auth_token');
-                return;
-            }
-
-            // Если запрос прошел (даже если пустой), токен валидный
-            if (response.ok || response.status === 422) {
-                window.location.href = 'index.html';
-            }
-        } catch (error) {
-            // При ошибке соединения оставляем пользователя на странице входа
-        }
-    }
-});
-
+} catch (e) {
+    // Если Telegram Web App не доступен, показываем ошибку
+    showError('Не удалось инициализировать Telegram Web App. Откройте приложение через Telegram.');
+}
