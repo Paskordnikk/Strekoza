@@ -2269,36 +2269,104 @@ function initMap() {
         }
     }
     
-    function exportRouteToCSV() {
-        if (currentRouteData.length === 0) {
-            alert("Нет данных для экспорта.");
-            return;
+    async function sendFileToBot(chat_id, file_content, file_name) {
+        const response = await fetch(`${API_URL}/api/export_file`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                chat_id: chat_id,
+                file_content: file_content,
+                file_name: file_name
+            })
+        });
+    
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Не удалось отправить файл.');
         }
+    
+        alert('Файл успешно отправлен в ваш чат Telegram!');
+    }
 
-        const headers = ["широта", "долгота", "высота_м", "расстояние_км", "is_waypoint"];
-        // Export all points from elevation profile with current step
-        const dataToExport = currentRouteData;
-
-        const rows = dataToExport.map(p => 
-            [
-                p.lat.toFixed(6), 
-                p.lng.toFixed(6), 
-                p.elevation.toFixed(1), 
-                p.distance.toFixed(3),
-                p.isWaypoint ? '1' : '0' // Add the waypoint flag
-            ].join(',')
-        );
-
+    function localDownload(data, fileName, isRoute) {
+        const headers = isRoute 
+            ? ["широта", "долгота", "высота_м", "расстояние_км", "is_waypoint"]
+            : ['координаты_точки', 'название_точки', 'описание_точки'];
+    
+        const rows = data.map(p => {
+            if (isRoute) {
+                return [
+                    p.lat.toFixed(6), 
+                    p.lng.toFixed(6), 
+                    p.elevation.toFixed(1), 
+                    p.distance.toFixed(3),
+                    p.isWaypoint ? '1' : '0'
+                ].join(',');
+            } else {
+                const escapeCSV = (text) => {
+                    if (!text) return '';
+                    if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+                        return '"' + text.replace(/"/g, '""') + '"';
+                    }
+                    return text;
+                };
+                return [
+                    `${p.lat.toFixed(6)},${p.lng.toFixed(6)}`,
+                    escapeCSV(p.name || ''),
+                    escapeCSV(p.description || '')
+                ].join(',');
+            }
+        });
+    
         let csvContent = headers.join(",") + "\n" + rows.join("\n");
-
         const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.setAttribute("href", url);
-        link.setAttribute("download", `route_profile_step${currentSampleStep}m.csv`);
+        link.setAttribute("download", fileName);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    }
+
+    async function exportRouteToCSV() {
+        if (currentRouteData.length === 0) {
+            alert("Нет данных для экспорта.");
+            return;
+        }
+    
+        try {
+            const tg = window.Telegram.WebApp;
+            const chat_id = tg.initDataUnsafe?.user?.id;
+    
+            if (!chat_id) {
+                alert("Эта функция работает только внутри Telegram. Файл будет скачан локально.");
+                localDownload(currentRouteData, `route_profile_step${currentSampleStep}m.csv`, true);
+                return;
+            }
+    
+            const headers = ["широта", "долгота", "высота_м", "расстояние_км", "is_waypoint"];
+            const dataToExport = currentRouteData;
+    
+            const rows = dataToExport.map(p => 
+                [
+                    p.lat.toFixed(6), 
+                    p.lng.toFixed(6), 
+                    p.elevation.toFixed(1), 
+                    p.distance.toFixed(3),
+                    p.isWaypoint ? '1' : '0'
+                ].join(',')
+            );
+    
+            let csvContent = headers.join(",") + "\n" + rows.join("\n");
+            const fileName = `route_profile_step${currentSampleStep}m.csv`;
+    
+            await sendFileToBot(chat_id, csvContent, fileName);
+    
+        } catch (error) {
+            alert(`Ошибка: ${error.message}. Файл будет скачан локально.`);
+            localDownload(currentRouteData, `route_profile_step${currentSampleStep}m.csv`, true);
+        }
     }
 
     function resetRouteBuilding() {
@@ -2421,6 +2489,20 @@ function initMap() {
 
     // --- IMPORT LOGIC ---
     importRouteBtn.addEventListener('click', () => {
+        // Check if running in Telegram
+        try {
+            const tg = window.Telegram.WebApp;
+            if (tg.initDataUnsafe?.user?.id) {
+                tg.showPopup({
+                    title: 'Импорт маршрута',
+                    message: 'Чтобы импортировать маршрут, отправьте CSV файл боту в личные сообщения.',
+                    buttons: [{ type: 'ok', text: 'Понятно' }]
+                });
+                return;
+            }
+        } catch (e) {
+            // Not in telegram, proceed with local import
+        }
         csvImporter.click();
     });
 
@@ -2950,41 +3032,48 @@ function initMap() {
     });
     
     // Handle export points button
-    exportPointsBtn.addEventListener('click', function() {
+    exportPointsBtn.addEventListener('click', async function() {
         if (customPoints.length === 0) {
             alert('Нет точек для экспорта');
             return;
         }
-        
-        const headers = ['координаты_точки', 'название_точки', 'описание_точки'];
-        const rows = customPoints.map(point => {
-            // Escape commas and quotes in text fields
-            const escapeCSV = (text) => {
-                if (!text) return '';
-                // If text contains comma, quote or newline, wrap in quotes and escape quotes
-                if (text.includes(',') || text.includes('"') || text.includes('\n')) {
-                    return '"' + text.replace(/"/g, '""') + '"';
-                }
-                return text;
-            };
-            
-            return [
-                `${point.lat.toFixed(6)},${point.lng.toFixed(6)}`,
-                escapeCSV(point.name || ''),
-                escapeCSV(point.description || '')
-            ].join(',');
-        });
-        
-        let csvContent = headers.join(',') + '\n' + rows.join('\n');
-        
-        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute('href', url);
-        link.setAttribute('download', 'points.csv');
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+    
+        try {
+            const tg = window.Telegram.WebApp;
+            const chat_id = tg.initDataUnsafe?.user?.id;
+    
+            if (!chat_id) {
+                alert("Эта функция работает только внутри Telegram. Файл будет скачан локально.");
+                localDownload(customPoints, 'points.csv', false);
+                return;
+            }
+    
+            const headers = ['координаты_точки', 'название_точки', 'описание_точки'];
+            const rows = customPoints.map(point => {
+                const escapeCSV = (text) => {
+                    if (!text) return '';
+                    if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+                        return '"' + text.replace(/"/g, '""') + '"';
+                    }
+                    return text;
+                };
+                
+                return [
+                    `${point.lat.toFixed(6)},${point.lng.toFixed(6)}`,
+                    escapeCSV(point.name || ''),
+                    escapeCSV(point.description || '')
+                ].join(',');
+            });
+    
+            let csvContent = headers.join(',') + '\n' + rows.join('\n');
+            const fileName = 'points.csv';
+    
+            await sendFileToBot(chat_id, csvContent, fileName);
+    
+        } catch (error) {
+            alert(`Ошибка: ${error.message}. Файл будет скачан локально.`);
+            localDownload(customPoints, 'points.csv', false);
+        }
     });
     
     // Handle reset points button
@@ -2998,6 +3087,19 @@ function initMap() {
     
     // Handle import points button
     importPointsBtn.addEventListener('click', function() {
+        try {
+            const tg = window.Telegram.WebApp;
+            if (tg.initDataUnsafe?.user?.id) {
+                tg.showPopup({
+                    title: 'Импорт точек',
+                    message: 'Чтобы импортировать точки, отправьте CSV файл боту в личные сообщения.',
+                    buttons: [{ type: 'ok', text: 'Понятно' }]
+                });
+                return;
+            }
+        } catch (e) {
+            // Not in telegram, proceed with local import
+        }
         pointsCsvImporter.click();
     });
     
