@@ -327,7 +327,7 @@ function initMap() {
                 subdomains: 'abcd',
                 maxZoom: 20
             }),
-            gray: () => L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+            gray: () => L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
                 attribution: 'Tiles &copy; Esri &mdash; Source: Esri',
                 maxZoom: 16
             }),
@@ -1059,16 +1059,6 @@ function initMap() {
     });
 
 
-
-    // Проверка, открыто ли приложение в Telegram Web App
-    const isTelegramWebApp = () => {
-        try {
-            return typeof window.Telegram !== 'undefined' && 
-                   typeof window.Telegram.WebApp !== 'undefined';
-        } catch (e) {
-            return false;
-        }
-    };
 
     try {
         let tg = window.Telegram.WebApp;
@@ -2279,596 +2269,7 @@ function initMap() {
         }
     }
     
-    // Получение user ID из Telegram Web App (несколько способов)
-    const getTelegramUserId = () => {
-        try {
-            const tg = window.Telegram?.WebApp;
-            if (!tg) {
-                console.log('Telegram WebApp не найден');
-                return null;
-            }
-            
-            // Способ 1: через initDataUnsafe.user
-            if (tg.initDataUnsafe?.user?.id) {
-                const userId = tg.initDataUnsafe.user.id;
-                console.log('User ID получен через initDataUnsafe:', userId);
-                return userId;
-            }
-            
-            // Способ 2: через initData (нужно распарсить)
-            if (tg.initData) {
-                try {
-                    const params = new URLSearchParams(tg.initData);
-                    const userParam = params.get('user');
-                    if (userParam) {
-                        const user = JSON.parse(decodeURIComponent(userParam));
-                        if (user.id) {
-                            console.log('User ID получен через initData:', user.id);
-                            return user.id;
-                        }
-                    }
-                } catch (e) {
-                    console.warn('Не удалось распарсить initData:', e);
-                }
-            }
-            
-            // Способ 3: через version (для старых версий API)
-            if (tg.version && tg.platform) {
-                console.warn('Telegram WebApp найден, но user ID недоступен. Версия:', tg.version);
-            }
-            
-            console.error('Не удалось получить user ID из Telegram WebApp');
-            console.log('Доступные данные:', {
-                hasInitDataUnsafe: !!tg.initDataUnsafe,
-                hasInitData: !!tg.initData,
-                initDataUnsafe: tg.initDataUnsafe,
-                version: tg.version
-            });
-        } catch (e) {
-            console.error('Ошибка при получении user ID:', e);
-        }
-        return null;
-    };
-
-    // Универсальная функция для скачивания файла (работает в обычном браузере и Telegram Web App)
-    async function downloadFile(content, filename, mimeType = 'text/csv;charset=utf-8;') {
-        const blob = new Blob(["\uFEFF" + content], { type: mimeType });
-        const url = URL.createObjectURL(blob);
-        
-        // Проверяем, открыто ли приложение в Telegram Web App
-        const isTelegram = isTelegramWebApp();
-        
-        if (isTelegram) {
-            // Для Telegram Web App отправляем файл через бота
-            console.log('Обнаружен Telegram Web App, пытаемся получить user ID...');
-            const userId = getTelegramUserId();
-            console.log('Полученный user ID:', userId);
-            
-            if (userId) {
-                console.log('Отправка файла через бота для user ID:', userId);
-                await sendFileViaBot(content, filename, userId);
-            } else {
-                console.warn('Не удалось получить user ID, показываем модальное окно для скачивания');
-                // Если не удалось получить user ID, показываем модальное окно
-                showDownloadModal(url, filename, content, mimeType);
-            }
-        } else {
-            // Стандартный метод для обычного браузера
-            downloadFileFallback(url, filename);
-        }
-    }
-    
-    // Отправка файла через Telegram Bot API
-    async function sendFileViaBot(content, filename, userId) {
-        let loadingModal = null;
-        try {
-            console.log('Начало отправки файла через бота:', { filename, userId, contentLength: content.length });
-            
-            // Показываем индикатор загрузки
-            loadingModal = showLoadingModal('Отправка файла через бота...');
-            
-            const requestBody = {
-                filename: filename,
-                content: content,
-                user_id: userId
-            };
-            
-            console.log('Отправка запроса на:', `${API_URL}/api/send_file`);
-            console.log('Тело запроса:', { ...requestBody, content: `[${content.length} символов]` });
-            
-            const authHeaders = getAuthHeaders();
-            console.log('Заголовки авторизации:', { hasToken: !!authHeaders.Authorization });
-            
-            const response = await fetch(`${API_URL}/api/send_file`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...authHeaders
-                },
-                body: JSON.stringify(requestBody)
-            });
-            
-            console.log('Ответ сервера:', { status: response.status, statusText: response.statusText });
-            
-            let data;
-            try {
-                data = await response.json();
-                console.log('Данные ответа:', data);
-            } catch (e) {
-                const text = await response.text();
-                console.error('Не удалось распарсить JSON ответ:', text);
-                throw new Error(`Ошибка сервера: ${response.status} ${response.statusText}`);
-            }
-            
-            // Убираем индикатор загрузки
-            if (loadingModal) {
-                loadingModal.remove();
-                loadingModal = null;
-            }
-            
-            if (response.ok) {
-                // Показываем сообщение об успехе
-                showSuccessModal('Файл успешно отправлен через бота! Проверьте чат с ботом @Streko_Zza_bot');
-            } else {
-                // Показываем ошибку с деталями
-                const errorMessage = data.detail || data.message || `Ошибка ${response.status}: ${response.statusText}`;
-                console.error('Ошибка отправки файла:', errorMessage);
-                showErrorModal(`Не удалось отправить файл: ${errorMessage}`);
-            }
-        } catch (error) {
-            console.error('Исключение при отправке файла:', error);
-            console.error('Стек ошибки:', error.stack);
-            
-            // Убираем индикатор загрузки если он есть
-            if (loadingModal) {
-                loadingModal.remove();
-            }
-            
-            const errorMessage = error.message || 'Неизвестная ошибка';
-            showErrorModal(`Ошибка при отправке файла: ${errorMessage}. Проверьте подключение к интернету и логи сервера.`);
-        }
-    }
-    
-    // Модальное окно с индикатором загрузки
-    function showLoadingModal(message) {
-        const existingModal = document.getElementById('loading-modal');
-        if (existingModal) {
-            existingModal.remove();
-        }
-        
-        const modal = document.createElement('div');
-        modal.id = 'loading-modal';
-        modal.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 10001;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        `;
-        
-        const modalContent = document.createElement('div');
-        modalContent.style.cssText = `
-            background: rgba(50, 51, 61, 0.95);
-            border: 2px solid darkorange;
-            border-radius: 10px;
-            padding: 20px;
-            text-align: center;
-            min-width: 200px;
-        `;
-        
-        const messageEl = document.createElement('p');
-        messageEl.textContent = message;
-        messageEl.style.cssText = `
-            color: darkorange;
-            margin: 0 0 15px 0;
-            font-family: sans-serif;
-            font-size: 16px;
-        `;
-        
-        const spinner = document.createElement('div');
-        spinner.style.cssText = `
-            width: 40px;
-            height: 40px;
-            border: 4px solid rgba(50, 51, 61, 0.3);
-            border-top: 4px solid darkorange;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto;
-        `;
-        
-        // Добавляем CSS анимацию если её еще нет
-        if (!document.getElementById('spinner-style')) {
-            const style = document.createElement('style');
-            style.id = 'spinner-style';
-            style.textContent = `
-                @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                }
-            `;
-            document.head.appendChild(style);
-        }
-        
-        modalContent.appendChild(messageEl);
-        modalContent.appendChild(spinner);
-        modal.appendChild(modalContent);
-        document.body.appendChild(modal);
-        
-        return modal;
-    }
-    
-    // Модальное окно с сообщением об успехе
-    function showSuccessModal(message) {
-        const modal = document.createElement('div');
-        modal.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 10001;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        `;
-        
-        const modalContent = document.createElement('div');
-        modalContent.style.cssText = `
-            background: rgba(50, 51, 61, 0.95);
-            border: 2px solid darkorange;
-            border-radius: 10px;
-            padding: 20px;
-            text-align: center;
-            max-width: 90%;
-        `;
-        
-        const messageEl = document.createElement('p');
-        messageEl.textContent = message;
-        messageEl.style.cssText = `
-            color: darkorange;
-            margin: 0 0 20px 0;
-            font-family: sans-serif;
-            font-size: 16px;
-        `;
-        
-        const closeBtn = document.createElement('button');
-        closeBtn.textContent = 'ОК';
-        closeBtn.style.cssText = `
-            background: darkorange;
-            color: #32333d;
-            border: 1px solid darkorange;
-            border-radius: 5px;
-            padding: 10px 20px;
-            font-family: sans-serif;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            touch-action: manipulation;
-        `;
-        
-        closeBtn.addEventListener('click', () => modal.remove());
-        closeBtn.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            modal.remove();
-        });
-        
-        modalContent.appendChild(messageEl);
-        modalContent.appendChild(closeBtn);
-        modal.appendChild(modalContent);
-        document.body.appendChild(modal);
-    }
-    
-    // Модальное окно с сообщением об ошибке
-    function showErrorModal(message) {
-        const modal = document.createElement('div');
-        modal.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 10001;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        `;
-        
-        const modalContent = document.createElement('div');
-        modalContent.style.cssText = `
-            background: rgba(50, 51, 61, 0.95);
-            border: 2px solid #ff4444;
-            border-radius: 10px;
-            padding: 20px;
-            text-align: center;
-            max-width: 90%;
-        `;
-        
-        const messageEl = document.createElement('p');
-        messageEl.textContent = message;
-        messageEl.style.cssText = `
-            color: #ff4444;
-            margin: 0 0 20px 0;
-            font-family: sans-serif;
-            font-size: 16px;
-        `;
-        
-        const closeBtn = document.createElement('button');
-        closeBtn.textContent = 'ОК';
-        closeBtn.style.cssText = `
-            background: #32333d;
-            color: #ff4444;
-            border: 1px solid #ff4444;
-            border-radius: 5px;
-            padding: 10px 20px;
-            font-family: sans-serif;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            touch-action: manipulation;
-        `;
-        
-        closeBtn.addEventListener('click', () => modal.remove());
-        closeBtn.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            modal.remove();
-        });
-        
-        modalContent.appendChild(messageEl);
-        modalContent.appendChild(closeBtn);
-        modal.appendChild(modalContent);
-        document.body.appendChild(modal);
-    }
-    
-    // Модальное окно для скачивания файла в Telegram Web App
-    function showDownloadModal(url, filename, content, mimeType) {
-        // Удаляем предыдущее модальное окно, если оно есть
-        const existingModal = document.getElementById('download-modal');
-        if (existingModal) {
-            existingModal.remove();
-        }
-        
-        const modal = document.createElement('div');
-        modal.id = 'download-modal';
-        modal.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 10000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        `;
-        
-        const modalContent = document.createElement('div');
-        modalContent.style.cssText = `
-            background: rgba(50, 51, 61, 0.95);
-            border: 2px solid darkorange;
-            border-radius: 10px;
-            padding: 20px;
-            max-width: 90%;
-            text-align: center;
-        `;
-        
-        const title = document.createElement('h3');
-        title.textContent = 'Скачать файл';
-        title.style.cssText = `
-            color: darkorange;
-            margin: 0 0 15px 0;
-            font-family: sans-serif;
-            font-size: 18px;
-        `;
-        
-        const fileName = document.createElement('p');
-        fileName.textContent = filename;
-        fileName.style.cssText = `
-            color: white;
-            margin: 0 0 20px 0;
-            font-family: sans-serif;
-            font-size: 14px;
-            word-break: break-all;
-        `;
-        
-        // Создаем ссылку для скачивания - используем data URL для Telegram Web App
-        // Data URL работает более надежно в Telegram Web App
-        const blob = new Blob(["\uFEFF" + content], { type: mimeType });
-        const reader = new FileReader();
-        
-        reader.onload = function(e) {
-            const dataUrl = e.target.result;
-            
-            const downloadLink = document.createElement('a');
-            downloadLink.href = dataUrl;
-            downloadLink.download = filename;
-            downloadLink.textContent = 'Скачать';
-            downloadLink.style.cssText = `
-                background: darkorange;
-                color: #32333d;
-                border: 1px solid darkorange;
-                border-radius: 5px;
-                padding: 10px 20px;
-                font-family: sans-serif;
-                font-size: 16px;
-                font-weight: bold;
-                cursor: pointer;
-                margin-right: 10px;
-                touch-action: manipulation;
-                text-decoration: none;
-                display: inline-block;
-            `;
-            
-            // НЕ используем preventDefault - позволяем браузеру обработать клик естественным образом
-            // Это критично для Telegram Web App - прямой клик пользователя должен работать
-            downloadLink.addEventListener('click', (e) => {
-                // Даем ссылке обработаться естественным образом, не блокируем
-                setTimeout(() => {
-                    if (modal.parentNode) {
-                        modal.remove();
-                    }
-                    URL.revokeObjectURL(url);
-                }, 1000);
-            });
-            
-            downloadLink.addEventListener('touchend', (e) => {
-                // Для touch событий тоже не блокируем - позволяем естественную обработку
-                setTimeout(() => {
-                    if (modal.parentNode) {
-                        modal.remove();
-                    }
-                    URL.revokeObjectURL(url);
-                }, 1000);
-            });
-            
-            // Заменяем заглушку на реальную ссылку
-            const placeholder = buttonContainer.querySelector('.download-placeholder');
-            if (placeholder && placeholder.parentNode) {
-                buttonContainer.replaceChild(downloadLink, placeholder);
-            }
-        };
-        
-        reader.onerror = function(e) {
-            // Если не удалось прочитать как data URL, используем blob URL
-            console.warn('Не удалось создать data URL, используем blob URL');
-            const downloadLink = document.createElement('a');
-            downloadLink.href = url;
-            downloadLink.download = filename;
-            downloadLink.textContent = 'Скачать';
-            downloadLink.style.cssText = `
-                background: darkorange;
-                color: #32333d;
-                border: 1px solid darkorange;
-                border-radius: 5px;
-                padding: 10px 20px;
-                font-family: sans-serif;
-                font-size: 16px;
-                font-weight: bold;
-                cursor: pointer;
-                margin-right: 10px;
-                touch-action: manipulation;
-                text-decoration: none;
-                display: inline-block;
-            `;
-            
-            downloadLink.addEventListener('click', (e) => {
-                setTimeout(() => {
-                    if (modal.parentNode) {
-                        modal.remove();
-                    }
-                    URL.revokeObjectURL(url);
-                }, 1000);
-            });
-            
-            const placeholder = buttonContainer.querySelector('.download-placeholder');
-            if (placeholder && placeholder.parentNode) {
-                buttonContainer.replaceChild(downloadLink, placeholder);
-            }
-        };
-        
-        reader.readAsDataURL(blob);
-        
-        // Показываем заглушку пока файл читается
-        const downloadPlaceholder = document.createElement('div');
-        downloadPlaceholder.className = 'download-placeholder';
-        downloadPlaceholder.textContent = 'Загрузка...';
-        downloadPlaceholder.style.cssText = `
-            background: darkorange;
-            color: #32333d;
-            border: 1px solid darkorange;
-            border-radius: 5px;
-            padding: 10px 20px;
-            font-family: sans-serif;
-            font-size: 16px;
-            font-weight: bold;
-            margin-right: 10px;
-            display: inline-block;
-        `;
-        
-        const closeBtn = document.createElement('button');
-        closeBtn.textContent = 'Закрыть';
-        closeBtn.style.cssText = `
-            background: #32333d;
-            color: darkorange;
-            border: 1px solid darkorange;
-            border-radius: 5px;
-            padding: 10px 20px;
-            font-family: sans-serif;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            touch-action: manipulation;
-        `;
-        
-        const buttonContainer = document.createElement('div');
-        buttonContainer.style.cssText = 'display: flex; justify-content: center;';
-        buttonContainer.appendChild(downloadPlaceholder);
-        buttonContainer.appendChild(closeBtn);
-        
-        modalContent.appendChild(title);
-        modalContent.appendChild(fileName);
-        modalContent.appendChild(buttonContainer);
-        modal.appendChild(modalContent);
-        document.body.appendChild(modal);
-        
-        // Обработчик для закрытия
-        const handleClose = () => {
-            modal.remove();
-            URL.revokeObjectURL(url);
-        };
-        
-        closeBtn.addEventListener('click', handleClose);
-        closeBtn.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            handleClose();
-        });
-        
-        // Закрытие при клике на фон
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                handleClose();
-            }
-        });
-    }
-    
-    // Вспомогательная функция для скачивания файла (для обычного браузера)
-    function downloadFileFallback(url, filename) {
-        const link = document.createElement("a");
-        link.setAttribute("href", url);
-        link.setAttribute("download", filename);
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        
-        // Используем setTimeout для обеспечения работы на мобильных устройствах
-        setTimeout(() => {
-            try {
-                link.click();
-            } catch (e) {
-                // Fallback для старых браузеров
-                const event = new MouseEvent('click', {
-                    view: window,
-                    bubbles: true,
-                    cancelable: true
-                });
-                link.dispatchEvent(event);
-            }
-            
-            // Очистка после небольшой задержки
-            setTimeout(() => {
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
-            }, 100);
-        }, 0);
-    }
-
-    async function exportRouteToCSV() {
+    function exportRouteToCSV() {
         if (currentRouteData.length === 0) {
             alert("Нет данных для экспорта.");
             return;
@@ -2889,9 +2290,15 @@ function initMap() {
         );
 
         let csvContent = headers.join(",") + "\n" + rows.join("\n");
-        const filename = `route_profile_step${currentSampleStep}m.csv`;
-        
-        await downloadFile(csvContent, filename);
+
+        const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `route_profile_step${currentSampleStep}m.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 
     function resetRouteBuilding() {
@@ -3003,31 +2410,7 @@ function initMap() {
         // Keep button visible while profile is open to show active state
     });
     
-    // Обработка клика для выгрузки маршрута (поддержка мобильных устройств)
-    let isExportingRoute = false;
-    const handleExportRoute = async (event) => {
-        if (isExportingRoute) return;
-        isExportingRoute = true;
-        
-        if (event) {
-            event.preventDefault();
-            event.stopPropagation();
-        }
-        
-        await exportRouteToCSV();
-        
-        // Сброс флага после небольшой задержки для предотвращения двойного вызова
-        setTimeout(() => {
-            isExportingRoute = false;
-        }, 500);
-    };
-    
-    exportRouteBtn.addEventListener('click', handleExportRoute);
-    exportRouteBtn.addEventListener('touchend', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        handleExportRoute(event);
-    });
+    exportRouteBtn.addEventListener('click', exportRouteToCSV);
 
 
 
@@ -3566,20 +2949,10 @@ function initMap() {
         pendingPointLatLng = null;
     });
     
-    // Handle export points button (с поддержкой мобильных устройств)
-    let isExportingPoints = false;
-    const handleExportPoints = async function(event) {
-        if (isExportingPoints) return;
-        isExportingPoints = true;
-        
-        if (event) {
-            event.preventDefault();
-            event.stopPropagation();
-        }
-        
+    // Handle export points button
+    exportPointsBtn.addEventListener('click', function() {
         if (customPoints.length === 0) {
             alert('Нет точек для экспорта');
-            isExportingPoints = false;
             return;
         }
         
@@ -3603,17 +2976,15 @@ function initMap() {
         });
         
         let csvContent = headers.join(',') + '\n' + rows.join('\n');
-        const filename = 'points.csv';
         
-        await downloadFile(csvContent, filename);
-        isExportingPoints = false;
-    };
-    
-    exportPointsBtn.addEventListener('click', handleExportPoints);
-    exportPointsBtn.addEventListener('touchend', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        handleExportPoints(event);
+        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'points.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     });
     
     // Handle reset points button
