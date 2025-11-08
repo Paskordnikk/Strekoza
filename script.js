@@ -327,7 +327,7 @@ function initMap() {
                 subdomains: 'abcd',
                 maxZoom: 20
             }),
-            gray: () => L.tileLayer('http://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+            gray: () => L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
                 attribution: 'Tiles &copy; Esri &mdash; Source: Esri',
                 maxZoom: 16
             }),
@@ -2296,9 +2296,29 @@ function initMap() {
         const link = document.createElement("a");
         link.setAttribute("href", url);
         link.setAttribute("download", `route_profile_step${currentSampleStep}m.csv`);
+        link.style.display = 'none';
         document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        
+        // Используем setTimeout для обеспечения работы на мобильных устройствах
+        setTimeout(() => {
+            try {
+                link.click();
+            } catch (e) {
+                // Fallback для старых браузеров
+                const event = new MouseEvent('click', {
+                    view: window,
+                    bubbles: true,
+                    cancelable: true
+                });
+                link.dispatchEvent(event);
+            }
+            
+            // Очистка после небольшой задержки
+            setTimeout(() => {
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }, 100);
+        }, 0);
     }
 
     function resetRouteBuilding() {
@@ -2410,7 +2430,31 @@ function initMap() {
         // Keep button visible while profile is open to show active state
     });
     
-    exportRouteBtn.addEventListener('click', exportRouteToCSV);
+    // Обработка клика для выгрузки маршрута (поддержка мобильных устройств)
+    let isExportingRoute = false;
+    const handleExportRoute = (event) => {
+        if (isExportingRoute) return;
+        isExportingRoute = true;
+        
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        
+        exportRouteToCSV();
+        
+        // Сброс флага после небольшой задержки для предотвращения двойного вызова
+        setTimeout(() => {
+            isExportingRoute = false;
+        }, 500);
+    };
+    
+    exportRouteBtn.addEventListener('click', handleExportRoute);
+    exportRouteBtn.addEventListener('touchend', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        handleExportRoute(event);
+    });
 
 
 
@@ -2949,10 +2993,20 @@ function initMap() {
         pendingPointLatLng = null;
     });
     
-    // Handle export points button
-    exportPointsBtn.addEventListener('click', function() {
+    // Handle export points button (с поддержкой мобильных устройств)
+    let isExportingPoints = false;
+    const handleExportPoints = function(event) {
+        if (isExportingPoints) return;
+        isExportingPoints = true;
+        
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        
         if (customPoints.length === 0) {
             alert('Нет точек для экспорта');
+            isExportingPoints = false;
             return;
         }
         
@@ -2982,9 +3036,37 @@ function initMap() {
         const link = document.createElement('a');
         link.setAttribute('href', url);
         link.setAttribute('download', 'points.csv');
+        link.style.display = 'none';
         document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        
+        // Используем setTimeout для обеспечения работы на мобильных устройствах
+        setTimeout(() => {
+            try {
+                link.click();
+            } catch (e) {
+                // Fallback для старых браузеров
+                const clickEvent = new MouseEvent('click', {
+                    view: window,
+                    bubbles: true,
+                    cancelable: true
+                });
+                link.dispatchEvent(clickEvent);
+            }
+            
+            // Очистка после небольшой задержки
+            setTimeout(() => {
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                isExportingPoints = false;
+            }, 100);
+        }, 0);
+    };
+    
+    exportPointsBtn.addEventListener('click', handleExportPoints);
+    exportPointsBtn.addEventListener('touchend', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        handleExportPoints(event);
     });
     
     // Handle reset points button

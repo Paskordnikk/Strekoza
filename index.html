@@ -262,6 +262,21 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
      crossorigin=""></script>
+    <script>
+        // Перехватываем отладочные сообщения от telegram-web-app.js
+        (function() {
+            const originalLog = console.log;
+            console.log = function(...args) {
+                const message = args.join(' ');
+                // Фильтруем сообщения от Telegram WebApp
+                if (message.includes('[Telegram.WebView]')) {
+                    return; // Не выводим эти сообщения
+                }
+                // Выводим все остальные сообщения как обычно
+                originalLog.apply(console, args);
+            };
+        })();
+    </script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://unpkg.com/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet.polylinemeasure@latest/Leaflet.PolylineMeasure.js"></script>
@@ -295,21 +310,7 @@
             <div class="instruction-modal-close" id="instruction-close-btn">&times;</div>
             <div class="instruction-modal-text">
                 <p>
-                Привет, братья! Рад представить программу против хохла. <br><br>
-                Ничего сложного, все должно быть интуитивно понятно. <br><br>
-
-                Умеет строить профиль выстоты по заданному маршруту, добавлять точки с описаниями, измерять расстояние по карте. <br>
-                Есть возможность выгружать и загружать точки или маршруты с профилем высоты в CSV файл (открывается в обычном блокноте).<br><br>
-                Таким образом можно осуществлять обмен данными с другими пользователями<br>
-                
-                Из особенностей: <br>
-                - Данные по высотам уже скачаны и хранятся отдельно (а не подгружаются из интернета). <br>
-                Загружены данные по высотам для страны 404 и немного восточнее (условная зона начала построения маршрута).<br>
-                Это защищает от применения программы против нас самих, если она случайно попадет не в те руки. <br><br>
-
-                Если вместо карты вы видите белый экран - уменьшите масштаб (не для всех карт есть отображение на большом зуме). <br>
-
-                Для обратной связи, предложений и замечаний, пишите: bwxzaklg@strekozoid.anonaddy.me
+                Для обратной связи, предложений и замечаний: bwxzaklg@strekozoid.anonaddy.me<br><br>
                 </p>
             </div>
         </div>
