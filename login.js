@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const loginButton = document.getElementById('login-button');
 
     // Проверяем, есть ли уже токен
-    const token = storageAPI.getItem('auth_token');
+    const token = localStorage.getItem('auth_token');
     if (token) {
         // Если токен есть, проверяем его валидность
         verifyToken(token);
@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (response.ok) {
                 // Сохраняем токен
-                storageAPI.setItem('auth_token', data.access_token);
+                localStorage.setItem('auth_token', data.access_token);
                 
                 // Перенаправляем на главную страницу
                 window.location.href = 'index.html';
@@ -94,7 +94,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (response.status === 401) {
                 // Токен невалидный, удаляем его
-                storageAPI.removeItem('auth_token');
+                localStorage.removeItem('auth_token');
                 return;
             }
 

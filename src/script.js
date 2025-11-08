@@ -5,7 +5,7 @@ const API_URL = window.location.hostname === 'localhost' || window.location.host
 
 // Authentication functions
 function getAuthToken() {
-    return storageAPI.getItem('auth_token');
+    return localStorage.getItem('auth_token');
 }
 
 function getAuthHeaders() {
@@ -37,7 +37,7 @@ async function checkAuthentication() {
         
         if (response.status === 401) {
             // Токен невалидный - удаляем и перенаправляем на вход
-            storageAPI.removeItem('auth_token');
+            localStorage.removeItem('auth_token');
             window.location.href = 'login.html';
             return false;
         }
@@ -385,7 +385,7 @@ function initMap() {
     if (logoutBtn) {
         logoutBtn.addEventListener('click', function() {
             // Удаляем токен из localStorage
-            storageAPI.removeItem('auth_token');
+            localStorage.removeItem('auth_token');
             // Перенаправляем на страницу входа
             window.location.href = 'login.html';
         });
@@ -429,18 +429,18 @@ function initMap() {
     const overlayOpacitySlider = document.getElementById('overlay-opacity-slider');
 
     // Load saved settings
-    const lastBaseMapType = storageAPI.getItem('baseMapType') || 'jawgdark';
-    const lastOverlayMapType = storageAPI.getItem('overlayMapType') || 'opentopomap';
-    const lastOverlayEnabled = storageAPI.getItem('overlayEnabled') === 'true';
-    const lastOverlayOpacity = parseInt(storageAPI.getItem('overlayOpacity') || '50');
-    const lastRoadsEnabled = storageAPI.getItem('roadsEnabled') === 'true';
-    const lastRoadsOpacity = parseInt(storageAPI.getItem('roadsOpacity') || '100');
-    const lastBordersEnabled = storageAPI.getItem('bordersEnabled') === 'true';
-    const lastBordersOpacity = parseInt(storageAPI.getItem('bordersOpacity') || '100');
-    const lastLabelsEnabled = storageAPI.getItem('labelsEnabled') === 'true';
-    const lastLabelsOpacity = parseInt(storageAPI.getItem('labelsOpacity') || '100');
-    const lastZoomLevel = storageAPI.getItem('mapZoomLevel');
-    const lastBaseBrightness = parseInt(storageAPI.getItem('baseBrightness') || '100');
+    const lastBaseMapType = localStorage.getItem('baseMapType') || 'jawgdark';
+    const lastOverlayMapType = localStorage.getItem('overlayMapType') || 'opentopomap';
+    const lastOverlayEnabled = localStorage.getItem('overlayEnabled') === 'true';
+    const lastOverlayOpacity = parseInt(localStorage.getItem('overlayOpacity') || '50');
+    const lastRoadsEnabled = localStorage.getItem('roadsEnabled') === 'true';
+    const lastRoadsOpacity = parseInt(localStorage.getItem('roadsOpacity') || '100');
+    const lastBordersEnabled = localStorage.getItem('bordersEnabled') === 'true';
+    const lastBordersOpacity = parseInt(localStorage.getItem('bordersOpacity') || '100');
+    const lastLabelsEnabled = localStorage.getItem('labelsEnabled') === 'true';
+    const lastLabelsOpacity = parseInt(localStorage.getItem('labelsOpacity') || '100');
+    const lastZoomLevel = localStorage.getItem('mapZoomLevel');
+    const lastBaseBrightness = parseInt(localStorage.getItem('baseBrightness') || '100');
 
     // Apply saved base map
     if (lastBaseMapType !== 'jawgdark') {
@@ -565,7 +565,7 @@ function initMap() {
 
     // Save zoom level
     const saveZoomLevel = () => {
-        storageAPI.setItem('mapZoomLevel', map.getZoom());
+        localStorage.setItem('mapZoomLevel', map.getZoom());
     };
     map.on('zoomend', saveZoomLevel);
 
@@ -592,7 +592,7 @@ function initMap() {
             // Reapply brightness
             map.getPane('basePane').style.opacity = brightnessSlider.value / 100;
             
-            storageAPI.setItem('baseMapType', radioInput.value);
+            localStorage.setItem('baseMapType', radioInput.value);
         }, 0);
     }
     
@@ -630,7 +630,7 @@ function initMap() {
                 // Reapply brightness
                 map.getPane('basePane').style.opacity = brightnessSlider.value / 100;
                 
-                storageAPI.setItem('baseMapType', e.target.value);
+                localStorage.setItem('baseMapType', e.target.value);
             });
         });
     });
@@ -659,7 +659,7 @@ function initMap() {
             overlayLayer.setOpacity(overlayOpacitySlider.value / 100);
             overlayLayer.addTo(map);
             
-            storageAPI.setItem('overlayMapType', radioInput.value);
+            localStorage.setItem('overlayMapType', radioInput.value);
         }, 0);
     }
     
@@ -698,7 +698,7 @@ function initMap() {
                 overlayLayer.setOpacity(overlayOpacitySlider.value / 100);
                 overlayLayer.addTo(map);
                 
-                storageAPI.setItem('overlayMapType', e.target.value);
+                localStorage.setItem('overlayMapType', e.target.value);
             });
         });
     });
@@ -736,7 +736,7 @@ function initMap() {
                 overlayLayer.setOpacity(overlayOpacitySlider.value / 100);
                 overlayLayer.addTo(map);
                 
-                storageAPI.setItem('overlayEnabled', 'true');
+                localStorage.setItem('overlayEnabled', 'true');
             } else {
                 overlayControls.style.display = 'none';
                 
@@ -745,7 +745,7 @@ function initMap() {
                     overlayLayer = null;
                 }
                 
-                storageAPI.setItem('overlayEnabled', 'false');
+                localStorage.setItem('overlayEnabled', 'false');
             }
         });
     });
@@ -754,7 +754,7 @@ function initMap() {
     overlayOpacitySlider.addEventListener('input', function (e) {
         if (overlayLayer) {
             overlayLayer.setOpacity(e.target.value / 100);
-            storageAPI.setItem('overlayOpacity', e.target.value);
+            localStorage.setItem('overlayOpacity', e.target.value);
         }
     });
 
@@ -802,7 +802,7 @@ function initMap() {
                     }, 100);
                 }, 50);
                 
-                storageAPI.setItem('roadsEnabled', 'true');
+                localStorage.setItem('roadsEnabled', 'true');
             } else {
                 roadsControls.style.display = 'none';
                 
@@ -811,7 +811,7 @@ function initMap() {
                     roadsLayer = null;
                 }
                 
-                storageAPI.setItem('roadsEnabled', 'false');
+                localStorage.setItem('roadsEnabled', 'false');
             }
         });
     });
@@ -820,7 +820,7 @@ function initMap() {
     roadsOpacitySlider.addEventListener('input', function (e) {
         if (roadsLayer) {
             roadsLayer.setOpacity(e.target.value / 100);
-            storageAPI.setItem('roadsOpacity', e.target.value);
+            localStorage.setItem('roadsOpacity', e.target.value);
         }
     });
 
@@ -868,7 +868,7 @@ function initMap() {
                     }, 100);
                 }, 50);
                 
-                storageAPI.setItem('bordersEnabled', 'true');
+                localStorage.setItem('bordersEnabled', 'true');
             } else {
                 bordersControls.style.display = 'none';
                 
@@ -877,7 +877,7 @@ function initMap() {
                     bordersLayer = null;
                 }
                 
-                storageAPI.setItem('bordersEnabled', 'false');
+                localStorage.setItem('bordersEnabled', 'false');
             }
         });
     });
@@ -886,7 +886,7 @@ function initMap() {
     bordersOpacitySlider.addEventListener('input', function (e) {
         if (bordersLayer) {
             bordersLayer.setOpacity(e.target.value / 100);
-            storageAPI.setItem('bordersOpacity', e.target.value);
+            localStorage.setItem('bordersOpacity', e.target.value);
         }
     });
 
@@ -934,7 +934,7 @@ function initMap() {
                     }, 100);
                 }, 50);
                 
-                storageAPI.setItem('labelsEnabled', 'true');
+                localStorage.setItem('labelsEnabled', 'true');
             } else {
                 labelsControls.style.display = 'none';
                 
@@ -943,7 +943,7 @@ function initMap() {
                     labelsLayer = null;
                 }
                 
-                storageAPI.setItem('labelsEnabled', 'false');
+                localStorage.setItem('labelsEnabled', 'false');
             }
         });
     });
@@ -952,13 +952,13 @@ function initMap() {
     labelsOpacitySlider.addEventListener('input', function (e) {
         if (labelsLayer) {
             labelsLayer.setOpacity(e.target.value / 100);
-            storageAPI.setItem('labelsOpacity', e.target.value);
+            localStorage.setItem('labelsOpacity', e.target.value);
         }
     });
 
     // Save base brightness
     brightnessSlider.addEventListener('change', function (e) {
-        storageAPI.setItem('baseBrightness', e.target.value);
+        localStorage.setItem('baseBrightness', e.target.value);
     });
 
     // --- Geolocation Logic ---
@@ -983,7 +983,7 @@ function initMap() {
     }
 
     function onLocationError(e) {
-        if (storageAPI.getItem('hideGeoError') !== 'true') {
+        if (localStorage.getItem('hideGeoError') !== 'true') {
             geoErrorModal.classList.remove('hidden');
         }
     }
@@ -993,14 +993,14 @@ function initMap() {
     });
 
     geoErrorDontShowCheckbox.addEventListener('change', (e) => {
-        storageAPI.setItem('hideGeoError', e.target.checked);
+        localStorage.setItem('hideGeoError', e.target.checked);
     });
 
     map.on('locationfound', onLocationFound);
     map.on('locationerror', onLocationError);
 
     // Initial call to locate user
-    if (storageAPI.getItem('hideGeoError') !== 'true') {
+    if (localStorage.getItem('hideGeoError') !== 'true') {
         locateUser();
     }
 
@@ -2156,7 +2156,7 @@ function initMap() {
 
             if (response.status === 401) {
                 // Токен невалидный - удаляем и перенаправляем на вход
-                storageAPI.removeItem('auth_token');
+                localStorage.removeItem('auth_token');
                 window.location.href = 'login.html';
                 return;
             }
