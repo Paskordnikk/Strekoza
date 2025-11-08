@@ -2284,27 +2284,12 @@ function initMap() {
         const blob = new Blob(["\uFEFF" + content], { type: mimeType });
         const url = URL.createObjectURL(blob);
         
-        // Если открыто в Telegram Web App, используем альтернативный метод
-        if (isTelegramWebApp()) {
-            // Пробуем использовать Web Share API, если доступно
-            if (navigator.share && navigator.canShare) {
-                const file = new File([blob], filename, { type: mimeType });
-                if (navigator.canShare({ files: [file] })) {
-                    navigator.share({
-                        files: [file],
-                        title: filename
-                    }).then(() => {
-                        URL.revokeObjectURL(url);
-                    }).catch(() => {
-                        // Если share не сработал, используем модальное окно
-                        showDownloadModal(url, filename);
-                    });
-                    return;
-                }
-            }
-            
-            // Fallback для Telegram Web App: показываем модальное окно с кнопкой
-            showDownloadModal(url, filename);
+        // Проверяем, открыто ли приложение в Telegram Web App
+        const isTelegram = isTelegramWebApp();
+        
+        if (isTelegram) {
+            // Для Telegram Web App используем модальное окно с прямой ссылкой
+            showDownloadModal(url, filename, content, mimeType);
         } else {
             // Стандартный метод для обычного браузера
             downloadFileFallback(url, filename);
@@ -2312,7 +2297,7 @@ function initMap() {
     }
     
     // Модальное окно для скачивания файла в Telegram Web App
-    function showDownloadModal(url, filename) {
+    function showDownloadModal(url, filename, content, mimeType) {
         // Удаляем предыдущее модальное окно, если оно есть
         const existingModal = document.getElementById('download-modal');
         if (existingModal) {
@@ -2363,12 +2348,108 @@ function initMap() {
             word-break: break-all;
         `;
         
-        // Создаем настоящую ссылку для скачивания (работает в Telegram Web App)
-        const downloadLink = document.createElement('a');
-        downloadLink.href = url;
-        downloadLink.download = filename;
-        downloadLink.textContent = 'Скачать';
-        downloadLink.style.cssText = `
+        // Создаем ссылку для скачивания - используем data URL для Telegram Web App
+        // Data URL работает более надежно в Telegram Web App
+        const blob = new Blob(["\uFEFF" + content], { type: mimeType });
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            const dataUrl = e.target.result;
+            
+            const downloadLink = document.createElement('a');
+            downloadLink.href = dataUrl;
+            downloadLink.download = filename;
+            downloadLink.textContent = 'Скачать';
+            downloadLink.style.cssText = `
+                background: darkorange;
+                color: #32333d;
+                border: 1px solid darkorange;
+                border-radius: 5px;
+                padding: 10px 20px;
+                font-family: sans-serif;
+                font-size: 16px;
+                font-weight: bold;
+                cursor: pointer;
+                margin-right: 10px;
+                touch-action: manipulation;
+                text-decoration: none;
+                display: inline-block;
+            `;
+            
+            // НЕ используем preventDefault - позволяем браузеру обработать клик естественным образом
+            // Это критично для Telegram Web App - прямой клик пользователя должен работать
+            downloadLink.addEventListener('click', (e) => {
+                // Даем ссылке обработаться естественным образом, не блокируем
+                setTimeout(() => {
+                    if (modal.parentNode) {
+                        modal.remove();
+                    }
+                    URL.revokeObjectURL(url);
+                }, 1000);
+            });
+            
+            downloadLink.addEventListener('touchend', (e) => {
+                // Для touch событий тоже не блокируем - позволяем естественную обработку
+                setTimeout(() => {
+                    if (modal.parentNode) {
+                        modal.remove();
+                    }
+                    URL.revokeObjectURL(url);
+                }, 1000);
+            });
+            
+            // Заменяем заглушку на реальную ссылку
+            const placeholder = buttonContainer.querySelector('.download-placeholder');
+            if (placeholder && placeholder.parentNode) {
+                buttonContainer.replaceChild(downloadLink, placeholder);
+            }
+        };
+        
+        reader.onerror = function(e) {
+            // Если не удалось прочитать как data URL, используем blob URL
+            console.warn('Не удалось создать data URL, используем blob URL');
+            const downloadLink = document.createElement('a');
+            downloadLink.href = url;
+            downloadLink.download = filename;
+            downloadLink.textContent = 'Скачать';
+            downloadLink.style.cssText = `
+                background: darkorange;
+                color: #32333d;
+                border: 1px solid darkorange;
+                border-radius: 5px;
+                padding: 10px 20px;
+                font-family: sans-serif;
+                font-size: 16px;
+                font-weight: bold;
+                cursor: pointer;
+                margin-right: 10px;
+                touch-action: manipulation;
+                text-decoration: none;
+                display: inline-block;
+            `;
+            
+            downloadLink.addEventListener('click', (e) => {
+                setTimeout(() => {
+                    if (modal.parentNode) {
+                        modal.remove();
+                    }
+                    URL.revokeObjectURL(url);
+                }, 1000);
+            });
+            
+            const placeholder = buttonContainer.querySelector('.download-placeholder');
+            if (placeholder && placeholder.parentNode) {
+                buttonContainer.replaceChild(downloadLink, placeholder);
+            }
+        };
+        
+        reader.readAsDataURL(blob);
+        
+        // Показываем заглушку пока файл читается
+        const downloadPlaceholder = document.createElement('div');
+        downloadPlaceholder.className = 'download-placeholder';
+        downloadPlaceholder.textContent = 'Загрузка...';
+        downloadPlaceholder.style.cssText = `
             background: darkorange;
             color: #32333d;
             border: 1px solid darkorange;
@@ -2377,28 +2458,9 @@ function initMap() {
             font-family: sans-serif;
             font-size: 16px;
             font-weight: bold;
-            cursor: pointer;
             margin-right: 10px;
-            touch-action: manipulation;
-            text-decoration: none;
             display: inline-block;
         `;
-        
-        // Обработчик для закрытия модального окна после скачивания
-        downloadLink.addEventListener('click', () => {
-            setTimeout(() => {
-                modal.remove();
-                URL.revokeObjectURL(url);
-            }, 500);
-        });
-        
-        downloadLink.addEventListener('touchend', (e) => {
-            e.stopPropagation();
-            setTimeout(() => {
-                modal.remove();
-                URL.revokeObjectURL(url);
-            }, 500);
-        });
         
         const closeBtn = document.createElement('button');
         closeBtn.textContent = 'Закрыть';
@@ -2417,7 +2479,7 @@ function initMap() {
         
         const buttonContainer = document.createElement('div');
         buttonContainer.style.cssText = 'display: flex; justify-content: center;';
-        buttonContainer.appendChild(downloadLink);
+        buttonContainer.appendChild(downloadPlaceholder);
         buttonContainer.appendChild(closeBtn);
         
         modalContent.appendChild(title);
