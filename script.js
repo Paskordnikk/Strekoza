@@ -2489,31 +2489,97 @@ function initMap() {
     }
 
     function parseCsv(text) {
-        const lines = text.trim().split(/\r\n|\n/);
+        // Enhanced version that can handle both file input and text paste
+        const originalText = text;
+        
+        // If there are any extra formatting characters from pasting, clean them
+        text = text.trim();
+        
+        // Split by newlines (support both Windows and Unix line endings)
+        const lines = text.split(/\r?\n/);
         if (lines.length < 2) throw new Error("CSV файл должен содержать заголовок и хотя бы одну строку данных.");
 
-        const headers = lines[0].split(',').map(h => h.trim());
-        const latIndex = headers.indexOf('широта');
-        const lngIndex = headers.indexOf('долгота');
-        const waypointIndex = headers.indexOf('is_waypoint'); // Find the new column
+        // Check the first line to see if it contains the expected headers
+        let headers = [];
+        let latIndex = -1;
+        let lngIndex = -1;
+        let waypointIndex = -1;
+        
+        // Try to parse first line as headers
+        try {
+            headers = parseCSVLine(lines[0]).map(h => h.trim());
+            latIndex = headers.indexOf('широта');
+            lngIndex = headers.indexOf('долгота');
+            waypointIndex = headers.indexOf('is_waypoint'); // Find the new column
+        } catch (e) {
+            // If parsing headers fails, continue to check if it's data
+        }
+        
+        // If headers are not found, the user might have pasted raw content
+        // In this case, try to detect the format
+        if (latIndex === -1 || lngIndex === -1) {
+            // Check if first line after header might be data (not headers)
+            if (lines.length > 0) {
+                const firstLineValues = parseCSVLine(lines[0]);
+                if (firstLineValues.length >= 2) {
+                    // Assume first two columns are lat/lng
+                    // This is a simplified check - we expect the first column to be a valid number
+                    const firstValue = parseFloat(firstLineValues[0]);
+                    const secondValue = parseFloat(firstLineValues[1]);
+                    
+                    if (!isNaN(firstValue) && !isNaN(secondValue)) {
+                        // This looks like data, not headers. Process everything as data.
+                        latIndex = 0;
+                        lngIndex = 1;
+                        waypointIndex = firstLineValues.length > 4 ? 4 : -1; // is_waypoint would be 5th column (index 4)
+                        
+                        // Set headers to empty array so we process from line 0
+                        headers = [];
+                    }
+                }
+            }
+        }
 
         if (latIndex === -1 || lngIndex === -1) {
             throw new Error('CSV файл должен содержать столбцы: широта, долгота');
         }
 
         const data = [];
-        for (let i = 1; i < lines.length; i++) {
-            const values = lines[i].split(',');
+        
+        // Determine starting index based on whether we have headers
+        const startIndex = headers.length > 0 ? 1 : 0;
+        
+        for (let i = startIndex; i < lines.length; i++) {
+            if (!lines[i].trim()) continue; // Skip empty lines
+            
+            const values = parseCSVLine(lines[i]);
+            
+            // Ensure we have enough values
+            if (values.length <= latIndex || values.length <= lngIndex) continue;
+            
+            // Parse coordinates
+            const lat = parseFloat(values[latIndex]);
+            const lng = parseFloat(values[lngIndex]);
+            
+            // If coordinates are invalid, skip this line
+            if (isNaN(lat) || isNaN(lng)) continue;
+            
+            // Check if coordinate values are in valid ranges
+            if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+                continue; // Skip invalid coordinates
+            }
             
             // If the waypoint column exists, only import rows where it's '1'.
             // If it doesn't exist (old format), import all rows.
-            if (waypointIndex !== -1 && values[waypointIndex] !== '1') {
-                continue;
+            if (waypointIndex !== -1 && values.length > waypointIndex) {
+                if (values[waypointIndex] !== '1') {
+                    continue;
+                }
             }
 
             data.push({
-                lat: parseFloat(values[latIndex]),
-                lng: parseFloat(values[lngIndex]),
+                lat: lat,
+                lng: lng,
             });
         }
         
@@ -3134,13 +3200,20 @@ function initMap() {
     
     // Function to parse CSV line with proper handling of quoted fields
     function parseCSVLine(line) {
+        // Enhanced version that handles various CSV formats and potential paste issues
+        if (!line || typeof line !== 'string') return [];
+        
+        // Clean up potential formatting issues that can occur when pasting
+        line = line.trim();
+        if (!line) return [];
+        
         const result = [];
         let current = '';
         let inQuotes = false;
         
         for (let i = 0; i < line.length; i++) {
             const char = line[i];
-            const nextChar = line[i + 1];
+            const nextChar = i < line.length - 1 ? line[i + 1] : '';
             
             if (char === '"') {
                 if (inQuotes && nextChar === '"') {
@@ -3173,25 +3246,52 @@ function initMap() {
     
     // Function to parse points CSV
     function parsePointsCsv(text) {
-        const lines = text.trim().split(/\r\n|\n/);
+        // Enhanced version that can handle both file input and text paste
+        const originalText = text;
+        
+        // If there are any extra formatting characters from pasting, clean them
+        text = text.trim();
+        
+        // Split by newlines (support both Windows and Unix line endings)
+        const lines = text.split(/\r?\n/);
         if (lines.length < 2) {
             throw new Error('CSV файл должен содержать заголовок и хотя бы одну строку данных.');
         }
         
-        const headers = parseCSVLine(lines[0]).map(h => h.trim());
-        const coordsIndex = headers.indexOf('координаты_точки');
-        const nameIndex = headers.indexOf('название_точки');
-        const descIndex = headers.indexOf('описание_точки');
+        // Check the first line to see if it contains the expected headers
+        let headers = parseCSVLine(lines[0]).map(h => h.trim());
+        let coordsIndex = headers.indexOf('координаты_точки');
+        let nameIndex = headers.indexOf('название_точки');
+        let descIndex = headers.indexOf('описание_точки');
         
+        // If headers are not found, the user might have pasted raw content
+        // In this case, try to detect if the first data line has coordinates
         if (coordsIndex === -1) {
-            throw new Error('CSV файл должен содержать столбец: координаты_точки');
+            // Check if first line after header might be data (not headers)
+            if (lines.length > 1) {
+                const firstLineValues = parseCSVLine(lines[1]);
+                if (firstLineValues.length >= 1) {
+                    // If it looks like coordinates are in the first column, process without headers
+                    coordsIndex = 0;
+                    nameIndex = firstLineValues.length > 1 ? 1 : -1;
+                    descIndex = firstLineValues.length > 2 ? 2 : -1;
+                } else {
+                    throw new Error('CSV файл должен содержать столбец: координаты_точки');
+                }
+            } else {
+                throw new Error('CSV файл должен содержать столбец: координаты_точки');
+            }
         }
         
         const points = [];
+        // Process from line 1 (skip header line)
         for (let i = 1; i < lines.length; i++) {
             if (!lines[i].trim()) continue; // Skip empty lines
             
             let values = parseCSVLine(lines[i]);
+            
+            // Ensure we have enough values
+            if (values.length <= coordsIndex) continue;
             
             // Handle case where coordinates field contains comma but is not quoted
             // If coordsIndex points to a single number and next value is also a number,
@@ -3207,6 +3307,15 @@ function initMap() {
                 if (coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
                     lat = coords[0];
                     lng = coords[1];
+                } else {
+                    // If coordinates don't parse as expected, try alternative parsing
+                    // Check if the field starts with coordinates followed by other data
+                    const coordRegex = /(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/;
+                    const match = coordValue.match(coordRegex);
+                    if (match) {
+                        lat = parseFloat(match[1]);
+                        lng = parseFloat(match[2]);
+                    }
                 }
             } else {
                 // Coordinates might be split across two fields
@@ -3306,13 +3415,262 @@ function initMap() {
         triggerFileInput(csvImporter);
     });
     
-    // Also update the export functionality to ensure it works on mobile
+    // Get DOM elements for modal windows
+    const exportModal = document.getElementById('export-modal');
+    const importModal = document.getElementById('import-modal');
+    const exportTextarea = document.getElementById('export-textarea');
+    const importTextarea = document.getElementById('import-textarea');
+    const copyExportDataBtn = document.getElementById('copy-export-data-btn');
+    const importRouteTextBtn = document.getElementById('import-route-text-btn');
+    const importPointsTextBtn = document.getElementById('import-points-text-btn');
+    const exportModalClose = document.getElementById('export-modal-close');
+    const importModalClose = document.getElementById('import-modal-close');
+    
+    // Open export modal with CSV data for mobile devices
+    function openExportModal(data, title) {
+        if (!exportModal || !exportTextarea) return;
+        
+        exportTextarea.value = data;
+        document.getElementById('export-modal-title').textContent = title;
+        exportModal.style.display = 'flex';
+    }
+    
+    // Close export modal
+    function closeExportModal() {
+        if (exportModal) {
+            exportModal.style.display = 'none';
+        }
+    }
+    
+    // Open import modal for mobile devices
+    function openImportModal() {
+        if (!importModal) return;
+        
+        importModal.style.display = 'flex';
+        importTextarea.value = ''; // Clear the text area when opening
+    }
+    
+    // Close import modal
+    function closeImportModal() {
+        if (importModal) {
+            importModal.style.display = 'none';
+            importTextarea.value = ''; // Clear the text area when closing
+        }
+    }
+    
+    // Copy text to clipboard
+    async function copyToClipboard(text) {
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(text);
+                alert('Данные скопированы в буфер обмена');
+            } else {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                textArea.style.top = '-999999px';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                document.execCommand('copy');
+                textArea.remove();
+                alert('Данные скопированы в буфер обмена');
+            }
+        } catch (err) {
+            console.error('Failed to copy text: ', err);
+            alert('Не удалось скопировать данные в буфер обмена');
+        }
+    }
+    
+    // Enhanced export functionality for mobile devices
+    function exportRouteToCSV() {
+        if (currentRouteData.length === 0) {
+            alert("Нет данных для экспорта.");
+            return;
+        }
+
+        const headers = ["широта", "долгота", "высота_м", "расстояние_км", "is_waypoint"];
+        // Export all points from elevation profile with current step
+        const dataToExport = currentRouteData;
+
+        const rows = dataToExport.map(p => 
+            [
+                p.lat.toFixed(6), 
+                p.lng.toFixed(6), 
+                p.elevation.toFixed(1), 
+                p.distance.toFixed(3),
+                p.isWaypoint ? '1' : '0' // Add the waypoint flag
+            ].join(',')
+        );
+
+        let csvContent = headers.join(",") + "\n" + rows.join("\n");
+
+        // Check if we're on a mobile device or in Telegram Web App
+        if (isMobileDevice()) {
+            // For mobile devices, show the data in a modal for copying
+            openExportModal(csvContent, 'Экспорт маршрута');
+        } else {
+            const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `route_profile_step${currentSampleStep}m.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+    }
+    
+    // Enhanced export points function for mobile devices
+    function exportPointsToCSV() {
+        if (customPoints.length === 0) {
+            alert('Нет точек для экспорта');
+            return;
+        }
+        
+        const headers = ['координаты_точки', 'название_точки', 'описание_точки'];
+        const rows = customPoints.map(point => {
+            // Escape commas and quotes in text fields
+            const escapeCSV = (text) => {
+                if (!text) return '';
+                // If text contains comma, quote or newline, wrap in quotes and escape quotes
+                if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+                    return '"' + text.replace(/"/g, '""') + '"';
+                }
+                return text;
+            };
+            
+            return [
+                `${point.lat.toFixed(6)},${point.lng.toFixed(6)}`,
+                escapeCSV(point.name || ''),
+                escapeCSV(point.description || '')
+            ].join(',');
+        });
+        
+        let csvContent = headers.join(',') + '\n' + rows.join('\n');
+        
+        // Check if we're on a mobile device or in Telegram Web App
+        if (isMobileDevice()) {
+            // For mobile devices, show the data in a modal for copying
+            openExportModal(csvContent, 'Экспорт точек');
+        } else {
+            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'points.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+    }
+    
+    // Event listeners for modal windows
+    if (exportModalClose) {
+        exportModalClose.addEventListener('click', closeExportModal);
+    }
+    
+    if (importModalClose) {
+        importModalClose.addEventListener('click', closeImportModal);
+    }
+    
+    if (copyExportDataBtn) {
+        copyExportDataBtn.addEventListener('click', function() {
+            if (exportTextarea) {
+                copyToClipboard(exportTextarea.value);
+            }
+        });
+    }
+    
+    // Handle route text import
+    if (importRouteTextBtn) {
+        importRouteTextBtn.addEventListener('click', function() {
+            if (importTextarea) {
+                const text = importTextarea.value.trim();
+                if (text) {
+                    try {
+                        const parsedData = parseCsv(text);
+                        reconstructRouteFromData(parsedData);
+                        closeImportModal();
+                    } catch (error) {
+                        alert(`Не удалось прочитать данные. Убедитесь, что это корректный CSV-формат.\nДетали: ${error.message}`);
+                    }
+                }
+            }
+        });
+    }
+    
+    // Handle points text import
+    if (importPointsTextBtn) {
+        importPointsTextBtn.addEventListener('click', function() {
+            if (importTextarea) {
+                const text = importTextarea.value.trim();
+                if (text) {
+                    try {
+                        const parsedPoints = parsePointsCsv(text);
+                        
+                        // Remove existing points if needed (or merge)
+                        // For now, we'll add to existing points
+                        parsedPoints.forEach(point => {
+                            addPoint(point.lat, point.lng, point.name, point.description);
+                        });
+                        
+                        updateExportButtonVisibility();
+                        closeImportModal();
+                    } catch (error) {
+                        alert(`Не удалось прочитать данные. Убедитесь, что это корректный CSV-формат.\nДетали: ${error.message}`);
+                    }
+                }
+            }
+        });
+    }
+    
+    // Close modals when clicking outside the content
+    window.addEventListener('click', function(event) {
+        if (event.target === exportModal) {
+            closeExportModal();
+        }
+        if (event.target === importModal) {
+            closeImportModal();
+        }
+    });
+    
+    // Update export route button to use the new modal for mobile
     exportRouteBtn.addEventListener('click', function() {
         if (isMobileDevice()) {
-            // On mobile devices, we might need to use a different approach for file download
             exportRouteToCSV();
         } else {
             exportRouteToCSV();
+        }
+    });
+    
+    // Update export points button to use the new modal for mobile
+    exportPointsBtn.addEventListener('click', function() {
+        if (isMobileDevice()) {
+            exportPointsToCSV();
+        } else {
+            exportPointsToCSV();
+        }
+    });
+    
+    // Update import buttons to use the new modal for mobile
+    importRouteBtn.addEventListener('click', function() {
+        if (isMobileDevice()) {
+            openImportModal();
+        } else {
+            triggerFileInput(csvImporter);
+        }
+    });
+    
+    importPointsBtn.addEventListener('click', function() {
+        if (isMobileDevice()) {
+            openImportModal();
+        } else {
+            triggerFileInput(pointsCsvImporter);
         }
     });
 }
