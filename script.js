@@ -1063,6 +1063,15 @@ function initMap() {
     try {
         let tg = window.Telegram.WebApp;
         tg.ready();
+        
+        // For better mobile experience in Telegram Web App
+        if (tg) {
+            // Expand the web app to full screen
+            tg.expand();
+            
+            // Set the background color to match the app
+            tg.setBackgroundColor('#2f2f38');
+        }
     } catch (e) {
         // Telegram WebApp is not available
     }
@@ -2292,13 +2301,46 @@ function initMap() {
         let csvContent = headers.join(",") + "\n" + rows.join("\n");
 
         const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.setAttribute("href", url);
-        link.setAttribute("download", `route_profile_step${currentSampleStep}m.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        
+        // Check if we're on a mobile device or in Telegram Web App
+        if (isMobileDevice()) {
+            // For mobile devices, especially in web views like Telegram, try to use a direct download approach
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `route_profile_step${currentSampleStep}m.csv`;
+            
+            // For mobile browsers that might not support click(), try touchstart or manual download
+            if (typeof a.click === 'function') {
+                // Trigger a click event on the link
+                a.click();
+            } else {
+                // For browsers that don't support click(), try focusing and calling click as a fallback
+                a.focus();
+                // Try creating and dispatching a mouse event
+                const event = new MouseEvent('click', {
+                    view: window,
+                    bubbles: true,
+                    cancelable: true
+                });
+                a.dispatchEvent(event);
+            }
+            
+            // Clean up the URL object
+            setTimeout(() => {
+                URL.revokeObjectURL(url);
+            }, 100);
+        } else {
+            // Desktop behavior remains the same
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `route_profile_step${currentSampleStep}m.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
     }
 
     function resetRouteBuilding() {
@@ -2421,7 +2463,7 @@ function initMap() {
 
     // --- IMPORT LOGIC ---
     importRouteBtn.addEventListener('click', () => {
-        csvImporter.click();
+        triggerFileInput(csvImporter);
     });
 
     csvImporter.addEventListener('change', handleCsvImport);
@@ -2442,6 +2484,7 @@ function initMap() {
         };
         reader.readAsText(file);
         
+        // Ensure the file input is cleared after import for mobile devices
         event.target.value = '';
     }
 
@@ -2978,13 +3021,46 @@ function initMap() {
         let csvContent = headers.join(',') + '\n' + rows.join('\n');
         
         const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute('href', url);
-        link.setAttribute('download', 'points.csv');
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        
+        // Check if we're on a mobile device or in Telegram Web App
+        if (isMobileDevice()) {
+            // For mobile devices, especially in web views like Telegram, try to use a direct download approach
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'points.csv';
+            
+            // For mobile browsers that might not support click(), try touchstart or manual download
+            if (typeof a.click === 'function') {
+                // Trigger a click event on the link
+                a.click();
+            } else {
+                // For browsers that don't support click(), try focusing and calling click as a fallback
+                a.focus();
+                // Try creating and dispatching a mouse event
+                const event = new MouseEvent('click', {
+                    view: window,
+                    bubbles: true,
+                    cancelable: true
+                });
+                a.dispatchEvent(event);
+            }
+            
+            // Clean up the URL object
+            setTimeout(() => {
+                URL.revokeObjectURL(url);
+            }, 100);
+        } else {
+            // Desktop behavior remains the same
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'points.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
     });
     
     // Handle reset points button
@@ -3025,8 +3101,36 @@ function initMap() {
         };
         reader.readAsText(file);
         
+        // Ensure the file input is cleared after import for mobile devices
         event.target.value = '';
     });
+    
+    // Additional mobile-specific improvements for file inputs
+    // Make sure both CSV importers work properly on mobile
+    function initializeMobileFileInput(inputElement) {
+        if (isMobileDevice()) {
+            // On mobile devices, ensure the input element can receive focus
+            inputElement.setAttribute('tabindex', '0');
+            
+            // Add touch event handlers to ensure the file dialog opens on mobile
+            inputElement.addEventListener('touchstart', function(e) {
+                // Prevent default to avoid conflicts with other touch events
+                e.preventDefault();
+            });
+            
+            // For better mobile compatibility, also allow keyboard activation
+            inputElement.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    this.click();
+                }
+            });
+        }
+    }
+    
+    // Initialize mobile compatibility for both file inputs
+    initializeMobileFileInput(csvImporter);
+    initializeMobileFileInput(pointsCsvImporter);
     
     // Function to parse CSV line with proper handling of quoted fields
     function parseCSVLine(line) {
@@ -3154,4 +3258,61 @@ function initMap() {
         
         return points;
     }
+    
+    // Helper function to detect mobile devices
+    function isMobileDevice() {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+               ('ontouchstart' in window) ||
+               (navigator.maxTouchPoints > 0) ||
+               (window.innerWidth <= 768);
+    }
+    
+    // Utility function to trigger file input click with mobile compatibility
+    function triggerFileInput(inputElement) {
+        if (isMobileDevice()) {
+            // On mobile devices, ensure the file input is visible and accessible
+            inputElement.style.display = 'block'; // Make sure it's not hidden
+            inputElement.style.position = 'fixed';
+            inputElement.style.left = '-9999px';
+            inputElement.style.top = '0';
+            inputElement.style.opacity = '0';
+            inputElement.style.zIndex = '9999';
+            
+            // Create a temporary click event
+            inputElement.click();
+            
+            // Reset the styles after click
+            setTimeout(() => {
+                inputElement.style.display = 'none';
+            }, 1000);
+        } else {
+            inputElement.click();
+        }
+    }
+    
+    // Add logging to help with debugging mobile file operations
+    if (isMobileDevice()) {
+        console.log('Mobile device detected - enhanced file input compatibility enabled');
+    }
+    
+    // Enhanced import functionality for mobile devices
+    // Update the import points button to handle mobile better
+    importPointsBtn.addEventListener('click', function() {
+        triggerFileInput(pointsCsvImporter);
+    });
+    
+    // Update the import route button as well
+    importRouteBtn.addEventListener('click', () => {
+        triggerFileInput(csvImporter);
+    });
+    
+    // Also update the export functionality to ensure it works on mobile
+    exportRouteBtn.addEventListener('click', function() {
+        if (isMobileDevice()) {
+            // On mobile devices, we might need to use a different approach for file download
+            exportRouteToCSV();
+        } else {
+            exportRouteToCSV();
+        }
+    });
 }

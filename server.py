@@ -12,23 +12,10 @@ from passlib.context import CryptContext
 from srtm import Srtm3HeightMapCollection
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-import io
-import asyncio
-import telegram
 
 # Set the environment variable for the SRTM data directory
 # This must be done before creating the collection object.
 os.environ['SRTM3_DIR'] = 'strm'
-
-# --- Telegram Bot Configuration ---
-# !!! ВАЖНО: Установите токен вашего Telegram бота в переменные окружения.
-# Это самый безопасный способ хранения токена.
-# Например, в терминале перед запуском сервера:
-# export TELEGRAM_BOT_TOKEN="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
-# Или добавьте его в переменные окружения вашей операционной системы.
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-if not TELEGRAM_BOT_TOKEN:
-    print("⚠️ [WARNING] Переменная окружения TELEGRAM_BOT_TOKEN не установлена. Функция экспорта в Telegram не будет работать.")
 
 # JWT Configuration
 # Секретный ключ будет установлен позже, если передан через аргумент
@@ -111,7 +98,7 @@ app = FastAPI(
 def root():
     return {
         "message": "Server is running",
-        "endpoints": ["/api/login", "/api/get_elevation", "/api/export_file"],
+        "endpoints": ["/api/login", "/api/get_elevation"],
         "docs": "/docs",
         "openapi": "/openapi.json"
     }
@@ -146,11 +133,6 @@ class RouteData(BaseModel):
 
 class LoginRequest(BaseModel):
     password: str
-
-class ExportRequest(BaseModel):
-    chat_id: int
-    file_content: str
-    file_name: str
 
 # Create an instance of the Srtm3HeightMapCollection
 # It will use the SRTM3_DIR environment variable to find the .hgt files.
@@ -281,41 +263,6 @@ def get_elevation_profile(route_data: RouteData, token: dict = Depends(verify_to
             elevations.append(raw_elevations[i])
             
     return {"elevations": elevations}
-
-@app.post("/api/export_file", tags=["export"])
-async def export_file(request: ExportRequest, token: dict = Depends(verify_token)):
-    """
-    Принимает контент файла и ID чата, и отправляет файл пользователю через Telegram бота.
-    """
-    if not TELEGRAM_BOT_TOKEN:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Telegram bot token не настроен на сервере."
-        )
-
-    try:
-        bot = telegram.Bot(token=TELEGRAM_BOT_TOKEN)
-        
-        # Создаем файл в памяти
-        file_content_bytes = request.file_content.encode('utf-8')
-        in_memory_file = io.BytesIO(file_content_bytes)
-        in_memory_file.name = request.file_name
-        
-        # Отправляем документ
-        await bot.send_document(
-            chat_id=request.chat_id,
-            document=in_memory_file,
-            filename=request.file_name,
-            caption="Ваш экспортированный файл."
-        )
-        
-        return {"message": "Файл успешно отправлен в ваш чат Telegram."}
-    except Exception as e:
-        print(f"Ошибка при отправке файла в Telegram: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Не удалось отправить файл в Telegram. Ошибка: {e}"
-        )
 
 # Логирование зарегистрированных эндпоинтов при загрузке модуля
 print(f"[INFO] FastAPI app created. Registered routes:")
