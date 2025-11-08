@@ -4,7 +4,7 @@ python-jose[cryptography]
 passlib[bcrypt]
 python-multipart
 gdal==3.6.4
-numpy
+numpy==1.26.4
 geojson
 hgt-reader
 scipy
