@@ -3415,262 +3415,304 @@ function initMap() {
         triggerFileInput(csvImporter);
     });
     
-    // Get DOM elements for modal windows
+    // Check if modal elements exist before trying to access them
     const exportModal = document.getElementById('export-modal');
     const importModal = document.getElementById('import-modal');
-    const exportTextarea = document.getElementById('export-textarea');
-    const importTextarea = document.getElementById('import-textarea');
-    const copyExportDataBtn = document.getElementById('copy-export-data-btn');
-    const importRouteTextBtn = document.getElementById('import-route-text-btn');
-    const importPointsTextBtn = document.getElementById('import-points-text-btn');
-    const exportModalClose = document.getElementById('export-modal-close');
-    const importModalClose = document.getElementById('import-modal-close');
     
-    // Open export modal with CSV data for mobile devices
-    function openExportModal(data, title) {
-        if (!exportModal || !exportTextarea) return;
+    if (exportModal && importModal) {
+        const exportTextarea = document.getElementById('export-textarea');
+        const importTextarea = document.getElementById('import-textarea');
+        const copyExportDataBtn = document.getElementById('copy-export-data-btn');
+        const importRouteTextBtn = document.getElementById('import-route-text-btn');
+        const importPointsTextBtn = document.getElementById('import-points-text-btn');
+        const exportModalClose = document.getElementById('export-modal-close');
+        const importModalClose = document.getElementById('import-modal-close');
         
-        exportTextarea.value = data;
-        document.getElementById('export-modal-title').textContent = title;
-        exportModal.style.display = 'flex';
-    }
-    
-    // Close export modal
-    function closeExportModal() {
-        if (exportModal) {
-            exportModal.style.display = 'none';
-        }
-    }
-    
-    // Open import modal for mobile devices
-    function openImportModal() {
-        if (!importModal) return;
-        
-        importModal.style.display = 'flex';
-        importTextarea.value = ''; // Clear the text area when opening
-    }
-    
-    // Close import modal
-    function closeImportModal() {
-        if (importModal) {
-            importModal.style.display = 'none';
-            importTextarea.value = ''; // Clear the text area when closing
-        }
-    }
-    
-    // Copy text to clipboard
-    async function copyToClipboard(text) {
-        try {
-            if (navigator.clipboard && window.isSecureContext) {
-                await navigator.clipboard.writeText(text);
-                alert('Данные скопированы в буфер обмена');
-            } else {
-                // Fallback for older browsers
-                const textArea = document.createElement('textarea');
-                textArea.value = text;
-                textArea.style.position = 'fixed';
-                textArea.style.left = '-999999px';
-                textArea.style.top = '-999999px';
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
-                document.execCommand('copy');
-                textArea.remove();
-                alert('Данные скопированы в буфер обмена');
-            }
-        } catch (err) {
-            console.error('Failed to copy text: ', err);
-            alert('Не удалось скопировать данные в буфер обмена');
-        }
-    }
-    
-    // Enhanced export functionality for mobile devices
-    function exportRouteToCSV() {
-        if (currentRouteData.length === 0) {
-            alert("Нет данных для экспорта.");
-            return;
-        }
-
-        const headers = ["широта", "долгота", "высота_м", "расстояние_км", "is_waypoint"];
-        // Export all points from elevation profile with current step
-        const dataToExport = currentRouteData;
-
-        const rows = dataToExport.map(p => 
-            [
-                p.lat.toFixed(6), 
-                p.lng.toFixed(6), 
-                p.elevation.toFixed(1), 
-                p.distance.toFixed(3),
-                p.isWaypoint ? '1' : '0' // Add the waypoint flag
-            ].join(',')
-        );
-
-        let csvContent = headers.join(",") + "\n" + rows.join("\n");
-
-        // Check if we're on a mobile device or in Telegram Web App
-        if (isMobileDevice()) {
-            // For mobile devices, show the data in a modal for copying
-            openExportModal(csvContent, 'Экспорт маршрута');
-        } else {
-            const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.setAttribute("href", url);
-            link.setAttribute("download", `route_profile_step${currentSampleStep}m.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-        }
-    }
-    
-    // Enhanced export points function for mobile devices
-    function exportPointsToCSV() {
-        if (customPoints.length === 0) {
-            alert('Нет точек для экспорта');
-            return;
-        }
-        
-        const headers = ['координаты_точки', 'название_точки', 'описание_точки'];
-        const rows = customPoints.map(point => {
-            // Escape commas and quotes in text fields
-            const escapeCSV = (text) => {
-                if (!text) return '';
-                // If text contains comma, quote or newline, wrap in quotes and escape quotes
-                if (text.includes(',') || text.includes('"') || text.includes('\n')) {
-                    return '"' + text.replace(/"/g, '""') + '"';
-                }
-                return text;
-            };
+        // Open export modal with CSV data for mobile devices
+        function openExportModal(data, title) {
+            if (!exportModal || !exportTextarea) return;
             
-            return [
-                `${point.lat.toFixed(6)},${point.lng.toFixed(6)}`,
-                escapeCSV(point.name || ''),
-                escapeCSV(point.description || '')
-            ].join(',');
-        });
-        
-        let csvContent = headers.join(',') + '\n' + rows.join('\n');
-        
-        // Check if we're on a mobile device or in Telegram Web App
-        if (isMobileDevice()) {
-            // For mobile devices, show the data in a modal for copying
-            openExportModal(csvContent, 'Экспорт точек');
-        } else {
-            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.setAttribute('href', url);
-            link.setAttribute('download', 'points.csv');
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-        }
-    }
-    
-    // Event listeners for modal windows
-    if (exportModalClose) {
-        exportModalClose.addEventListener('click', closeExportModal);
-    }
-    
-    if (importModalClose) {
-        importModalClose.addEventListener('click', closeImportModal);
-    }
-    
-    if (copyExportDataBtn) {
-        copyExportDataBtn.addEventListener('click', function() {
-            if (exportTextarea) {
-                copyToClipboard(exportTextarea.value);
+            exportTextarea.value = data;
+            const titleElement = document.getElementById('export-modal-title');
+            if (titleElement) {
+                titleElement.textContent = title;
             }
-        });
-    }
-    
-    // Handle route text import
-    if (importRouteTextBtn) {
-        importRouteTextBtn.addEventListener('click', function() {
-            if (importTextarea) {
-                const text = importTextarea.value.trim();
-                if (text) {
-                    try {
-                        const parsedData = parseCsv(text);
-                        reconstructRouteFromData(parsedData);
-                        closeImportModal();
-                    } catch (error) {
-                        alert(`Не удалось прочитать данные. Убедитесь, что это корректный CSV-формат.\nДетали: ${error.message}`);
+            exportModal.style.display = 'flex';
+        }
+        
+        // Close export modal
+        function closeExportModal() {
+            if (exportModal) {
+                exportModal.style.display = 'none';
+            }
+        }
+        
+        // Open import modal for mobile devices
+        function openImportModal() {
+            if (!importModal || !importTextarea) return;
+            
+            importModal.style.display = 'flex';
+            importTextarea.value = ''; // Clear the text area when opening
+        }
+        
+        // Close import modal
+        function closeImportModal() {
+            if (importModal && importTextarea) {
+                importModal.style.display = 'none';
+                importTextarea.value = ''; // Clear the text area when closing
+            }
+        }
+        
+        // Copy text to clipboard
+        async function copyToClipboard(text) {
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(text);
+                    alert('Данные скопированы в буфер обмена');
+                } else {
+                    // Fallback for older browsers
+                    const textArea = document.createElement('textarea');
+                    textArea.value = text;
+                    textArea.style.position = 'fixed';
+                    textArea.style.left = '-999999px';
+                    textArea.style.top = '-999999px';
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    document.execCommand('copy');
+                    textArea.remove();
+                    alert('Данные скопированы в буфер обмена');
+                }
+            } catch (err) {
+                console.error('Failed to copy text: ', err);
+                alert('Не удалось скопировать данные в буфер обмена');
+            }
+        }
+        
+        // Enhanced export functionality for mobile devices
+        function exportRouteToCSV() {
+            if (currentRouteData.length === 0) {
+                alert("Нет данных для экспорта.");
+                return;
+            }
+
+            const headers = ["широта", "долгота", "высота_м", "расстояние_км", "is_waypoint"];
+            // Export all points from elevation profile with current step
+            const dataToExport = currentRouteData;
+
+            const rows = dataToExport.map(p => 
+                [
+                    p.lat.toFixed(6), 
+                    p.lng.toFixed(6), 
+                    p.elevation.toFixed(1), 
+                    p.distance.toFixed(3),
+                    p.isWaypoint ? '1' : '0' // Add the waypoint flag
+                ].join(',')
+            );
+
+            let csvContent = headers.join(",") + "\n" + rows.join("\n");
+
+            // Check if we're on a mobile device or in Telegram Web App
+            if (isMobileDevice()) {
+                // For mobile devices, show the data in a modal for copying
+                openExportModal(csvContent, 'Экспорт маршрута');
+            } else {
+                const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.setAttribute("href", url);
+                link.setAttribute("download", `route_profile_step${currentSampleStep}m.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }
+        }
+        
+        // Enhanced export points function for mobile devices
+        function exportPointsToCSV() {
+            if (customPoints.length === 0) {
+                alert('Нет точек для экспорта');
+                return;
+            }
+            
+            const headers = ['координаты_точки', 'название_точки', 'описание_точки'];
+            const rows = customPoints.map(point => {
+                // Escape commas and quotes in text fields
+                const escapeCSV = (text) => {
+                    if (!text) return '';
+                    // If text contains comma, quote or newline, wrap in quotes and escape quotes
+                    if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+                        return '"' + text.replace(/"/g, '""') + '"';
+                    }
+                    return text;
+                };
+                
+                return [
+                    `${point.lat.toFixed(6)},${point.lng.toFixed(6)}`,
+                    escapeCSV(point.name || ''),
+                    escapeCSV(point.description || '')
+                ].join(',');
+            });
+            
+            let csvContent = headers.join(',') + '\n' + rows.join('\n');
+            
+            // Check if we're on a mobile device or in Telegram Web App
+            if (isMobileDevice()) {
+                // For mobile devices, show the data in a modal for copying
+                openExportModal(csvContent, 'Экспорт точек');
+            } else {
+                const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.setAttribute('href', url);
+                link.setAttribute('download', 'points.csv');
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }
+        }
+        
+        // Event listeners for modal windows
+        if (exportModalClose) {
+            exportModalClose.addEventListener('click', closeExportModal);
+        }
+        
+        if (importModalClose) {
+            importModalClose.addEventListener('click', closeImportModal);
+        }
+        
+        if (copyExportDataBtn) {
+            copyExportDataBtn.addEventListener('click', function() {
+                if (exportTextarea) {
+                    copyToClipboard(exportTextarea.value);
+                }
+            });
+        }
+        
+        // Handle route text import
+        if (importRouteTextBtn) {
+            importRouteTextBtn.addEventListener('click', function() {
+                if (importTextarea) {
+                    const text = importTextarea.value.trim();
+                    if (text) {
+                        try {
+                            const parsedData = parseCsv(text);
+                            reconstructRouteFromData(parsedData);
+                            closeImportModal();
+                        } catch (error) {
+                            alert(`Не удалось прочитать данные. Убедитесь, что это корректный CSV-формат.\nДетали: ${error.message}`);
+                        }
                     }
                 }
-            }
-        });
-    }
-    
-    // Handle points text import
-    if (importPointsTextBtn) {
-        importPointsTextBtn.addEventListener('click', function() {
-            if (importTextarea) {
-                const text = importTextarea.value.trim();
-                if (text) {
-                    try {
-                        const parsedPoints = parsePointsCsv(text);
-                        
-                        // Remove existing points if needed (or merge)
-                        // For now, we'll add to existing points
-                        parsedPoints.forEach(point => {
-                            addPoint(point.lat, point.lng, point.name, point.description);
-                        });
-                        
-                        updateExportButtonVisibility();
-                        closeImportModal();
-                    } catch (error) {
-                        alert(`Не удалось прочитать данные. Убедитесь, что это корректный CSV-формат.\nДетали: ${error.message}`);
+            });
+        }
+        
+        // Handle points text import
+        if (importPointsTextBtn) {
+            importPointsTextBtn.addEventListener('click', function() {
+                if (importTextarea) {
+                    const text = importTextarea.value.trim();
+                    if (text) {
+                        try {
+                            const parsedPoints = parsePointsCsv(text);
+                            
+                            // Remove existing points if needed (or merge)
+                            // For now, we'll add to existing points
+                            parsedPoints.forEach(point => {
+                                addPoint(point.lat, point.lng, point.name, point.description);
+                            });
+                            
+                            updateExportButtonVisibility();
+                            closeImportModal();
+                        } catch (error) {
+                            alert(`Не удалось прочитать данные. Убедитесь, что это корректный CSV-формат.\nДетали: ${error.message}`);
+                        }
                     }
                 }
+            });
+        }
+        
+        // Close modals when clicking outside the content
+        window.addEventListener('click', function(event) {
+            if (exportModal && event.target === exportModal) {
+                closeExportModal();
+            }
+            if (importModal && event.target === importModal) {
+                closeImportModal();
             }
         });
-    }
-    
-    // Close modals when clicking outside the content
-    window.addEventListener('click', function(event) {
-        if (event.target === exportModal) {
-            closeExportModal();
-        }
-        if (event.target === importModal) {
-            closeImportModal();
-        }
-    });
-    
-    // Update export route button to use the new modal for mobile
-    exportRouteBtn.addEventListener('click', function() {
-        if (isMobileDevice()) {
-            exportRouteToCSV();
-        } else {
-            exportRouteToCSV();
-        }
-    });
-    
-    // Update export points button to use the new modal for mobile
-    exportPointsBtn.addEventListener('click', function() {
-        if (isMobileDevice()) {
-            exportPointsToCSV();
-        } else {
-            exportPointsToCSV();
-        }
-    });
-    
-    // Update import buttons to use the new modal for mobile
-    importRouteBtn.addEventListener('click', function() {
-        if (isMobileDevice()) {
-            openImportModal();
-        } else {
+        
+        // Update export route button to use the new modal for mobile
+        exportRouteBtn.addEventListener('click', function() {
+            if (isMobileDevice()) {
+                exportRouteToCSV();
+            } else {
+                exportRouteToCSV();
+            }
+        });
+        
+        // Update export points button to use the new modal for mobile
+        exportPointsBtn.addEventListener('click', function() {
+            if (isMobileDevice()) {
+                exportPointsToCSV();
+            } else {
+                exportPointsToCSV();
+            }
+        });
+        
+        // Update import buttons to use the new modal for mobile
+        importRouteBtn.addEventListener('click', function() {
+            if (isMobileDevice()) {
+                if (exportModal && importModal) {
+                    openImportModal();
+                } else {
+                    // Fallback to original functionality if modals don't exist
+                    triggerFileInput(csvImporter);
+                }
+            } else {
+                triggerFileInput(csvImporter);
+            }
+        });
+        
+        importPointsBtn.addEventListener('click', function() {
+            if (isMobileDevice()) {
+                if (exportModal && importModal) {
+                    openImportModal();
+                } else {
+                    // Fallback to original functionality if modals don't exist
+                    triggerFileInput(pointsCsvImporter);
+                }
+            } else {
+                triggerFileInput(pointsCsvImporter);
+            }
+        });
+    } else {
+        // If modal elements don't exist, keep original functionality but with mobile improvements
+        exportRouteBtn.addEventListener('click', function() {
+            if (isMobileDevice()) {
+                exportRouteToCSV();
+            } else {
+                exportRouteToCSV();
+            }
+        });
+        
+        exportPointsBtn.addEventListener('click', function() {
+            if (isMobileDevice()) {
+                exportPointsToCSV();
+            } else {
+                exportPointsToCSV();
+            }
+        });
+        
+        // Update import buttons to use the new mobile-compatible trigger
+        importRouteBtn.addEventListener('click', function() {
             triggerFileInput(csvImporter);
-        }
-    });
-    
-    importPointsBtn.addEventListener('click', function() {
-        if (isMobileDevice()) {
-            openImportModal();
-        } else {
+        });
+        
+        importPointsBtn.addEventListener('click', function() {
             triggerFileInput(pointsCsvImporter);
-        }
-    });
+        });
+    }
 }
