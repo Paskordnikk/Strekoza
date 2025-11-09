@@ -1,7 +1,6 @@
 
-from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import List, Optional
 import os
@@ -13,8 +12,6 @@ from passlib.context import CryptContext
 from srtm import Srtm3HeightMapCollection
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-import httpx
-import io
 
 # Set the environment variable for the SRTM data directory
 # This must be done before creating the collection object.
@@ -136,9 +133,6 @@ class RouteData(BaseModel):
 
 class LoginRequest(BaseModel):
     password: str
-
-class TelegramFileRequest(BaseModel):
-    file_id: str
 
 # Create an instance of the Srtm3HeightMapCollection
 # It will use the SRTM3_DIR environment variable to find the .hgt files.
@@ -269,176 +263,6 @@ def get_elevation_profile(route_data: RouteData, token: dict = Depends(verify_to
             elevations.append(raw_elevations[i])
             
     return {"elevations": elevations}
-
-# Telegram Bot API Configuration
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-TELEGRAM_API_URL = "https://api.telegram.org/bot"
-
-def get_telegram_bot_token():
-    """Получает токен Telegram бота"""
-    if not TELEGRAM_BOT_TOKEN:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="TELEGRAM_BOT_TOKEN не настроен на сервере"
-        )
-    return TELEGRAM_BOT_TOKEN
-
-@app.post("/api/telegram/upload", tags=["telegram"])
-async def upload_telegram_file(
-    file: UploadFile = File(...),
-    user_id: str = Form(...),
-    token: dict = Depends(verify_token)
-):
-    """
-    Загружает файл в Telegram Bot API и возвращает file_id
-    Отправляет файл пользователю в личные сообщения
-    """
-    try:
-        bot_token = get_telegram_bot_token()
-        
-        # Читаем содержимое файла
-        file_content = await file.read()
-        
-        # Создаем временный файл в памяти
-        file_obj = io.BytesIO(file_content)
-        file_obj.name = file.filename
-        
-        # Загружаем файл в Telegram через Bot API
-        # Отправляем файл пользователю в личные сообщения
-        async with httpx.AsyncClient() as client:
-            files = {
-                'document': (file.filename, file_obj, file.content_type or 'application/octet-stream')
-            }
-            
-            response = await client.post(
-                f"{TELEGRAM_API_URL}{bot_token}/sendDocument",
-                data={
-                    'chat_id': user_id  # Отправляем пользователю в личные сообщения
-                },
-                files=files,
-                timeout=30.0
-            )
-            
-            if response.status_code != 200:
-                error_data = response.json() if response.headers.get("content-type", "").startswith("application/json") else {}
-                error_description = error_data.get('description', 'Неизвестная ошибка')
-                
-                # Если пользователь не начал диалог с ботом, возвращаем понятное сообщение
-                if 'bot was blocked' in error_description.lower() or 'chat not found' in error_description.lower():
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Для работы с файлами через Telegram необходимо начать диалог с ботом. Пожалуйста, напишите боту любое сообщение и попробуйте снова."
-                    )
-                
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=f"Ошибка загрузки файла в Telegram: {error_description}"
-                )
-            
-            result = response.json()
-            if not result.get('ok'):
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=f"Ошибка Telegram API: {result.get('description', 'Неизвестная ошибка')}"
-                )
-            
-            # Получаем file_id из ответа
-            document = result.get('result', {}).get('document', {})
-            file_id = document.get('file_id')
-            
-            if not file_id:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Не удалось получить file_id из ответа Telegram"
-                )
-            
-            return {"file_id": file_id}
-            
-    except httpx.HTTPError as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Ошибка соединения с Telegram API: {str(e)}"
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Ошибка загрузки файла: {str(e)}"
-        )
-
-@app.post("/api/telegram/download", tags=["telegram"])
-async def download_telegram_file(
-    file_request: TelegramFileRequest,
-    token: dict = Depends(verify_token)
-):
-    """
-    Получает файл из Telegram Bot API по file_id
-    """
-    try:
-        bot_token = get_telegram_bot_token()
-        
-        # Получаем информацию о файле
-        async with httpx.AsyncClient() as client:
-            # Сначала получаем информацию о файле
-            file_info_response = await client.get(
-                f"{TELEGRAM_API_URL}{bot_token}/getFile",
-                params={"file_id": file_request.file_id},
-                timeout=30.0
-            )
-            
-            if file_info_response.status_code != 200:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Ошибка получения информации о файле из Telegram"
-                )
-            
-            file_info = file_info_response.json()
-            if not file_info.get('ok'):
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Файл не найден в Telegram"
-                )
-            
-            file_path = file_info.get('result', {}).get('file_path')
-            if not file_path:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Не удалось получить путь к файлу"
-                )
-            
-            # Скачиваем файл
-            file_url = f"https://api.telegram.org/file/bot{bot_token}/{file_path}"
-            file_response = await client.get(file_url, timeout=30.0)
-            
-            if file_response.status_code != 200:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Ошибка скачивания файла из Telegram"
-                )
-            
-            # Определяем content-type
-            content_type = file_response.headers.get('content-type', 'application/octet-stream')
-            
-            # Определяем имя файла из пути
-            filename = os.path.basename(file_path)
-            
-            return Response(
-                content=file_response.content,
-                media_type=content_type,
-                headers={
-                    "Content-Disposition": f'attachment; filename="{filename}"'
-                }
-            )
-            
-    except httpx.HTTPError as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Ошибка соединения с Telegram API: {str(e)}"
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Ошибка получения файла: {str(e)}"
-        )
 
 # Логирование зарегистрированных эндпоинтов при загрузке модуля
 print(f"[INFO] FastAPI app created. Registered routes:")

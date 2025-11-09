@@ -2269,7 +2269,7 @@ function initMap() {
         }
     }
     
-    async function exportRouteToCSV() {
+    function exportRouteToCSV() {
         if (currentRouteData.length === 0) {
             alert("Нет данных для экспорта.");
             return;
@@ -2292,37 +2292,13 @@ function initMap() {
         let csvContent = headers.join(",") + "\n" + rows.join("\n");
 
         const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-        const fileName = `route_profile_step${currentSampleStep}m.csv`;
-
-        // Если используется Telegram Web App, загружаем файл через Bot API
-        if (isTelegramWebApp()) {
-            try {
-                const fileId = await uploadTelegramFile(blob, fileName);
-                // Сохраняем file_id в Cloud Storage
-                await TelegramStorage.setItem('last_route_file_id', fileId);
-                alert('Маршрут успешно выгружен через Telegram. Файл отправлен вам в личные сообщения.');
-            } catch (error) {
-                console.error('Ошибка выгрузки через Telegram:', error);
-                alert('Ошибка выгрузки через Telegram: ' + error.message + '\nПопробую обычную загрузку...');
-                // Fallback на обычную загрузку
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.setAttribute("href", url);
-                link.setAttribute("download", fileName);
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            }
-        } else {
-            // Обычная загрузка для браузера
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.setAttribute("href", url);
-            link.setAttribute("download", fileName);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `route_profile_step${currentSampleStep}m.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 
     function resetRouteBuilding() {
@@ -2444,43 +2420,11 @@ function initMap() {
     });
 
     // --- IMPORT LOGIC ---
-    importRouteBtn.addEventListener('click', async () => {
-        // Если используется Telegram Web App, пытаемся загрузить последний сохраненный file_id
-        if (isTelegramWebApp()) {
-            try {
-                const lastFileId = await TelegramStorage.getItem('last_route_file_id');
-                if (lastFileId) {
-                    const useLastFile = confirm('Использовать последний выгруженный маршрут из Telegram?');
-                    if (useLastFile) {
-                        await importRouteFromTelegramFile(lastFileId);
-                        return;
-                    }
-                }
-            } catch (error) {
-                console.error('Ошибка загрузки file_id из Cloud Storage:', error);
-            }
-        }
-        // Обычный выбор файла
+    importRouteBtn.addEventListener('click', () => {
         csvImporter.click();
     });
 
     csvImporter.addEventListener('change', handleCsvImport);
-
-    async function importRouteFromTelegramFile(fileId) {
-        try {
-            const blob = await downloadTelegramFileViaWebApp(fileId);
-            const text = await blob.text();
-            try {
-                const parsedData = parseCsv(text);
-                await reconstructRouteFromData(parsedData);
-            } catch (error) {
-                alert(`Не удалось прочитать файл. Убедитесь, что это корректный CSV-файл.\nДетали: ${error.message}`);
-            }
-        } catch (error) {
-            console.error('Ошибка загрузки файла из Telegram:', error);
-            alert('Ошибка загрузки файла из Telegram: ' + error.message);
-        }
-    }
 
     function handleCsvImport(event) {
         const file = event.target.files[0];
@@ -3006,7 +2950,7 @@ function initMap() {
     });
     
     // Handle export points button
-    exportPointsBtn.addEventListener('click', async function() {
+    exportPointsBtn.addEventListener('click', function() {
         if (customPoints.length === 0) {
             alert('Нет точек для экспорта');
             return;
@@ -3034,37 +2978,13 @@ function initMap() {
         let csvContent = headers.join(',') + '\n' + rows.join('\n');
         
         const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-        const fileName = 'points.csv';
-
-        // Если используется Telegram Web App, загружаем файл через Bot API
-        if (isTelegramWebApp()) {
-            try {
-                const fileId = await uploadTelegramFile(blob, fileName);
-                // Сохраняем file_id в Cloud Storage
-                await TelegramStorage.setItem('last_points_file_id', fileId);
-                alert('Точки успешно выгружены через Telegram. Файл отправлен вам в личные сообщения.');
-            } catch (error) {
-                console.error('Ошибка выгрузки через Telegram:', error);
-                alert('Ошибка выгрузки через Telegram: ' + error.message + '\nПопробую обычную загрузку...');
-                // Fallback на обычную загрузку
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.setAttribute('href', url);
-                link.setAttribute('download', fileName);
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            }
-        } else {
-            // Обычная загрузка для браузера
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.setAttribute('href', url);
-            link.setAttribute('download', fileName);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'points.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     });
     
     // Handle reset points button
@@ -3077,48 +2997,9 @@ function initMap() {
     });
     
     // Handle import points button
-    importPointsBtn.addEventListener('click', async function() {
-        // Если используется Telegram Web App, пытаемся загрузить последний сохраненный file_id
-        if (isTelegramWebApp()) {
-            try {
-                const lastFileId = await TelegramStorage.getItem('last_points_file_id');
-                if (lastFileId) {
-                    const useLastFile = confirm('Использовать последние выгруженные точки из Telegram?');
-                    if (useLastFile) {
-                        await importPointsFromTelegramFile(lastFileId);
-                        return;
-                    }
-                }
-            } catch (error) {
-                console.error('Ошибка загрузки file_id из Cloud Storage:', error);
-            }
-        }
-        // Обычный выбор файла
+    importPointsBtn.addEventListener('click', function() {
         pointsCsvImporter.click();
     });
-    
-    async function importPointsFromTelegramFile(fileId) {
-        try {
-            const blob = await downloadTelegramFileViaWebApp(fileId);
-            const text = await blob.text();
-            try {
-                const parsedPoints = parsePointsCsv(text);
-                
-                // Remove existing points if needed (or merge)
-                // For now, we'll add to existing points
-                parsedPoints.forEach(point => {
-                    addPoint(point.lat, point.lng, point.name, point.description);
-                });
-                
-                updateExportButtonVisibility();
-            } catch (error) {
-                alert(`Не удалось прочитать файл. Убедитесь, что это корректный CSV-файл.\nДетали: ${error.message}`);
-            }
-        } catch (error) {
-            console.error('Ошибка загрузки файла из Telegram:', error);
-            alert('Ошибка загрузки файла из Telegram: ' + error.message);
-        }
-    }
     
     // Handle CSV file import
     pointsCsvImporter.addEventListener('change', function(event) {
