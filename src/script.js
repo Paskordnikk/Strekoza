@@ -2540,14 +2540,16 @@ function initMap() {
 
         // Сохраняем зашифрованные данные в localStorage
         try {
+            console.log('🔐 Начинаю шифрование и сохранение маршрута...');
             await saveEncryptedToLocalStorage('saved_route', {
                 data: dataToExport,
                 step: currentSampleStep,
                 timestamp: new Date().toISOString()
             });
-            console.log('Маршрут сохранен в localStorage (зашифрован)');
+            console.log('✅ Маршрут успешно сохранен в localStorage (зашифрован)');
         } catch (error) {
-            console.error('Не удалось сохранить маршрут в localStorage:', error);
+            console.error('❌ ОШИБКА при сохранении маршрута в localStorage:', error);
+            console.error('Детали ошибки:', error.message, error.stack);
             // Продолжаем экспорт в файл даже если сохранение в localStorage не удалось
         }
 
@@ -2670,7 +2672,13 @@ function initMap() {
         // Keep button visible while profile is open to show active state
     });
     
-    exportRouteBtn.addEventListener('click', exportRouteToCSV);
+    exportRouteBtn.addEventListener('click', async function() {
+        try {
+            await exportRouteToCSV();
+        } catch (error) {
+            console.error('❌ Ошибка при экспорте маршрута:', error);
+        }
+    });
 
 
 
@@ -3266,13 +3274,15 @@ function initMap() {
         
         // Сохраняем зашифрованные данные в localStorage
         try {
+            console.log('🔐 Начинаю шифрование и сохранение точек...');
             await saveEncryptedToLocalStorage('saved_points', {
                 points: customPoints,
                 timestamp: new Date().toISOString()
             });
-            console.log('Точки сохранены в localStorage (зашифрованы)');
+            console.log('✅ Точки успешно сохранены в localStorage (зашифрованы)');
         } catch (error) {
-            console.error('Не удалось сохранить точки в localStorage:', error);
+            console.error('❌ ОШИБКА при сохранении точек в localStorage:', error);
+            console.error('Детали ошибки:', error.message, error.stack);
             // Продолжаем экспорт в файл даже если сохранение в localStorage не удалось
         }
         
