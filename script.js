@@ -2668,9 +2668,18 @@ function initMap() {
         const link = document.createElement("a");
         link.setAttribute("href", url);
         link.setAttribute("download", `route_profile_step${currentSampleStep}m.csv`);
+        link.style.display = 'none';
+        link.style.position = 'absolute';
+        link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link);
+        
+        // Освобождаем URL и удаляем ссылку после небольшой задержки
+        // Это важно для мобильных устройств, чтобы браузер успел обработать скачивание
+        setTimeout(() => {
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }, 500);
     }
 
     function resetRouteBuilding() {
@@ -2782,11 +2791,19 @@ function initMap() {
         // Keep button visible while profile is open to show active state
     });
     
+    let isExporting = false;
     exportRouteBtn.addEventListener('click', async function() {
+        if (isExporting) return; // Предотвращаем множественные клики
+        isExporting = true;
         try {
             await exportRouteToCSV();
         } catch (error) {
             // Ошибка при экспорте маршрута
+        } finally {
+            // Разрешаем следующий экспорт через небольшую задержку
+            setTimeout(() => {
+                isExporting = false;
+            }, 500);
         }
     });
 
@@ -3329,11 +3346,14 @@ function initMap() {
     });
     
     // Handle export points button
+    let isExportingPoints = false;
     exportPointsBtn.addEventListener('click', async function() {
+        if (isExportingPoints) return; // Предотвращаем множественные клики
         if (customPoints.length === 0) {
             alert('Нет точек для экспорта');
             return;
         }
+        isExportingPoints = true;
         
         const headers = ['координаты_точки', 'название_точки', 'описание_точки'];
         const rows = customPoints.map(point => {
@@ -3371,9 +3391,20 @@ function initMap() {
         const link = document.createElement('a');
         link.setAttribute('href', url);
         link.setAttribute('download', 'points.csv');
+        link.style.display = 'none';
+        link.style.position = 'absolute';
+        link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link);
+        
+        // Освобождаем URL и удаляем ссылку после небольшой задержки
+        // Это важно для мобильных устройств, чтобы браузер успел обработать скачивание
+        setTimeout(() => {
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            // Разрешаем следующий экспорт через небольшую задержку
+            isExportingPoints = false;
+        }, 500);
     });
     
     // Handle reset points button
