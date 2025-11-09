@@ -8,12 +8,20 @@ const ENCRYPTION_ALGORITHM = 'AES-GCM';
 const KEY_LENGTH = 256;
 const IV_LENGTH = 12; // 96 bits для GCM
 
+// Кэш для ключа шифрования (хранится в памяти, не в localStorage)
+let encryptionKeyCache = null;
+
 // Encryption functions
 /**
- * Получает ключ шифрования с сервера
+ * Получает ключ шифрования с сервера (с кэшированием)
  * @returns {Promise<CryptoKey>} Ключ шифрования
  */
 async function getEncryptionKey() {
+    // Если ключ уже в кэше, возвращаем его
+    if (encryptionKeyCache) {
+        return encryptionKeyCache;
+    }
+
     const token = getAuthToken();
     if (!token) {
         throw new Error('Требуется аутентификация для получения ключа шифрования');
@@ -29,7 +37,14 @@ async function getEncryptionKey() {
         });
 
         if (!response.ok) {
-            throw new Error('Не удалось получить ключ шифрования');
+            const errorText = await response.text();
+            if (response.status === 404) {
+                throw new Error('Эндпоинт шифрования не найден на сервере. Убедитесь, что сервер обновлен.');
+            }
+            if (response.status === 401) {
+                throw new Error('Требуется аутентификация. Токен недействителен или истек.');
+            }
+            throw new Error(`Не удалось получить ключ шифрования (статус: ${response.status}): ${errorText}`);
         }
 
         const data = await response.json();
@@ -49,9 +64,16 @@ async function getEncryptionKey() {
             ['encrypt', 'decrypt']
         );
 
+        // Сохраняем в кэш
+        encryptionKeyCache = cryptoKey;
         return cryptoKey;
     } catch (error) {
-        console.error('Ошибка при получении ключа шифрования:', error);
+        console.error('❌ Ошибка при получении ключа шифрования:', error);
+        console.error('Детали:', {
+            message: error.message,
+            stack: error.stack,
+            name: error.name
+        });
         throw error;
     }
 }
@@ -91,8 +113,13 @@ async function encryptData(plaintext) {
         
         return base64;
     } catch (error) {
-        console.error('Ошибка при шифровании данных:', error);
-        throw new Error('Не удалось зашифровать данные');
+        console.error('❌ Ошибка при шифровании данных:', error);
+        console.error('Детали ошибки:', {
+            message: error.message,
+            stack: error.stack,
+            name: error.name
+        });
+        throw new Error(`Не удалось зашифровать данные: ${error.message}`);
     }
 }
 
@@ -134,6 +161,7 @@ async function decryptData(encryptedBase64) {
 
 /**
  * Сохраняет зашифрованные данные в localStorage
+ * Если шифрование не удалось, сохраняет незашифрованные данные с предупреждением
  * @param {string} key - Ключ для localStorage
  * @param {any} data - Данные для сохранения (будут преобразованы в JSON)
  * @returns {Promise<void>}
@@ -141,20 +169,44 @@ async function decryptData(encryptedBase64) {
 async function saveEncryptedToLocalStorage(key, data) {
     try {
         const jsonData = JSON.stringify(data);
-        const encrypted = await encryptData(jsonData);
         
-        // Проверка: зашифрованные данные должны быть в base64 и не содержать читаемый JSON
-        const isEncrypted = encrypted.length > 50 && !encrypted.includes('"lat"') && !encrypted.includes('"lng"');
-        
-        if (!isEncrypted) {
-            console.warn('⚠️ Предупреждение: данные могут быть не зашифрованы!');
+        try {
+            const encrypted = await encryptData(jsonData);
+            
+            // Проверка: зашифрованные данные должны быть в base64 и не содержать читаемый JSON
+            const isEncrypted = encrypted.length > 50 && !encrypted.includes('"lat"') && !encrypted.includes('"lng"');
+            
+            if (!isEncrypted) {
+                console.warn('⚠️ Предупреждение: данные могут быть не зашифрованы!');
+            }
+            
+            localStorage.setItem(key, encrypted);
+            console.log(`✅ Данные сохранены в localStorage (ключ: ${key}, размер: ${encrypted.length} символов)`);
+            console.log(`🔒 Первые 50 символов зашифрованных данных: ${encrypted.substring(0, 50)}...`);
+        } catch (encryptionError) {
+            // Если шифрование не удалось (сервер недоступен, ошибка сети и т.д.)
+            // Сохраняем незашифрованные данные с пометкой
+            console.error('❌ ОШИБКА при шифровании данных:', encryptionError);
+            console.error('Детали ошибки:', {
+                message: encryptionError.message,
+                stack: encryptionError.stack,
+                name: encryptionError.name
+            });
+            console.warn('⚠️ Не удалось зашифровать данные. Сохраняю незашифрованными:', encryptionError.message);
+            const unencryptedData = {
+                _unencrypted: true,
+                _error: encryptionError.message || 'Неизвестная ошибка шифрования',
+                _errorDetails: {
+                    name: encryptionError.name,
+                    message: encryptionError.message
+                },
+                data: data
+            };
+            localStorage.setItem(key, JSON.stringify(unencryptedData));
+            console.log(`⚠️ Данные сохранены БЕЗ шифрования (ключ: ${key})`);
         }
-        
-        localStorage.setItem(key, encrypted);
-        console.log(`✅ Данные сохранены в localStorage (ключ: ${key}, размер: ${encrypted.length} символов)`);
-        console.log(`🔒 Первые 50 символов зашифрованных данных: ${encrypted.substring(0, 50)}...`);
     } catch (error) {
-        console.error('❌ Ошибка при сохранении зашифрованных данных:', error);
+        console.error('❌ Критическая ошибка при сохранении данных:', error);
         throw error;
     }
 }
@@ -166,37 +218,54 @@ async function saveEncryptedToLocalStorage(key, data) {
  */
 async function loadDecryptedFromLocalStorage(key) {
     try {
-        const encrypted = localStorage.getItem(key);
-        if (!encrypted) {
+        const stored = localStorage.getItem(key);
+        if (!stored) {
             return null;
         }
         
+        // Проверяем, не являются ли данные незашифрованными (с пометкой _unencrypted)
+        try {
+            const parsed = JSON.parse(stored);
+            if (parsed._unencrypted === true) {
+                console.warn(`⚠️ Загружены незашифрованные данные (ключ: ${key})`);
+                return parsed.data || parsed;
+            }
+        } catch (e) {
+            // Не JSON, значит зашифровано
+        }
+        
         // Проверяем, зашифрованы ли данные (зашифрованные данные обычно длиннее и не содержат читаемый JSON)
-        const isLikelyEncrypted = encrypted.length > 50 && !encrypted.includes('"lat"') && !encrypted.includes('"lng"');
+        const isLikelyEncrypted = stored.length > 50 && !stored.includes('"lat"') && !stored.includes('"lng"');
         
         if (isLikelyEncrypted) {
             console.log(`🔓 Расшифровка данных из localStorage (ключ: ${key})...`);
-        } else {
-            console.warn('⚠️ Данные в localStorage могут быть не зашифрованы!');
-        }
-        
-        const decrypted = await decryptData(encrypted);
-        const parsed = JSON.parse(decrypted);
-        console.log(`✅ Данные успешно расшифрованы и загружены (ключ: ${key})`);
-        return parsed;
-    } catch (error) {
-        console.error('❌ Ошибка при загрузке расшифрованных данных:', error);
-        // Если не удалось расшифровать, возможно это старые незашифрованные данные
-        // Попробуем загрузить как обычный JSON
-        try {
-            const plainData = localStorage.getItem(key);
-            if (plainData) {
-                console.warn('⚠️ Загружены незашифрованные данные (старый формат)');
-                return JSON.parse(plainData);
+            try {
+                const decrypted = await decryptData(stored);
+                const parsed = JSON.parse(decrypted);
+                console.log(`✅ Данные успешно расшифрованы и загружены (ключ: ${key})`);
+                return parsed;
+            } catch (decryptError) {
+                console.error('❌ Ошибка при расшифровке:', decryptError);
+                // Если не удалось расшифровать, возможно это старые незашифрованные данные
+                // Попробуем загрузить как обычный JSON
+                try {
+                    const plainData = localStorage.getItem(key);
+                    if (plainData) {
+                        console.warn('⚠️ Загружены незашифрованные данные (старый формат)');
+                        return JSON.parse(plainData);
+                    }
+                } catch (e) {
+                    // Игнорируем ошибку
+                }
+                throw decryptError;
             }
-        } catch (e) {
-            // Игнорируем ошибку
+        } else {
+            // Похоже на незашифрованные данные
+            console.warn('⚠️ Данные в localStorage могут быть не зашифрованы!');
+            return JSON.parse(stored);
         }
+    } catch (error) {
+        console.error('❌ Ошибка при загрузке данных:', error);
         throw error;
     }
 }

@@ -8,12 +8,20 @@ const ENCRYPTION_ALGORITHM = 'AES-GCM';
 const KEY_LENGTH = 256;
 const IV_LENGTH = 12; // 96 bits для GCM
 
+// Кэш для ключа шифрования (хранится в памяти, не в localStorage)
+let encryptionKeyCache = null;
+
 // Encryption functions
 /**
- * Получает ключ шифрования с сервера
+ * Получает ключ шифрования с сервера (с кэшированием)
  * @returns {Promise<CryptoKey>} Ключ шифрования
  */
 async function getEncryptionKey() {
+    // Если ключ уже в кэше, возвращаем его
+    if (encryptionKeyCache) {
+        return encryptionKeyCache;
+    }
+
     const token = getAuthToken();
     if (!token) {
         throw new Error('Требуется аутентификация для получения ключа шифрования');
@@ -29,7 +37,14 @@ async function getEncryptionKey() {
         });
 
         if (!response.ok) {
-            throw new Error('Не удалось получить ключ шифрования');
+            const errorText = await response.text();
+            if (response.status === 404) {
+                throw new Error('Эндпоинт шифрования не найден на сервере. Убедитесь, что сервер обновлен.');
+            }
+            if (response.status === 401) {
+                throw new Error('Требуется аутентификация. Токен недействителен или истек.');
+            }
+            throw new Error(`Не удалось получить ключ шифрования (статус: ${response.status}): ${errorText}`);
         }
 
         const data = await response.json();
@@ -49,9 +64,10 @@ async function getEncryptionKey() {
             ['encrypt', 'decrypt']
         );
 
+        // Сохраняем в кэш
+        encryptionKeyCache = cryptoKey;
         return cryptoKey;
     } catch (error) {
-        console.error('Ошибка при получении ключа шифрования:', error);
         throw error;
     }
 }
@@ -87,12 +103,24 @@ async function encryptData(plaintext) {
         combined.set(new Uint8Array(encryptedData), iv.length);
         
         // Преобразуем в base64 для хранения
-        const base64 = btoa(String.fromCharCode(...combined));
+        // Используем безопасный метод для больших массивов (избегаем spread operator и apply)
+        // Обрабатываем по частям через цикл для надежности
+        const chunks = [];
+        const chunkSize = 8192; // Размер чанка для обработки
+        for (let i = 0; i < combined.length; i += chunkSize) {
+            const chunk = combined.slice(i, Math.min(i + chunkSize, combined.length));
+            let chunkString = '';
+            for (let j = 0; j < chunk.length; j++) {
+                chunkString += String.fromCharCode(chunk[j]);
+            }
+            chunks.push(chunkString);
+        }
+        const binaryString = chunks.join('');
+        const base64 = btoa(binaryString);
         
         return base64;
     } catch (error) {
-        console.error('Ошибка при шифровании данных:', error);
-        throw new Error('Не удалось зашифровать данные');
+        throw new Error(`Не удалось зашифровать данные: ${error.message}`);
     }
 }
 
@@ -127,35 +155,97 @@ async function decryptData(encryptedBase64) {
         
         return plaintext;
     } catch (error) {
-        console.error('Ошибка при расшифровке данных:', error);
         throw new Error('Не удалось расшифровать данные. Возможно, данные повреждены или ключ изменился.');
     }
 }
 
 /**
  * Сохраняет зашифрованные данные в localStorage
+ * Если шифрование не удалось, сохраняет незашифрованные данные с предупреждением
  * @param {string} key - Ключ для localStorage
  * @param {any} data - Данные для сохранения (будут преобразованы в JSON)
  * @returns {Promise<void>}
  */
 async function saveEncryptedToLocalStorage(key, data) {
+    let jsonData = null;
+    
     try {
-        const jsonData = JSON.stringify(data);
+        // Безопасная сериализация с обработкой циклических ссылок и больших структур
+        const seen = new WeakSet();
+        jsonData = JSON.stringify(data, (key, value) => {
+            if (typeof value === 'object' && value !== null) {
+                if (seen.has(value)) {
+                    return '[Circular]';
+                }
+                seen.add(value);
+            }
+            return value;
+        });
+    } catch (stringifyError) {
+        // Если сериализация не удалась из-за переполнения стека или других причин
+        const errorData = {
+            _unencrypted: true,
+            _error: `Не удалось сериализовать данные: ${stringifyError.message}`,
+            _errorDetails: {
+                name: stringifyError.name,
+                message: stringifyError.message
+            },
+            _dataSize: Array.isArray(data) ? data.length : typeof data === 'object' ? Object.keys(data).length : 'unknown'
+        };
+            try {
+                localStorage.setItem(key, JSON.stringify(errorData));
+            } catch (storageError) {
+                // Критическая ошибка сохранения
+            }
+        return;
+    }
+    
+    try {
         const encrypted = await encryptData(jsonData);
         
         // Проверка: зашифрованные данные должны быть в base64 и не содержать читаемый JSON
         const isEncrypted = encrypted.length > 50 && !encrypted.includes('"lat"') && !encrypted.includes('"lng"');
         
-        if (!isEncrypted) {
-            console.warn('⚠️ Предупреждение: данные могут быть не зашифрованы!');
-        }
-        
         localStorage.setItem(key, encrypted);
-        console.log(`✅ Данные сохранены в localStorage (ключ: ${key}, размер: ${encrypted.length} символов)`);
-        console.log(`🔒 Первые 50 символов зашифрованных данных: ${encrypted.substring(0, 50)}...`);
-    } catch (error) {
-        console.error('❌ Ошибка при сохранении зашифрованных данных:', error);
-        throw error;
+    } catch (encryptionError) {
+        // Если шифрование не удалось (сервер недоступен, ошибка сети и т.д.)
+        // Сохраняем незашифрованные данные с пометкой, используя уже сериализованные данные
+        
+        try {
+            // Используем уже сериализованные данные вместо повторной сериализации
+            // Извлекаем оригинальное сообщение об ошибке (убираем префикс, если он есть)
+            const errorMessage = encryptionError.message.startsWith('Не удалось зашифровать данные: ') 
+                ? encryptionError.message.substring('Не удалось зашифровать данные: '.length)
+                : encryptionError.message;
+            
+            const unencryptedData = {
+                _unencrypted: true,
+                _error: `Не удалось зашифровать данные: ${errorMessage}`,
+                _errorDetails: {
+                    name: encryptionError.name,
+                    message: errorMessage
+                },
+                data: JSON.parse(jsonData) // Парсим обратно для сохранения структуры
+            };
+            localStorage.setItem(key, JSON.stringify(unencryptedData));
+        } catch (parseError) {
+            // Если даже парсинг не удался, сохраняем как строку
+            // Извлекаем оригинальное сообщение об ошибке (убираем префикс, если он есть)
+            const errorMessage = encryptionError.message.startsWith('Не удалось зашифровать данные: ') 
+                ? encryptionError.message.substring('Не удалось зашифровать данные: '.length)
+                : encryptionError.message;
+            
+            const fallbackData = {
+                _unencrypted: true,
+                _error: `Не удалось зашифровать данные: ${errorMessage}`,
+                _errorDetails: {
+                    name: encryptionError.name,
+                    message: errorMessage
+                },
+                _rawData: jsonData.substring(0, 1000) + (jsonData.length > 1000 ? '... (truncated)' : '')
+            };
+            localStorage.setItem(key, JSON.stringify(fallbackData));
+        }
     }
 }
 
@@ -166,37 +256,47 @@ async function saveEncryptedToLocalStorage(key, data) {
  */
 async function loadDecryptedFromLocalStorage(key) {
     try {
-        const encrypted = localStorage.getItem(key);
-        if (!encrypted) {
+        const stored = localStorage.getItem(key);
+        if (!stored) {
             return null;
         }
         
-        // Проверяем, зашифрованы ли данные (зашифрованные данные обычно длиннее и не содержат читаемый JSON)
-        const isLikelyEncrypted = encrypted.length > 50 && !encrypted.includes('"lat"') && !encrypted.includes('"lng"');
-        
-        if (isLikelyEncrypted) {
-            console.log(`🔓 Расшифровка данных из localStorage (ключ: ${key})...`);
-        } else {
-            console.warn('⚠️ Данные в localStorage могут быть не зашифрованы!');
-        }
-        
-        const decrypted = await decryptData(encrypted);
-        const parsed = JSON.parse(decrypted);
-        console.log(`✅ Данные успешно расшифрованы и загружены (ключ: ${key})`);
-        return parsed;
-    } catch (error) {
-        console.error('❌ Ошибка при загрузке расшифрованных данных:', error);
-        // Если не удалось расшифровать, возможно это старые незашифрованные данные
-        // Попробуем загрузить как обычный JSON
+        // Проверяем, не являются ли данные незашифрованными (с пометкой _unencrypted)
         try {
-            const plainData = localStorage.getItem(key);
-            if (plainData) {
-                console.warn('⚠️ Загружены незашифрованные данные (старый формат)');
-                return JSON.parse(plainData);
+            const parsed = JSON.parse(stored);
+            if (parsed._unencrypted === true) {
+                return parsed.data || parsed;
             }
         } catch (e) {
-            // Игнорируем ошибку
+            // Не JSON, значит зашифровано
         }
+        
+        // Проверяем, зашифрованы ли данные (зашифрованные данные обычно длиннее и не содержат читаемый JSON)
+        const isLikelyEncrypted = stored.length > 50 && !stored.includes('"lat"') && !stored.includes('"lng"');
+        
+        if (isLikelyEncrypted) {
+            try {
+                const decrypted = await decryptData(stored);
+                const parsed = JSON.parse(decrypted);
+                return parsed;
+            } catch (decryptError) {
+                // Если не удалось расшифровать, возможно это старые незашифрованные данные
+                // Попробуем загрузить как обычный JSON
+                try {
+                    const plainData = localStorage.getItem(key);
+                    if (plainData) {
+                        return JSON.parse(plainData);
+                    }
+                } catch (e) {
+                    // Игнорируем ошибку
+                }
+                throw decryptError;
+            }
+        } else {
+            // Похоже на незашифрованные данные
+            return JSON.parse(stored);
+        }
+    } catch (error) {
         throw error;
     }
 }
@@ -223,37 +323,33 @@ function isDataEncrypted(key) {
 
 // Добавляем функцию в глобальную область для проверки в консоли
 window.checkEncryption = function() {
-    console.log('🔍 Проверка шифрования данных в localStorage:');
-    console.log('─'.repeat(50));
-    
     const routeKey = 'saved_route';
     const pointsKey = 'saved_points';
     
-    const routeEncrypted = isDataEncrypted(routeKey);
-    const pointsEncrypted = isDataEncrypted(pointsKey);
+    const routeData = localStorage.getItem(routeKey);
+    const pointsData = localStorage.getItem(pointsKey);
     
-    if (localStorage.getItem(routeKey)) {
-        const routeData = localStorage.getItem(routeKey);
-        console.log(`📌 Маршрут (${routeKey}):`);
-        console.log(`   Зашифровано: ${routeEncrypted ? '✅ ДА' : '❌ НЕТ'}`);
-        console.log(`   Размер: ${routeData.length} символов`);
-        console.log(`   Превью: ${routeData.substring(0, 80)}...`);
-    } else {
-        console.log(`📌 Маршрут (${routeKey}): не найден`);
+    const result = {};
+    
+    if (routeData) {
+        const routeEncrypted = isDataEncrypted(routeKey);
+        result.route = {
+            encrypted: routeEncrypted,
+            size: routeData.length,
+            preview: routeData.substring(0, 80) + '...'
+        };
     }
     
-    if (localStorage.getItem(pointsKey)) {
-        const pointsData = localStorage.getItem(pointsKey);
-        console.log(`📌 Точки (${pointsKey}):`);
-        console.log(`   Зашифровано: ${pointsEncrypted ? '✅ ДА' : '❌ НЕТ'}`);
-        console.log(`   Размер: ${pointsData.length} символов`);
-        console.log(`   Превью: ${pointsData.substring(0, 80)}...`);
-    } else {
-        console.log(`📌 Точки (${pointsKey}): не найдены`);
+    if (pointsData) {
+        const pointsEncrypted = isDataEncrypted(pointsKey);
+        result.points = {
+            encrypted: pointsEncrypted,
+            size: pointsData.length,
+            preview: pointsData.substring(0, 80) + '...'
+        };
     }
     
-    console.log('─'.repeat(50));
-    console.log('💡 Для проверки введите: checkEncryption()');
+    return result;
 };
 
 // Authentication functions
@@ -1613,10 +1709,21 @@ function initMap() {
         const chartWidth = width - margin.left - margin.right;
         const chartHeight = height - margin.top - margin.bottom;
 
-        const elevations = elevationData.map(d => d.elevation);
-        const minElev = Math.min(...elevations);
-        const maxElev = Math.max(...elevations);
-        const maxDist = Math.max(...elevationData.map(d => d.distance));
+        // Фильтруем валидные значения elevation (исключаем null, undefined, NaN)
+        const validElevations = elevationData
+            .map(d => d.elevation)
+            .filter(elev => elev !== null && elev !== undefined && !isNaN(elev) && isFinite(elev));
+        
+        // Если нет валидных значений elevation, используем 0
+        const elevations = validElevations.length > 0 ? validElevations : [0];
+        const minElev = validElevations.length > 0 ? Math.min(...validElevations) : 0;
+        const maxElev = validElevations.length > 0 ? Math.max(...validElevations) : 0;
+        
+        // Фильтруем валидные значения distance
+        const validDistances = elevationData
+            .map(d => d.distance)
+            .filter(dist => dist !== null && dist !== undefined && !isNaN(dist) && isFinite(dist));
+        const maxDist = validDistances.length > 0 ? Math.max(...validDistances) : 0;
 
         const elevationRange = maxElev - minElev;
         let yScale;
@@ -1649,7 +1756,12 @@ function initMap() {
             }
         }
 
-        const points = elevationData.map(d => `${xScale(d.distance)},${yScale(d.elevation)}`).join(' ');
+        // Строим полилинию, используя валидные значения (заменяем null/undefined на 0)
+        const points = elevationData.map(d => {
+            const dist = (d.distance !== null && d.distance !== undefined && !isNaN(d.distance)) ? d.distance : 0;
+            const elev = (d.elevation !== null && d.elevation !== undefined && !isNaN(d.elevation) && isFinite(d.elevation)) ? d.elevation : minElev;
+            return `${xScale(dist)},${yScale(elev)}`;
+        }).join(' ');
         svgContent += `<polyline points="${points}" fill="none" stroke="darkorange" stroke-width="3"/>`;
 
         svgNode.innerHTML = svgContent;
@@ -1660,7 +1772,9 @@ function initMap() {
         const labelPadding = 10; // Min padding between labels
 
         waypoints.forEach((point, index) => {
-            const x = xScale(point.distance);
+            // Проверяем валидность distance
+            const dist = (point.distance !== null && point.distance !== undefined && !isNaN(point.distance) && isFinite(point.distance)) ? point.distance : 0;
+            const x = xScale(dist);
             const isLastWaypoint = index === waypoints.length - 1;
             
             const textNode = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -1670,7 +1784,7 @@ function initMap() {
             textNode.setAttribute('font-size', '12');
             // Последнюю метку выравниваем по правому краю
             textNode.setAttribute('text-anchor', isLastWaypoint ? 'end' : 'middle');
-            textNode.textContent = `${point.distance.toFixed(1)} км`;
+            textNode.textContent = `${dist.toFixed(1)} км`;
             
             svgNode.appendChild(textNode);
             
@@ -2540,16 +2654,12 @@ function initMap() {
 
         // Сохраняем зашифрованные данные в localStorage
         try {
-            console.log('🔐 Начинаю шифрование и сохранение маршрута...');
             await saveEncryptedToLocalStorage('saved_route', {
                 data: dataToExport,
                 step: currentSampleStep,
                 timestamp: new Date().toISOString()
             });
-            console.log('✅ Маршрут успешно сохранен в localStorage (зашифрован)');
         } catch (error) {
-            console.error('❌ ОШИБКА при сохранении маршрута в localStorage:', error);
-            console.error('Детали ошибки:', error.message, error.stack);
             // Продолжаем экспорт в файл даже если сохранение в localStorage не удалось
         }
 
@@ -2676,7 +2786,7 @@ function initMap() {
         try {
             await exportRouteToCSV();
         } catch (error) {
-            console.error('❌ Ошибка при экспорте маршрута:', error);
+            // Ошибка при экспорте маршрута
         }
     });
 
@@ -2689,33 +2799,7 @@ function initMap() {
 
     // --- IMPORT LOGIC ---
     importRouteBtn.addEventListener('click', async () => {
-        // Сначала пытаемся загрузить из localStorage
-        try {
-            const savedRoute = await loadDecryptedFromLocalStorage('saved_route');
-            if (savedRoute && savedRoute.data && savedRoute.data.length > 0) {
-                const confirmed = confirm('Найден сохраненный маршрут в localStorage. Загрузить его?');
-                if (confirmed) {
-                    // Восстанавливаем маршрут из сохраненных данных
-                    const waypoints = savedRoute.data.filter(p => p.isWaypoint);
-                    if (waypoints.length >= 2) {
-                        await reconstructRouteFromData(waypoints.map(p => ({ lat: p.lat, lng: p.lng })));
-                        // Восстанавливаем данные профиля высоты
-                        if (savedRoute.step) {
-                            currentSampleStep = savedRoute.step;
-                        }
-                        currentRouteData = savedRoute.data;
-                        buildElevationProfile(savedRoute.data);
-                        setupRouteToChartInteraction(savedRoute.data);
-                        elevationProfile.classList.add('visible');
-                        return;
-                    }
-                }
-            }
-        } catch (error) {
-            console.error('Ошибка при загрузке маршрута из localStorage:', error);
-        }
-        
-        // Если не удалось загрузить из localStorage, открываем файловый диалог
+        // Открываем файловый диалог для выбора файла
         csvImporter.click();
     });
 
@@ -3274,15 +3358,11 @@ function initMap() {
         
         // Сохраняем зашифрованные данные в localStorage
         try {
-            console.log('🔐 Начинаю шифрование и сохранение точек...');
             await saveEncryptedToLocalStorage('saved_points', {
                 points: customPoints,
                 timestamp: new Date().toISOString()
             });
-            console.log('✅ Точки успешно сохранены в localStorage (зашифрованы)');
         } catch (error) {
-            console.error('❌ ОШИБКА при сохранении точек в localStorage:', error);
-            console.error('Детали ошибки:', error.message, error.stack);
             // Продолжаем экспорт в файл даже если сохранение в localStorage не удалось
         }
         
@@ -3307,29 +3387,7 @@ function initMap() {
     
     // Handle import points button
     importPointsBtn.addEventListener('click', async function() {
-        // Сначала пытаемся загрузить из localStorage
-        try {
-            const savedPoints = await loadDecryptedFromLocalStorage('saved_points');
-            if (savedPoints && savedPoints.points && savedPoints.points.length > 0) {
-                const confirmed = confirm('Найдены сохраненные точки в localStorage. Загрузить их?');
-                if (confirmed) {
-                    // Очищаем существующие точки
-                    resetAllPoints();
-                    
-                    // Загружаем сохраненные точки
-                    savedPoints.points.forEach(point => {
-                        addPoint(point.lat, point.lng, point.name, point.description);
-                    });
-                    
-                    updateExportButtonVisibility();
-                    return;
-                }
-            }
-        } catch (error) {
-            console.error('Ошибка при загрузке точек из localStorage:', error);
-        }
-        
-        // Если не удалось загрузить из localStorage, открываем файловый диалог
+        // Открываем файловый диалог для выбора файла
         pointsCsvImporter.click();
     });
     

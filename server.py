@@ -23,6 +23,11 @@ SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-this-in-product
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 1  # Срок действия токена в минутах (последняя цифра - количество дней).
 
+# Encryption Key Configuration
+# Отдельная переменная для ключа шифрования данных
+# Если не задана, используется JWT_SECRET_KEY как fallback
+ENCRYPTION_SECRET_KEY = os.getenv("ENCRYPTION_SECRET_KEY", SECRET_KEY)
+
 # Password configuration
 # Пароль можно установить несколькими способами (в порядке приоритета):
 # 1. Через аргумент командной строки: python server.py --password "ваш_пароль"
@@ -98,7 +103,7 @@ app = FastAPI(
 def root():
     return {
         "message": "Server is running",
-        "endpoints": ["/api/login", "/api/get_elevation"],
+        "endpoints": ["/api/login", "/api/get_elevation", "/api/get_encryption_key", "/api/test_encryption_endpoint"],
         "docs": "/docs",
         "openapi": "/openapi.json"
     }
@@ -109,6 +114,15 @@ def health():
         "status": "ok",
         "password_set": bool(os.getenv("SITE_PASSWORD")),
         "password_length": len(SITE_PASSWORD) if SITE_PASSWORD else 0
+    }
+
+@app.get("/api/test_encryption_endpoint", tags=["test"])
+def test_encryption_endpoint():
+    """Тестовый эндпоинт для проверки доступности API шифрования (без аутентификации)"""
+    return {
+        "message": "Эндпоинт шифрования доступен",
+        "encryption_key_set": bool(ENCRYPTION_SECRET_KEY),
+        "encryption_key_length": len(ENCRYPTION_SECRET_KEY) if ENCRYPTION_SECRET_KEY else 0
     }
 
 # Allow CORS for local development
@@ -198,15 +212,19 @@ def login(login_request: LoginRequest):
 
 @app.get("/api/get_encryption_key", tags=["encryption"])
 def get_encryption_key(token: dict = Depends(verify_token)):
-    """Эндпоинт для получения ключа шифрования. Ключ производный от JWT_SECRET_KEY."""
+    """Эндпоинт для получения ключа шифрования. Ключ производный от ENCRYPTION_SECRET_KEY (или JWT_SECRET_KEY)."""
     import hashlib
+    import base64
     
-    # Создаем ключ шифрования из JWT_SECRET_KEY
+    # Используем отдельную переменную для шифрования, если задана
+    # Иначе используем JWT_SECRET_KEY как fallback
+    encryption_key = ENCRYPTION_SECRET_KEY
+    
+    # Создаем ключ шифрования из секретного ключа
     # Используем SHA-256 для получения 32-байтового ключа
-    key_hash = hashlib.sha256(SECRET_KEY.encode()).digest()
+    key_hash = hashlib.sha256(encryption_key.encode()).digest()
     
     # Преобразуем в base64 для передачи клиенту
-    import base64
     key_base64 = base64.b64encode(key_hash).decode('utf-8')
     
     return {"key": key_base64}
