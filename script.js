@@ -142,9 +142,19 @@ async function saveEncryptedToLocalStorage(key, data) {
     try {
         const jsonData = JSON.stringify(data);
         const encrypted = await encryptData(jsonData);
+        
+        // Проверка: зашифрованные данные должны быть в base64 и не содержать читаемый JSON
+        const isEncrypted = encrypted.length > 50 && !encrypted.includes('"lat"') && !encrypted.includes('"lng"');
+        
+        if (!isEncrypted) {
+            console.warn('⚠️ Предупреждение: данные могут быть не зашифрованы!');
+        }
+        
         localStorage.setItem(key, encrypted);
+        console.log(`✅ Данные сохранены в localStorage (ключ: ${key}, размер: ${encrypted.length} символов)`);
+        console.log(`🔒 Первые 50 символов зашифрованных данных: ${encrypted.substring(0, 50)}...`);
     } catch (error) {
-        console.error('Ошибка при сохранении зашифрованных данных:', error);
+        console.error('❌ Ошибка при сохранении зашифрованных данных:', error);
         throw error;
     }
 }
@@ -161,15 +171,27 @@ async function loadDecryptedFromLocalStorage(key) {
             return null;
         }
         
+        // Проверяем, зашифрованы ли данные (зашифрованные данные обычно длиннее и не содержат читаемый JSON)
+        const isLikelyEncrypted = encrypted.length > 50 && !encrypted.includes('"lat"') && !encrypted.includes('"lng"');
+        
+        if (isLikelyEncrypted) {
+            console.log(`🔓 Расшифровка данных из localStorage (ключ: ${key})...`);
+        } else {
+            console.warn('⚠️ Данные в localStorage могут быть не зашифрованы!');
+        }
+        
         const decrypted = await decryptData(encrypted);
-        return JSON.parse(decrypted);
+        const parsed = JSON.parse(decrypted);
+        console.log(`✅ Данные успешно расшифрованы и загружены (ключ: ${key})`);
+        return parsed;
     } catch (error) {
-        console.error('Ошибка при загрузке расшифрованных данных:', error);
+        console.error('❌ Ошибка при загрузке расшифрованных данных:', error);
         // Если не удалось расшифровать, возможно это старые незашифрованные данные
         // Попробуем загрузить как обычный JSON
         try {
             const plainData = localStorage.getItem(key);
             if (plainData) {
+                console.warn('⚠️ Загружены незашифрованные данные (старый формат)');
                 return JSON.parse(plainData);
             }
         } catch (e) {
@@ -178,6 +200,61 @@ async function loadDecryptedFromLocalStorage(key) {
         throw error;
     }
 }
+
+/**
+ * Проверяет, зашифрованы ли данные в localStorage
+ * @param {string} key - Ключ для проверки
+ * @returns {boolean} true если данные зашифрованы, false если нет
+ */
+function isDataEncrypted(key) {
+    const data = localStorage.getItem(key);
+    if (!data) return false;
+    
+    // Зашифрованные данные в base64 обычно:
+    // 1. Длиннее 50 символов
+    // 2. Не содержат читаемые JSON структуры
+    // 3. Состоят из base64 символов (A-Z, a-z, 0-9, +, /, =)
+    const isBase64 = /^[A-Za-z0-9+/=]+$/.test(data);
+    const hasJsonStructure = data.includes('"lat"') || data.includes('"lng"') || data.includes('"points"');
+    const isLongEnough = data.length > 50;
+    
+    return isBase64 && !hasJsonStructure && isLongEnough;
+}
+
+// Добавляем функцию в глобальную область для проверки в консоли
+window.checkEncryption = function() {
+    console.log('🔍 Проверка шифрования данных в localStorage:');
+    console.log('─'.repeat(50));
+    
+    const routeKey = 'saved_route';
+    const pointsKey = 'saved_points';
+    
+    const routeEncrypted = isDataEncrypted(routeKey);
+    const pointsEncrypted = isDataEncrypted(pointsKey);
+    
+    if (localStorage.getItem(routeKey)) {
+        const routeData = localStorage.getItem(routeKey);
+        console.log(`📌 Маршрут (${routeKey}):`);
+        console.log(`   Зашифровано: ${routeEncrypted ? '✅ ДА' : '❌ НЕТ'}`);
+        console.log(`   Размер: ${routeData.length} символов`);
+        console.log(`   Превью: ${routeData.substring(0, 80)}...`);
+    } else {
+        console.log(`📌 Маршрут (${routeKey}): не найден`);
+    }
+    
+    if (localStorage.getItem(pointsKey)) {
+        const pointsData = localStorage.getItem(pointsKey);
+        console.log(`📌 Точки (${pointsKey}):`);
+        console.log(`   Зашифровано: ${pointsEncrypted ? '✅ ДА' : '❌ НЕТ'}`);
+        console.log(`   Размер: ${pointsData.length} символов`);
+        console.log(`   Превью: ${pointsData.substring(0, 80)}...`);
+    } else {
+        console.log(`📌 Точки (${pointsKey}): не найдены`);
+    }
+    
+    console.log('─'.repeat(50));
+    console.log('💡 Для проверки введите: checkEncryption()');
+};
 
 // Authentication functions
 function getAuthToken() {
