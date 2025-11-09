@@ -1,6 +1,6 @@
 body, html {
     margin: 0;
-    padding: 0;
+    padding: 0;а
     height: 100%;
     width: 100%;
     overflow: hidden;
@@ -1133,6 +1133,7 @@ body, html {
     color: white;
     font-family: sans-serif;
     font-size: 14px;
+    text-align: justify;
     line-height: 1.6;
     padding-top: 10px;
 }
