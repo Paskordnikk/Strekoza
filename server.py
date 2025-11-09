@@ -196,6 +196,21 @@ def login(login_request: LoginRequest):
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
+@app.get("/api/get_encryption_key", tags=["encryption"])
+def get_encryption_key(token: dict = Depends(verify_token)):
+    """Эндпоинт для получения ключа шифрования. Ключ производный от JWT_SECRET_KEY."""
+    import hashlib
+    
+    # Создаем ключ шифрования из JWT_SECRET_KEY
+    # Используем SHA-256 для получения 32-байтового ключа
+    key_hash = hashlib.sha256(SECRET_KEY.encode()).digest()
+    
+    # Преобразуем в base64 для передачи клиенту
+    import base64
+    key_base64 = base64.b64encode(key_hash).decode('utf-8')
+    
+    return {"key": key_base64}
+
 @app.post("/api/get_elevation", tags=["elevation"])
 def get_elevation_profile(route_data: RouteData, token: dict = Depends(verify_token)):
     elevations = []

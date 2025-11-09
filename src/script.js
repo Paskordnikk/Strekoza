@@ -3,6 +3,182 @@ const API_URL = window.location.hostname === 'localhost' || window.location.host
     ? 'http://127.0.0.1:8000' 
     : 'https://strekoza-ylfm.onrender.com';
 
+// Encryption configuration
+const ENCRYPTION_ALGORITHM = 'AES-GCM';
+const KEY_LENGTH = 256;
+const IV_LENGTH = 12; // 96 bits для GCM
+
+// Encryption functions
+/**
+ * Получает ключ шифрования с сервера
+ * @returns {Promise<CryptoKey>} Ключ шифрования
+ */
+async function getEncryptionKey() {
+    const token = getAuthToken();
+    if (!token) {
+        throw new Error('Требуется аутентификация для получения ключа шифрования');
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/api/get_encryption_key`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Не удалось получить ключ шифрования');
+        }
+
+        const data = await response.json();
+        const keyMaterial = data.key;
+
+        // Импортируем ключ из строки
+        const keyBuffer = Uint8Array.from(atob(keyMaterial), c => c.charCodeAt(0));
+        
+        const cryptoKey = await crypto.subtle.importKey(
+            'raw',
+            keyBuffer,
+            {
+                name: ENCRYPTION_ALGORITHM,
+                length: KEY_LENGTH
+            },
+            false,
+            ['encrypt', 'decrypt']
+        );
+
+        return cryptoKey;
+    } catch (error) {
+        console.error('Ошибка при получении ключа шифрования:', error);
+        throw error;
+    }
+}
+
+/**
+ * Шифрует данные перед сохранением в localStorage
+ * @param {string} plaintext - Данные для шифрования (JSON строка)
+ * @returns {Promise<string>} Зашифрованные данные в формате base64
+ */
+async function encryptData(plaintext) {
+    try {
+        const key = await getEncryptionKey();
+        
+        // Преобразуем текст в ArrayBuffer
+        const data = new TextEncoder().encode(plaintext);
+        
+        // Генерируем случайный IV
+        const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
+        
+        // Шифруем данные
+        const encryptedData = await crypto.subtle.encrypt(
+            {
+                name: ENCRYPTION_ALGORITHM,
+                iv: iv
+            },
+            key,
+            data
+        );
+        
+        // Объединяем IV и зашифрованные данные
+        const combined = new Uint8Array(iv.length + encryptedData.byteLength);
+        combined.set(iv);
+        combined.set(new Uint8Array(encryptedData), iv.length);
+        
+        // Преобразуем в base64 для хранения
+        const base64 = btoa(String.fromCharCode(...combined));
+        
+        return base64;
+    } catch (error) {
+        console.error('Ошибка при шифровании данных:', error);
+        throw new Error('Не удалось зашифровать данные');
+    }
+}
+
+/**
+ * Расшифровывает данные из localStorage
+ * @param {string} encryptedBase64 - Зашифрованные данные в формате base64
+ * @returns {Promise<string>} Расшифрованные данные (JSON строка)
+ */
+async function decryptData(encryptedBase64) {
+    try {
+        const key = await getEncryptionKey();
+        
+        // Преобразуем base64 в ArrayBuffer
+        const combined = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
+        
+        // Извлекаем IV и зашифрованные данные
+        const iv = combined.slice(0, IV_LENGTH);
+        const encryptedData = combined.slice(IV_LENGTH);
+        
+        // Расшифровываем данные
+        const decryptedData = await crypto.subtle.decrypt(
+            {
+                name: ENCRYPTION_ALGORITHM,
+                iv: iv
+            },
+            key,
+            encryptedData
+        );
+        
+        // Преобразуем в строку
+        const plaintext = new TextDecoder().decode(decryptedData);
+        
+        return plaintext;
+    } catch (error) {
+        console.error('Ошибка при расшифровке данных:', error);
+        throw new Error('Не удалось расшифровать данные. Возможно, данные повреждены или ключ изменился.');
+    }
+}
+
+/**
+ * Сохраняет зашифрованные данные в localStorage
+ * @param {string} key - Ключ для localStorage
+ * @param {any} data - Данные для сохранения (будут преобразованы в JSON)
+ * @returns {Promise<void>}
+ */
+async function saveEncryptedToLocalStorage(key, data) {
+    try {
+        const jsonData = JSON.stringify(data);
+        const encrypted = await encryptData(jsonData);
+        localStorage.setItem(key, encrypted);
+    } catch (error) {
+        console.error('Ошибка при сохранении зашифрованных данных:', error);
+        throw error;
+    }
+}
+
+/**
+ * Загружает и расшифровывает данные из localStorage
+ * @param {string} key - Ключ для localStorage
+ * @returns {Promise<any>} Расшифрованные данные
+ */
+async function loadDecryptedFromLocalStorage(key) {
+    try {
+        const encrypted = localStorage.getItem(key);
+        if (!encrypted) {
+            return null;
+        }
+        
+        const decrypted = await decryptData(encrypted);
+        return JSON.parse(decrypted);
+    } catch (error) {
+        console.error('Ошибка при загрузке расшифрованных данных:', error);
+        // Если не удалось расшифровать, возможно это старые незашифрованные данные
+        // Попробуем загрузить как обычный JSON
+        try {
+            const plainData = localStorage.getItem(key);
+            if (plainData) {
+                return JSON.parse(plainData);
+            }
+        } catch (e) {
+            // Игнорируем ошибку
+        }
+        throw error;
+    }
+}
+
 // Authentication functions
 function getAuthToken() {
     return localStorage.getItem('auth_token');
@@ -1060,12 +1236,6 @@ function initMap() {
 
 
 
-    try {
-        let tg = window.Telegram.WebApp;
-        tg.ready();
-    } catch (e) {
-        // Telegram WebApp is not available
-    }
     
 
     
@@ -2269,7 +2439,7 @@ function initMap() {
         }
     }
     
-    function exportRouteToCSV() {
+    async function exportRouteToCSV() {
         if (currentRouteData.length === 0) {
             alert("Нет данных для экспорта.");
             return;
@@ -2290,6 +2460,19 @@ function initMap() {
         );
 
         let csvContent = headers.join(",") + "\n" + rows.join("\n");
+
+        // Сохраняем зашифрованные данные в localStorage
+        try {
+            await saveEncryptedToLocalStorage('saved_route', {
+                data: dataToExport,
+                step: currentSampleStep,
+                timestamp: new Date().toISOString()
+            });
+            console.log('Маршрут сохранен в localStorage (зашифрован)');
+        } catch (error) {
+            console.error('Не удалось сохранить маршрут в localStorage:', error);
+            // Продолжаем экспорт в файл даже если сохранение в localStorage не удалось
+        }
 
         const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
@@ -2420,7 +2603,34 @@ function initMap() {
     });
 
     // --- IMPORT LOGIC ---
-    importRouteBtn.addEventListener('click', () => {
+    importRouteBtn.addEventListener('click', async () => {
+        // Сначала пытаемся загрузить из localStorage
+        try {
+            const savedRoute = await loadDecryptedFromLocalStorage('saved_route');
+            if (savedRoute && savedRoute.data && savedRoute.data.length > 0) {
+                const confirmed = confirm('Найден сохраненный маршрут в localStorage. Загрузить его?');
+                if (confirmed) {
+                    // Восстанавливаем маршрут из сохраненных данных
+                    const waypoints = savedRoute.data.filter(p => p.isWaypoint);
+                    if (waypoints.length >= 2) {
+                        await reconstructRouteFromData(waypoints.map(p => ({ lat: p.lat, lng: p.lng })));
+                        // Восстанавливаем данные профиля высоты
+                        if (savedRoute.step) {
+                            currentSampleStep = savedRoute.step;
+                        }
+                        currentRouteData = savedRoute.data;
+                        buildElevationProfile(savedRoute.data);
+                        setupRouteToChartInteraction(savedRoute.data);
+                        elevationProfile.classList.add('visible');
+                        return;
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Ошибка при загрузке маршрута из localStorage:', error);
+        }
+        
+        // Если не удалось загрузить из localStorage, открываем файловый диалог
         csvImporter.click();
     });
 
@@ -2950,7 +3160,7 @@ function initMap() {
     });
     
     // Handle export points button
-    exportPointsBtn.addEventListener('click', function() {
+    exportPointsBtn.addEventListener('click', async function() {
         if (customPoints.length === 0) {
             alert('Нет точек для экспорта');
             return;
@@ -2977,6 +3187,18 @@ function initMap() {
         
         let csvContent = headers.join(',') + '\n' + rows.join('\n');
         
+        // Сохраняем зашифрованные данные в localStorage
+        try {
+            await saveEncryptedToLocalStorage('saved_points', {
+                points: customPoints,
+                timestamp: new Date().toISOString()
+            });
+            console.log('Точки сохранены в localStorage (зашифрованы)');
+        } catch (error) {
+            console.error('Не удалось сохранить точки в localStorage:', error);
+            // Продолжаем экспорт в файл даже если сохранение в localStorage не удалось
+        }
+        
         const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -2997,7 +3219,30 @@ function initMap() {
     });
     
     // Handle import points button
-    importPointsBtn.addEventListener('click', function() {
+    importPointsBtn.addEventListener('click', async function() {
+        // Сначала пытаемся загрузить из localStorage
+        try {
+            const savedPoints = await loadDecryptedFromLocalStorage('saved_points');
+            if (savedPoints && savedPoints.points && savedPoints.points.length > 0) {
+                const confirmed = confirm('Найдены сохраненные точки в localStorage. Загрузить их?');
+                if (confirmed) {
+                    // Очищаем существующие точки
+                    resetAllPoints();
+                    
+                    // Загружаем сохраненные точки
+                    savedPoints.points.forEach(point => {
+                        addPoint(point.lat, point.lng, point.name, point.description);
+                    });
+                    
+                    updateExportButtonVisibility();
+                    return;
+                }
+            }
+        } catch (error) {
+            console.error('Ошибка при загрузке точек из localStorage:', error);
+        }
+        
+        // Если не удалось загрузить из localStorage, открываем файловый диалог
         pointsCsvImporter.click();
     });
     
