@@ -4,14 +4,40 @@
  */
 
 /**
+ * Инициализирует Telegram WebApp
+ */
+function initTelegramWebApp() {
+    if (typeof window !== 'undefined' && window.Telegram && window.Telegram.WebApp) {
+        const webApp = window.Telegram.WebApp;
+        // Инициализируем WebApp, если еще не инициализирован
+        if (webApp.ready && typeof webApp.ready === 'function') {
+            webApp.ready();
+        }
+        // Расширяем WebApp на весь экран, если нужно
+        if (webApp.expand && typeof webApp.expand === 'function') {
+            webApp.expand();
+        }
+    }
+}
+
+// Инициализируем при загрузке скрипта
+if (typeof window !== 'undefined' && window.Telegram && window.Telegram.WebApp) {
+    // Ждем загрузки DOM
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initTelegramWebApp);
+    } else {
+        initTelegramWebApp();
+    }
+}
+
+/**
  * Проверяет, используется ли приложение через Telegram Web App
  * @returns {boolean}
  */
 function isTelegramWebApp() {
     return typeof window !== 'undefined' && 
            window.Telegram && 
-           window.Telegram.WebApp && 
-           window.Telegram.WebApp.initDataUnsafe;
+           window.Telegram.WebApp;
 }
 
 /**
@@ -110,6 +136,66 @@ const TelegramStorage = {
 };
 
 /**
+ * Получает user_id из Telegram WebApp
+ * @returns {number|null}
+ */
+function getTelegramUserId() {
+    if (!isTelegramWebApp()) {
+        return null;
+    }
+
+    const webApp = getTelegramWebApp();
+    if (!webApp) {
+        return null;
+    }
+
+    // Пробуем получить user_id из initDataUnsafe
+    if (webApp.initDataUnsafe && webApp.initDataUnsafe.user && webApp.initDataUnsafe.user.id) {
+        return webApp.initDataUnsafe.user.id;
+    }
+
+    // Пробуем получить user_id из initData (строка)
+    if (webApp.initData) {
+        try {
+            // initData может быть в формате query string
+            // Пример: "user=%7B%22id%22%3A123456%2C%22first_name%22%3A%22John%22%7D&auth_date=1234567890&hash=..."
+            const params = new URLSearchParams(webApp.initData);
+            const userParam = params.get('user');
+            if (userParam) {
+                const user = JSON.parse(decodeURIComponent(userParam));
+                if (user && user.id) {
+                    return user.id;
+                }
+            }
+        } catch (e) {
+            console.warn('Ошибка парсинга initData:', e);
+        }
+    }
+
+    // Пробуем получить user_id из startParam, если он передан
+    if (webApp.startParam) {
+        try {
+            const startParam = JSON.parse(webApp.startParam);
+            if (startParam && startParam.user_id) {
+                return startParam.user_id;
+            }
+        } catch (e) {
+            // startParam может быть не JSON
+        }
+    }
+
+    // Логируем доступные данные для отладки
+    console.log('Telegram WebApp данные:', {
+        initData: webApp.initData,
+        initDataUnsafe: webApp.initDataUnsafe,
+        version: webApp.version,
+        platform: webApp.platform
+    });
+
+    return null;
+}
+
+/**
  * Загружает файл на сервер через Telegram Bot API
  * @param {Blob|File} file - Файл для загрузки
  * @param {string} fileName - Имя файла
@@ -131,10 +217,26 @@ async function uploadTelegramFile(file, fileName) {
     }
 
     // Получаем user_id из Telegram WebApp
-    const webApp = getTelegramWebApp();
-    const userId = webApp?.initDataUnsafe?.user?.id;
+    const userId = getTelegramUserId();
     if (!userId) {
-        throw new Error('Не удалось получить user_id из Telegram WebApp');
+        // Логируем для отладки
+        const webApp = getTelegramWebApp();
+        const debugInfo = {
+            initData: webApp?.initData ? 'присутствует' : 'отсутствует',
+            initDataUnsafe: webApp?.initDataUnsafe ? 'присутствует' : 'отсутствует',
+            initDataUnsafeUser: webApp?.initDataUnsafe?.user ? 'присутствует' : 'отсутствует',
+            version: webApp?.version || 'неизвестна',
+            platform: webApp?.platform || 'неизвестна'
+        };
+        console.error('Не удалось получить user_id. Отладочная информация:', debugInfo);
+        console.error('Полные данные WebApp:', webApp);
+        
+        // Более понятное сообщение об ошибке
+        throw new Error('Не удалось получить user_id из Telegram WebApp. ' +
+            'Убедитесь, что:\n' +
+            '1. Приложение запущено через Telegram (не в обычном браузере)\n' +
+            '2. Telegram WebApp правильно инициализирован\n' +
+            '3. Проверьте консоль браузера для подробностей');
     }
 
     // Создаем FormData для загрузки файла
