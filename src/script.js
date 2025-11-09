@@ -577,17 +577,15 @@ function initMap() {
         
         // Обработка ошибок загрузки тайлов
         layer.on('tileerror', function(error, tile) {
-            // При ошибке загрузки тайла, попробуем перезагрузить через небольшую задержку
-            setTimeout(() => {
-                if (layer && map.hasLayer(layer)) {
-                    try {
-                        layer.removeTile(tile);
-                        layer._addTile(tile);
-                    } catch (e) {
-                        // Игнорируем ошибки при попытке обновить тайл
-                    }
-                }
-            }, 500);
+            // Скрываем битый тайл, чтобы не показывать красный крестик
+            if (tile && tile.el) {
+                tile.el.style.display = 'none';
+            }
+            
+            // Для ошибок 404 и 503 не пытаемся перезагружать - это проблемы сервера
+            // В Leaflet событие tileerror может не содержать статус напрямую,
+            // поэтому просто скрываем тайл и не пытаемся перезагрузить
+            // Это предотвращает засорение консоли повторными ошибками
         });
         
         return layer;
@@ -795,6 +793,7 @@ function initMap() {
         setTimeout(() => {
             roadsLayer = createOverlayLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
                 maxZoom: 19,
+                subdomains: 'abc',
                 attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Map style: &copy; <a href="https://www.OpenRailwayMap.org">OpenRailwayMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
             });
             roadsLayer.setOpacity(lastRoadsOpacity / 100);
@@ -1113,6 +1112,7 @@ function initMap() {
                 setTimeout(() => {
                     roadsLayer = createOverlayLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
                         maxZoom: 19,
+                        subdomains: 'abc',
                         attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Map style: &copy; <a href="https://www.OpenRailwayMap.org">OpenRailwayMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
                     });
                     roadsLayer.setOpacity(roadsOpacitySlider.value / 100);
