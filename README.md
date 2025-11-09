@@ -1,1 +1,1 @@
-# StrekoZza-project: @t.me/Streko_Zza_bot/strekozapp
+#  Communication with the developer: bwxzaklg@strekozoid.anonaddy.me

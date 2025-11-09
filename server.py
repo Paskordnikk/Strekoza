@@ -21,7 +21,7 @@ os.environ['SRTM3_DIR'] = 'strm'
 # Секретный ключ будет установлен позже, если передан через аргумент
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-this-in-production")  # Измените на безопасный ключ в продакшене!
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 1  # Срок действия токена в минутах (последняя цифра - количество дней).
+ACCESS_TOKEN_EXPIRE_MINUTES = 60  # Срок действия токена в минутах (последняя цифра - количество дней).
 
 # Encryption Key Configuration
 # Отдельная переменная для ключа шифрования данных
