@@ -2667,7 +2667,11 @@ function initMap() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.setAttribute("href", url);
-        link.setAttribute("download", `route_profile_step${currentSampleStep}m.csv`);
+        
+        // Создаем уникальное имя файла с timestamp для предотвращения дубликатов на мобильных устройствах
+        // На мобильных устройствах браузер может показывать старые файлы в диалоге, поэтому используем уникальное имя
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5); // Формат: 2024-01-15T10-30-45
+        link.setAttribute("download", `route_${timestamp}.csv`);
         link.style.display = 'none';
         link.style.position = 'absolute';
         link.style.visibility = 'hidden';
@@ -2816,6 +2820,8 @@ function initMap() {
 
     // --- IMPORT LOGIC ---
     importRouteBtn.addEventListener('click', async () => {
+        // Очищаем значение input перед открытием диалога, чтобы браузер не показывал старые файлы
+        csvImporter.value = '';
         // Открываем файловый диалог для выбора файла
         csvImporter.click();
     });
@@ -3390,7 +3396,10 @@ function initMap() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.setAttribute('href', url);
-        link.setAttribute('download', 'points.csv');
+        
+        // Создаем уникальное имя файла с timestamp для предотвращения дубликатов на мобильных устройствах
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5); // Формат: 2024-01-15T10-30-45
+        link.setAttribute('download', `points_${timestamp}.csv`);
         link.style.display = 'none';
         link.style.position = 'absolute';
         link.style.visibility = 'hidden';
