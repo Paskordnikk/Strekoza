@@ -2936,6 +2936,9 @@ function initMap() {
     const enterCoordsBtn = document.getElementById('enter-coords-btn');
     const placePointBtn = document.getElementById('place-point-btn');
     const coordsInputSubmenu = document.getElementById('coords-input-submenu');
+    const sk42XInput = document.getElementById('sk42-x-input');
+    const sk42YInput = document.getElementById('sk42-y-input');
+    const sk42ZoneInput = document.getElementById('sk42-zone-input');
     const latInput = document.getElementById('lat-input');
     const lngInput = document.getElementById('lng-input');
     const cancelCoordsBtn = document.getElementById('cancel-coords-btn');
@@ -2948,12 +2951,221 @@ function initMap() {
     const pointInfoPopup = document.getElementById('point-info-popup');
     const pointNameInput = document.getElementById('point-name-input');
     const pointDescriptionInput = document.getElementById('point-description-input');
+    const pointPhotoInput = document.getElementById('point-photo-input');
+    const pointPhotoPreview = document.getElementById('point-photo-preview');
+    const pointPhotoPreviewImg = document.getElementById('point-photo-preview-img');
+    const pointPhotoRemoveBtn = document.getElementById('point-photo-remove-btn');
     const pointLatInput = document.getElementById('point-lat-input');
     const pointLngInput = document.getElementById('point-lng-input');
     const savePointBtn = document.getElementById('save-point-btn');
     const cancelPointBtn = document.getElementById('cancel-point-btn');
     
     let editingPointData = null; // Текущая редактируемая точка
+    let currentPhotoData = null; // Текущее фото в base64
+    
+    /**
+     * Преобразует координаты из WGS84 в СК-42 (проекция Гаусса-Крюгера)
+     * @param {number} lat - Широта в WGS84 (градусы)
+     * @param {number} lng - Долгота в WGS84 (градусы)
+     * @returns {Object} Объект с координатами X и Y в СК-42 (метры)
+     */
+    function convertWGS84ToSK42(lat, lng) {
+        // Параметры эллипсоида Красовского (СК-42)
+        const a = 6378245.0; // Большая полуось
+        const e2 = 0.006693421622966; // Первый эксцентриситет в квадрате
+        
+        // Параметры трансформации WGS84 -> СК-42 (для территории бывшего СССР)
+        const dx = -23.92;
+        const dy = -141.27;
+        const dz = -80.9;
+        const wx = 0.0;
+        const wy = 0.0;
+        const wz = 0.0;
+        const m = 0.0;
+        
+        // Преобразуем градусы в радианы
+        const latRad = lat * Math.PI / 180;
+        const lngRad = lng * Math.PI / 180;
+        
+        // Параметры эллипсоида WGS84
+        const aWGS84 = 6378137.0;
+        const e2WGS84 = 0.00669437999014;
+        
+        // Вычисляем радиус кривизны первого вертикала для WGS84
+        const N = aWGS84 / Math.sqrt(1 - e2WGS84 * Math.sin(latRad) * Math.sin(latRad));
+        
+        // Вычисляем геодезические координаты в WGS84
+        const X = N * Math.cos(latRad) * Math.cos(lngRad);
+        const Y = N * Math.cos(latRad) * Math.sin(lngRad);
+        const Z = (N * (1 - e2WGS84)) * Math.sin(latRad);
+        
+        // Применяем трансформацию (упрощенная формула Молоденского)
+        const X1 = X + dx + m * X + wz * Y - wy * Z;
+        const Y1 = Y + dy - wz * X + m * Y + wx * Z;
+        const Z1 = Z + dz + wy * X - wx * Y + m * Z;
+        
+        // Вычисляем широту и долготу в СК-42 (итеративный метод)
+        const p = Math.sqrt(X1 * X1 + Y1 * Y1);
+        let latSK42 = Math.atan(Z1 / (p * (1 - e2)));
+        let prevLat = 0;
+        let iterations = 0;
+        
+        while (Math.abs(latSK42 - prevLat) > 1e-12 && iterations < 20) {
+            prevLat = latSK42;
+            const sinLat = Math.sin(latSK42);
+            const N1 = a / Math.sqrt(1 - e2 * sinLat * sinLat);
+            const h = p / Math.cos(latSK42) - N1;
+            latSK42 = Math.atan(Z1 / (p * (1 - e2 * N1 / (N1 + h))));
+            iterations++;
+        }
+        
+        const lngSK42 = Math.atan2(Y1, X1);
+        
+        // Определяем зону Гаусса-Крюгера (6-градусные зоны)
+        const lngDeg = lngSK42 * 180 / Math.PI;
+        const zone = Math.floor((lngDeg + 3) / 6) + 1;
+        const lng0 = (zone * 6 - 3) * Math.PI / 180; // Осевой меридиан зоны
+        
+        // Вычисляем плоские координаты в проекции Гаусса-Крюгера
+        const n = a / Math.sqrt(1 - e2 * Math.sin(latSK42) * Math.sin(latSK42));
+        const t = Math.tan(latSK42);
+        const eta2 = (e2 / (1 - e2)) * Math.cos(latSK42) * Math.cos(latSK42);
+        const dl = lngSK42 - lng0;
+        
+        // Формула для вычисления X (северное направление)
+        const A0 = 1 - e2 / 4 - 3 * e2 * e2 / 64 - 5 * e2 * e2 * e2 / 256;
+        const A2 = 3 / 8 * (e2 + e2 * e2 / 4 + 15 * e2 * e2 * e2 / 128);
+        const A4 = 15 / 256 * (e2 * e2 + 3 * e2 * e2 * e2 / 4);
+        const A6 = 35 * e2 * e2 * e2 / 3072;
+        
+        const m0 = a * (A0 * latSK42 - A2 * Math.sin(2 * latSK42) + A4 * Math.sin(4 * latSK42) - A6 * Math.sin(6 * latSK42));
+        
+        // Формула для вычисления Y (восточное направление)
+        const dl2 = dl * dl;
+        const dl4 = dl2 * dl2;
+        const dl6 = dl4 * dl2;
+        
+        const x = m0 + n * t * (dl2 / 2 + dl4 / 24 * (5 - t * t + 9 * eta2 + 4 * eta2 * eta2) + dl6 / 720 * (61 - 58 * t * t + t * t * t * t + 270 * eta2 - 330 * eta2 * t * t));
+        const y = n * (dl + dl2 * dl / 6 * (1 - t * t + eta2) + dl4 * dl / 120 * (5 - 18 * t * t + t * t * t * t + 14 * eta2 - 58 * eta2 * t * t));
+        
+        // Добавляем ложное смещение (500000 м) и номер зоны к координате Y
+        const X_sk42 = x;
+        const Y_sk42 = y + zone * 1000000 + 500000;
+        
+        return {
+            x: X_sk42,
+            y: Y_sk42,
+            zone: zone
+        };
+    }
+    
+    /**
+     * Преобразует координаты из СК-42 (проекция Гаусса-Крюгера) в WGS84
+     * @param {number} x - Координата X в СК-42 (метры)
+     * @param {number} y - Координата Y в СК-42 (метры)
+     * @param {number} zone - Номер зоны Гаусса-Крюгера
+     * @returns {Object} Объект с широтой и долготой в WGS84 (градусы)
+     */
+    function convertSK42ToWGS84(x, y, zone) {
+        // Параметры эллипсоида Красовского (СК-42)
+        const a = 6378245.0; // Большая полуось
+        const e2 = 0.006693421622966; // Первый эксцентриситет в квадрате
+        
+        // Убираем номер зоны и ложное смещение из Y
+        const yWithoutZone = y - zone * 1000000 - 500000;
+        
+        // Осевой меридиан зоны
+        const lng0 = (zone * 6 - 3) * Math.PI / 180;
+        
+        // Обратное преобразование из проекции Гаусса-Крюгера в географические координаты
+        // Вычисляем широту (итеративный метод)
+        const A0 = 1 - e2 / 4 - 3 * e2 * e2 / 64 - 5 * e2 * e2 * e2 / 256;
+        const A2 = 3 / 8 * (e2 + e2 * e2 / 4 + 15 * e2 * e2 * e2 / 128);
+        const A4 = 15 / 256 * (e2 * e2 + 3 * e2 * e2 * e2 / 4);
+        const A6 = 35 * e2 * e2 * e2 / 3072;
+        
+        let latSK42 = x / (a * A0);
+        let prevLat = 0;
+        let iterations = 0;
+        
+        while (Math.abs(latSK42 - prevLat) > 1e-12 && iterations < 20) {
+            prevLat = latSK42;
+            const m0 = a * (A0 * latSK42 - A2 * Math.sin(2 * latSK42) + A4 * Math.sin(4 * latSK42) - A6 * Math.sin(6 * latSK42));
+            latSK42 = latSK42 + (x - m0) / (a * A0);
+            iterations++;
+        }
+        
+        // Вычисляем долготу (более точная формула обратного преобразования)
+        const n = a / Math.sqrt(1 - e2 * Math.sin(latSK42) * Math.sin(latSK42));
+        const t = Math.tan(latSK42);
+        const eta2 = (e2 / (1 - e2)) * Math.cos(latSK42) * Math.cos(latSK42);
+        const cosLat = Math.cos(latSK42);
+        const sinLat = Math.sin(latSK42);
+        
+        // Более точная формула обратного преобразования для долготы
+        const dl = yWithoutZone / n;
+        const dl2 = dl * dl;
+        const dl3 = dl2 * dl;
+        const dl4 = dl2 * dl2;
+        const dl5 = dl4 * dl;
+        
+        const t2 = t * t;
+        const t4 = t2 * t2;
+        
+        const lngSK42 = lng0 + 
+            dl / cosLat - 
+            dl3 / (3 * cosLat) * (1 + 2 * t2 + eta2) + 
+            dl5 / (15 * cosLat) * (2 + 5 * t2 + 3 * t4 + 6 * eta2 - 9 * eta2 * t2);
+        
+        // Преобразуем из СК-42 в WGS84
+        // Параметры эллипсоида WGS84
+        const aWGS84 = 6378137.0;
+        const e2WGS84 = 0.00669437999014;
+        
+        // Параметры трансформации СК-42 -> WGS84 (обратные)
+        const dx = 23.92;
+        const dy = 141.27;
+        const dz = 80.9;
+        const wx = 0.0;
+        const wy = 0.0;
+        const wz = 0.0;
+        const m = 0.0;
+        
+        // Вычисляем радиус кривизны первого вертикала для СК-42
+        const N = a / Math.sqrt(1 - e2 * Math.sin(latSK42) * Math.sin(latSK42));
+        
+        // Вычисляем геодезические координаты в СК-42
+        const X = N * Math.cos(latSK42) * Math.cos(lngSK42);
+        const Y = N * Math.cos(latSK42) * Math.sin(lngSK42);
+        const Z = (N * (1 - e2)) * Math.sin(latSK42);
+        
+        // Применяем обратную трансформацию
+        const X1 = X + dx + m * X + wz * Y - wy * Z;
+        const Y1 = Y + dy - wz * X + m * Y + wx * Z;
+        const Z1 = Z + dz + wy * X - wx * Y + m * Z;
+        
+        // Вычисляем широту и долготу в WGS84 (итеративный метод)
+        const p = Math.sqrt(X1 * X1 + Y1 * Y1);
+        let latWGS84 = Math.atan(Z1 / (p * (1 - e2WGS84)));
+        prevLat = 0;
+        iterations = 0;
+        
+        while (Math.abs(latWGS84 - prevLat) > 1e-12 && iterations < 20) {
+            prevLat = latWGS84;
+            const sinLat = Math.sin(latWGS84);
+            const N1 = aWGS84 / Math.sqrt(1 - e2WGS84 * sinLat * sinLat);
+            const h = p / Math.cos(latWGS84) - N1;
+            latWGS84 = Math.atan(Z1 / (p * (1 - e2WGS84 * N1 / (N1 + h))));
+            iterations++;
+        }
+        
+        const lngWGS84 = Math.atan2(Y1, X1);
+        
+        return {
+            lat: latWGS84 * 180 / Math.PI,
+            lng: lngWGS84 * 180 / Math.PI
+        };
+    }
     
     // Function to create a point marker on the map
     function createPointMarker(pointData) {
@@ -2980,8 +3192,37 @@ function initMap() {
             descDiv.textContent = pointData.description;
             L.DomUtil.create('br', '', popupDiv);
         }
+        if (pointData.photo) {
+            const photoImg = L.DomUtil.create('img', '', popupDiv);
+            photoImg.src = pointData.photo;
+            photoImg.style.cssText = 'max-width: 100%; max-height: 200px; border-radius: 5px; margin-top: 10px; margin-bottom: 10px; border: 1px solid #ccc;';
+            photoImg.alt = 'Фото точки';
+            L.DomUtil.create('br', '', popupDiv);
+        }
+        // Отображение координат в двух системах
         const coordsDiv = L.DomUtil.create('div', '', popupDiv);
-        coordsDiv.textContent = `Координаты: ${pointData.lat.toFixed(6)}, ${pointData.lng.toFixed(6)}`;
+        coordsDiv.style.cssText = 'margin-top: 10px; font-size: 12px; line-height: 1.5;';
+        
+        // Преобразуем координаты в СК-42
+        const sk42Coords = convertWGS84ToSK42(pointData.lat, pointData.lng);
+        
+        // Координаты СК-42
+        const sk42Label = L.DomUtil.create('div', '', coordsDiv);
+        sk42Label.style.cssText = 'font-weight: bold; margin-bottom: 4px;';
+        sk42Label.textContent = 'СК-42:';
+        
+        const sk42Value = L.DomUtil.create('div', '', coordsDiv);
+        sk42Value.style.cssText = 'margin-left: 10px; margin-bottom: 8px;';
+        sk42Value.textContent = `X: ${sk42Coords.x.toFixed(2)}, Y: ${sk42Coords.y.toFixed(2)} (зона ${sk42Coords.zone})`;
+        
+        // Координаты WGS84
+        const wgs84Label = L.DomUtil.create('div', '', coordsDiv);
+        wgs84Label.style.cssText = 'font-weight: bold; margin-bottom: 4px;';
+        wgs84Label.textContent = 'WGS84:';
+        
+        const wgs84Value = L.DomUtil.create('div', '', coordsDiv);
+        wgs84Value.style.cssText = 'margin-left: 10px;';
+        wgs84Value.textContent = `${pointData.lat.toFixed(6)}, ${pointData.lng.toFixed(6)}`;
         
         const editBtn = L.DomUtil.create('button', 'edit-point-btn', popupDiv);
         editBtn.textContent = 'Изменить';
@@ -3069,12 +3310,13 @@ function initMap() {
     }
     
     // Function to add a point to the map
-    function addPoint(lat, lng, name = '', description = '') {
+    function addPoint(lat, lng, name = '', description = '', photo = null) {
         const pointData = {
             lat: lat,
             lng: lng,
             name: name || '',
             description: description || '',
+            photo: photo || null,
             marker: null
         };
         
@@ -3109,6 +3351,19 @@ function initMap() {
         pointDescriptionInput.value = pointData.description || '';
         pointLatInput.value = pointData.lat;
         pointLngInput.value = pointData.lng;
+        
+        // Handle photo
+        if (pointData.photo) {
+            currentPhotoData = pointData.photo;
+            pointPhotoPreviewImg.src = pointData.photo;
+            pointPhotoPreview.style.display = 'block';
+        } else {
+            currentPhotoData = null;
+            pointPhotoPreview.style.display = 'none';
+            pointPhotoPreviewImg.src = '';
+        }
+        pointPhotoInput.value = '';
+        
         // Show coordinate inputs when editing
         pointLatInput.style.display = 'block';
         pointLngInput.style.display = 'block';
@@ -3116,12 +3371,13 @@ function initMap() {
     }
     
     // Function to update a point
-    function updatePoint(pointData, newLat, newLng, newName, newDescription) {
+    function updatePoint(pointData, newLat, newLng, newName, newDescription, newPhoto = null) {
         // Update data
         pointData.lat = newLat;
         pointData.lng = newLng;
         pointData.name = newName || '';
         pointData.description = newDescription || '';
+        pointData.photo = newPhoto !== undefined ? newPhoto : pointData.photo;
         
         // Remove old marker
         if (pointData.marker) {
@@ -3153,6 +3409,10 @@ function initMap() {
         pointDescriptionInput.value = '';
         pointLatInput.value = '';
         pointLngInput.value = '';
+        pointPhotoInput.value = '';
+        currentPhotoData = null;
+        pointPhotoPreview.style.display = 'none';
+        pointPhotoPreviewImg.src = '';
         // Hide coordinate inputs when adding new point (coordinates come from map click)
         pointLatInput.style.display = 'none';
         pointLngInput.style.display = 'none';
@@ -3180,6 +3440,10 @@ function initMap() {
     enterCoordsBtn.addEventListener('click', function() {
         pointsSubmenu.style.display = 'none';
         coordsInputSubmenu.style.display = 'block';
+        // Очищаем все поля
+        sk42XInput.value = '';
+        sk42YInput.value = '';
+        sk42ZoneInput.value = '';
         latInput.value = '';
         lngInput.value = '';
     });
@@ -3188,8 +3452,111 @@ function initMap() {
     cancelCoordsBtn.addEventListener('click', function() {
         coordsInputSubmenu.style.display = 'none';
         pointsSubmenu.style.display = 'block';
+        // Очищаем все поля
+        sk42XInput.value = '';
+        sk42YInput.value = '';
+        sk42ZoneInput.value = '';
         latInput.value = '';
         lngInput.value = '';
+    });
+    
+    // Автоматическое преобразование при вводе СК-42
+    let isUpdatingFromSK42 = false;
+    sk42XInput.addEventListener('input', function() {
+        if (!isUpdatingFromSK42 && sk42XInput.value && sk42YInput.value && sk42ZoneInput.value) {
+            const x = parseFloat(sk42XInput.value);
+            const y = parseFloat(sk42YInput.value);
+            const zone = parseInt(sk42ZoneInput.value);
+            if (!isNaN(x) && !isNaN(y) && !isNaN(zone) && zone >= 1 && zone <= 60) {
+                try {
+                    const wgs84 = convertSK42ToWGS84(x, y, zone);
+                    isUpdatingFromSK42 = true;
+                    latInput.value = wgs84.lat.toFixed(6);
+                    lngInput.value = wgs84.lng.toFixed(6);
+                    isUpdatingFromSK42 = false;
+                } catch (e) {
+                    console.error('Ошибка преобразования СК-42 в WGS84:', e);
+                }
+            }
+        }
+    });
+    
+    sk42YInput.addEventListener('input', function() {
+        if (!isUpdatingFromSK42 && sk42XInput.value && sk42YInput.value && sk42ZoneInput.value) {
+            const x = parseFloat(sk42XInput.value);
+            const y = parseFloat(sk42YInput.value);
+            const zone = parseInt(sk42ZoneInput.value);
+            if (!isNaN(x) && !isNaN(y) && !isNaN(zone) && zone >= 1 && zone <= 60) {
+                try {
+                    const wgs84 = convertSK42ToWGS84(x, y, zone);
+                    isUpdatingFromSK42 = true;
+                    latInput.value = wgs84.lat.toFixed(6);
+                    lngInput.value = wgs84.lng.toFixed(6);
+                    isUpdatingFromSK42 = false;
+                } catch (e) {
+                    console.error('Ошибка преобразования СК-42 в WGS84:', e);
+                }
+            }
+        }
+    });
+    
+    sk42ZoneInput.addEventListener('input', function() {
+        if (!isUpdatingFromSK42 && sk42XInput.value && sk42YInput.value && sk42ZoneInput.value) {
+            const x = parseFloat(sk42XInput.value);
+            const y = parseFloat(sk42YInput.value);
+            const zone = parseInt(sk42ZoneInput.value);
+            if (!isNaN(x) && !isNaN(y) && !isNaN(zone) && zone >= 1 && zone <= 60) {
+                try {
+                    const wgs84 = convertSK42ToWGS84(x, y, zone);
+                    isUpdatingFromSK42 = true;
+                    latInput.value = wgs84.lat.toFixed(6);
+                    lngInput.value = wgs84.lng.toFixed(6);
+                    isUpdatingFromSK42 = false;
+                } catch (e) {
+                    console.error('Ошибка преобразования СК-42 в WGS84:', e);
+                }
+            }
+        }
+    });
+    
+    // Автоматическое преобразование при вводе WGS84
+    let isUpdatingFromWGS84 = false;
+    latInput.addEventListener('input', function() {
+        if (!isUpdatingFromWGS84 && !isUpdatingFromSK42 && latInput.value && lngInput.value) {
+            const lat = parseFloat(latInput.value);
+            const lng = parseFloat(lngInput.value);
+            if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                try {
+                    const sk42 = convertWGS84ToSK42(lat, lng);
+                    isUpdatingFromWGS84 = true;
+                    sk42XInput.value = sk42.x.toFixed(2);
+                    sk42YInput.value = sk42.y.toFixed(2);
+                    sk42ZoneInput.value = sk42.zone;
+                    isUpdatingFromWGS84 = false;
+                } catch (e) {
+                    console.error('Ошибка преобразования WGS84 в СК-42:', e);
+                }
+            }
+        }
+    });
+    
+    lngInput.addEventListener('input', function() {
+        if (!isUpdatingFromWGS84 && !isUpdatingFromSK42 && latInput.value && lngInput.value) {
+            const lat = parseFloat(latInput.value);
+            const lng = parseFloat(lngInput.value);
+            if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                try {
+                    const sk42 = convertWGS84ToSK42(lat, lng);
+                    isUpdatingFromWGS84 = true;
+                    sk42XInput.value = sk42.x.toFixed(2);
+                    sk42YInput.value = sk42.y.toFixed(2);
+                    sk42ZoneInput.value = sk42.zone;
+                    isUpdatingFromWGS84 = false;
+                } catch (e) {
+                    console.error('Ошибка преобразования WGS84 в СК-42:', e);
+                }
+            }
+        }
     });
     
     // Function to update export button visibility
@@ -3257,22 +3624,42 @@ function initMap() {
     
     // Handle coordinate input submit
     enterCoordsSubmitBtn.addEventListener('click', function() {
-        const lat = parseFloat(latInput.value);
-        const lng = parseFloat(lngInput.value);
+        let lat, lng;
         
-        if (isNaN(lat) || isNaN(lng)) {
-            alert('Пожалуйста, введите корректные координаты');
-            return;
-        }
+        // Проверяем, введены ли координаты СК-42
+        const sk42X = parseFloat(sk42XInput.value);
+        const sk42Y = parseFloat(sk42YInput.value);
+        const sk42Zone = parseInt(sk42ZoneInput.value);
         
-        if (lat < -90 || lat > 90) {
-            alert('Широта должна быть в диапазоне от -90 до 90');
-            return;
-        }
-        
-        if (lng < -180 || lng > 180) {
-            alert('Долгота должна быть в диапазоне от -180 до 180');
-            return;
+        if (!isNaN(sk42X) && !isNaN(sk42Y) && !isNaN(sk42Zone) && sk42Zone >= 1 && sk42Zone <= 60) {
+            // Преобразуем СК-42 в WGS84
+            try {
+                const wgs84 = convertSK42ToWGS84(sk42X, sk42Y, sk42Zone);
+                lat = wgs84.lat;
+                lng = wgs84.lng;
+            } catch (e) {
+                alert('Ошибка преобразования координат СК-42: ' + e.message);
+                return;
+            }
+        } else {
+            // Используем координаты WGS84
+            lat = parseFloat(latInput.value);
+            lng = parseFloat(lngInput.value);
+            
+            if (isNaN(lat) || isNaN(lng)) {
+                alert('Пожалуйста, введите корректные координаты (СК-42 или WGS84)');
+                return;
+            }
+            
+            if (lat < -90 || lat > 90) {
+                alert('Широта должна быть в диапазоне от -90 до 90');
+                return;
+            }
+            
+            if (lng < -180 || lng > 180) {
+                alert('Долгота должна быть в диапазоне от -180 до 180');
+                return;
+            }
         }
         
         // Show info popup
@@ -3281,6 +3668,10 @@ function initMap() {
         pointDescriptionInput.value = '';
         pointLatInput.value = '';
         pointLngInput.value = '';
+        pointPhotoInput.value = '';
+        currentPhotoData = null;
+        pointPhotoPreview.style.display = 'none';
+        pointPhotoPreviewImg.src = '';
         // Hide coordinate inputs when adding new point (coordinates already entered)
         pointLatInput.style.display = 'none';
         pointLngInput.style.display = 'none';
@@ -3292,6 +3683,44 @@ function initMap() {
     });
     
     // Handle save point button
+    // Function to convert file to base64
+    function fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+    
+    // Handle photo input change
+    pointPhotoInput.addEventListener('change', async function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            if (file.type.startsWith('image/')) {
+                try {
+                    currentPhotoData = await fileToBase64(file);
+                    pointPhotoPreviewImg.src = currentPhotoData;
+                    pointPhotoPreview.style.display = 'block';
+                } catch (error) {
+                    alert('Ошибка при загрузке фото: ' + error.message);
+                    pointPhotoInput.value = '';
+                }
+            } else {
+                alert('Пожалуйста, выберите файл изображения');
+                pointPhotoInput.value = '';
+            }
+        }
+    });
+    
+    // Handle photo remove button
+    pointPhotoRemoveBtn.addEventListener('click', function() {
+        currentPhotoData = null;
+        pointPhotoPreview.style.display = 'none';
+        pointPhotoPreviewImg.src = '';
+        pointPhotoInput.value = '';
+    });
+    
     savePointBtn.addEventListener('click', function() {
         const name = pointNameInput.value.trim();
         const description = pointDescriptionInput.value.trim();
@@ -3316,13 +3745,15 @@ function initMap() {
                 return;
             }
             
-            updatePoint(editingPointData, lat, lng, name, description);
+            updatePoint(editingPointData, lat, lng, name, description, currentPhotoData);
             editingPointData = null;
+            currentPhotoData = null;
         } else {
             // Adding a new point
             if (!pendingPointLatLng) return;
             
-            addPoint(pendingPointLatLng.lat, pendingPointLatLng.lng, name, description);
+            addPoint(pendingPointLatLng.lat, pendingPointLatLng.lng, name, description, currentPhotoData);
+            currentPhotoData = null;
             
             // Reset placement mode if it was active (point was added by clicking on map)
             if (isPlacingPoints) {
@@ -3349,6 +3780,10 @@ function initMap() {
         // Clear editing state
         editingPointData = null;
         pendingPointLatLng = null;
+        currentPhotoData = null;
+        pointPhotoInput.value = '';
+        pointPhotoPreview.style.display = 'none';
+        pointPhotoPreviewImg.src = '';
     });
     
     // Handle export points button
@@ -3445,7 +3880,7 @@ function initMap() {
                 // Remove existing points if needed (or merge)
                 // For now, we'll add to existing points
                 parsedPoints.forEach(point => {
-                    addPoint(point.lat, point.lng, point.name, point.description);
+                    addPoint(point.lat, point.lng, point.name, point.description, point.photo || null);
                 });
                 
                 updateExportButtonVisibility();
