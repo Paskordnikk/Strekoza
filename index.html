@@ -290,16 +290,24 @@
             <h3>Информация о точке</h3>
             <input type="text" id="point-name-input" class="point-info-input" placeholder="Название точки">
             <textarea id="point-description-input" class="point-info-input" placeholder="Описание точки" rows="3"></textarea>
-            <input type="file" id="point-photo-input" class="point-info-input" accept="image/*" style="margin-bottom: 10px;">
-            <div id="point-photo-preview" style="margin-bottom: 10px; display: none;">
-                <img id="point-photo-preview-img" src="" alt="Превью фото" style="max-width: 100%; max-height: 200px; border-radius: 5px; border: 1px solid #ccc;">
-                <button type="button" id="point-photo-remove-btn" style="margin-top: 5px; padding: 5px 10px; background-color: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;">Удалить фото</button>
-            </div>
+            <input type="file" id="point-photo-input" class="point-info-input" accept="image/*" multiple style="display: none;">
+            <button type="button" id="point-photo-upload-btn" class="point-info-btn" style="margin-bottom: 10px; background-color: #28a745; color: white;">Загрузить фото</button>
+            <div id="point-photos-preview" style="margin-bottom: 10px;"></div>
             <input type="number" id="point-lat-input" class="point-info-input" placeholder="Широта" step="any">
             <input type="number" id="point-lng-input" class="point-info-input" placeholder="Долгота" step="any">
             <button id="save-point-btn" class="point-info-btn">Сохранить</button>
             <button id="cancel-point-btn" class="point-info-btn cancel-btn">Отмена</button>
         </div>
+    </div>
+
+    <!-- Модальное окно для просмотра фото -->
+    <div id="photo-viewer-modal" class="photo-viewer-modal" style="display: none;">
+        <div class="photo-viewer-close" id="photo-viewer-close-btn">&times;</div>
+        <div class="photo-viewer-content">
+            <img id="photo-viewer-img" src="" alt="Просмотр фото" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+        </div>
+        <button id="photo-viewer-prev" class="photo-viewer-nav-btn" style="left: 10px;">‹</button>
+        <button id="photo-viewer-next" class="photo-viewer-nav-btn" style="right: 10px;">›</button>
     </div>
 
     <!-- Модальное окно с инструкцией -->

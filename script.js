@@ -2952,16 +2952,17 @@ function initMap() {
     const pointNameInput = document.getElementById('point-name-input');
     const pointDescriptionInput = document.getElementById('point-description-input');
     const pointPhotoInput = document.getElementById('point-photo-input');
-    const pointPhotoPreview = document.getElementById('point-photo-preview');
-    const pointPhotoPreviewImg = document.getElementById('point-photo-preview-img');
-    const pointPhotoRemoveBtn = document.getElementById('point-photo-remove-btn');
+    const pointPhotoUploadBtn = document.getElementById('point-photo-upload-btn');
+    const pointPhotosPreview = document.getElementById('point-photos-preview');
     const pointLatInput = document.getElementById('point-lat-input');
     const pointLngInput = document.getElementById('point-lng-input');
     const savePointBtn = document.getElementById('save-point-btn');
     const cancelPointBtn = document.getElementById('cancel-point-btn');
     
     let editingPointData = null; // Текущая редактируемая точка
-    let currentPhotoData = null; // Текущее фото в base64
+    let currentPhotosData = []; // Массив текущих фото в base64
+    let photoViewerPhotos = []; // Массив фото для просмотра
+    let photoViewerCurrentIndex = 0; // Текущий индекс фото в просмотре
     
     /**
      * Преобразует координаты из WGS84 в СК-42 (проекция Гаусса-Крюгера)
@@ -3192,12 +3193,22 @@ function initMap() {
             descDiv.textContent = pointData.description;
             L.DomUtil.create('br', '', popupDiv);
         }
-        if (pointData.photo) {
-            const photoImg = L.DomUtil.create('img', '', popupDiv);
-            photoImg.src = pointData.photo;
-            photoImg.style.cssText = 'max-width: 100%; max-height: 200px; border-radius: 5px; margin-top: 10px; margin-bottom: 10px; border: 1px solid #ccc;';
-            photoImg.alt = 'Фото точки';
-            L.DomUtil.create('br', '', popupDiv);
+        if (pointData.photos && pointData.photos.length > 0) {
+            pointData.photos.forEach((photo, index) => {
+                const photoImg = L.DomUtil.create('img', '', popupDiv);
+                photoImg.src = photo;
+                photoImg.style.cssText = 'max-width: 100%; max-height: 200px; border-radius: 5px; margin-top: 10px; margin-bottom: 10px; border: 1px solid #ccc; display: block; cursor: pointer;';
+                photoImg.alt = `Фото точки ${index + 1}`;
+                photoImg.title = 'Нажмите для просмотра в полном размере';
+                
+                // Добавляем обработчик клика для просмотра фото
+                L.DomEvent.on(photoImg, 'click', function(e) {
+                    L.DomEvent.stopPropagation(e);
+                    openPhotoViewer(pointData.photos, index);
+                });
+                
+                L.DomUtil.create('br', '', popupDiv);
+            });
         }
         // Отображение координат в двух системах
         const coordsDiv = L.DomUtil.create('div', '', popupDiv);
@@ -3310,13 +3321,13 @@ function initMap() {
     }
     
     // Function to add a point to the map
-    function addPoint(lat, lng, name = '', description = '', photo = null) {
+    function addPoint(lat, lng, name = '', description = '', photos = null) {
         const pointData = {
             lat: lat,
             lng: lng,
             name: name || '',
             description: description || '',
-            photo: photo || null,
+            photos: photos !== null ? (Array.isArray(photos) ? photos : (photos ? [photos] : [])) : [],
             marker: null
         };
         
@@ -3344,6 +3355,33 @@ function initMap() {
         updateAddPointsButtonState();
     }
     
+    // Function to render photos preview
+    function renderPhotosPreview() {
+        pointPhotosPreview.innerHTML = '';
+        currentPhotosData.forEach((photo, index) => {
+            const photoContainer = document.createElement('div');
+            photoContainer.style.cssText = 'margin-bottom: 10px; position: relative;';
+            
+            const photoImg = document.createElement('img');
+            photoImg.src = photo;
+            photoImg.style.cssText = 'max-width: 100%; max-height: 200px; border-radius: 5px; border: 1px solid #ccc; display: block;';
+            photoImg.alt = `Превью фото ${index + 1}`;
+            
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.textContent = 'Удалить';
+            removeBtn.style.cssText = 'margin-top: 5px; padding: 5px 10px; background-color: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;';
+            removeBtn.onclick = () => {
+                currentPhotosData.splice(index, 1);
+                renderPhotosPreview();
+            };
+            
+            photoContainer.appendChild(photoImg);
+            photoContainer.appendChild(removeBtn);
+            pointPhotosPreview.appendChild(photoContainer);
+        });
+    }
+    
     // Function to open edit point popup
     function openEditPointPopup(pointData) {
         editingPointData = pointData;
@@ -3352,16 +3390,9 @@ function initMap() {
         pointLatInput.value = pointData.lat;
         pointLngInput.value = pointData.lng;
         
-        // Handle photo
-        if (pointData.photo) {
-            currentPhotoData = pointData.photo;
-            pointPhotoPreviewImg.src = pointData.photo;
-            pointPhotoPreview.style.display = 'block';
-        } else {
-            currentPhotoData = null;
-            pointPhotoPreview.style.display = 'none';
-            pointPhotoPreviewImg.src = '';
-        }
+        // Handle photos
+        currentPhotosData = pointData.photos && Array.isArray(pointData.photos) ? [...pointData.photos] : [];
+        renderPhotosPreview();
         pointPhotoInput.value = '';
         
         // Show coordinate inputs when editing
@@ -3371,13 +3402,15 @@ function initMap() {
     }
     
     // Function to update a point
-    function updatePoint(pointData, newLat, newLng, newName, newDescription, newPhoto = null) {
+    function updatePoint(pointData, newLat, newLng, newName, newDescription, newPhotos = null) {
         // Update data
         pointData.lat = newLat;
         pointData.lng = newLng;
         pointData.name = newName || '';
         pointData.description = newDescription || '';
-        pointData.photo = newPhoto !== undefined ? newPhoto : pointData.photo;
+        if (newPhotos !== null) {
+            pointData.photos = Array.isArray(newPhotos) ? newPhotos : (newPhotos ? [newPhotos] : []);
+        }
         
         // Remove old marker
         if (pointData.marker) {
@@ -3387,6 +3420,108 @@ function initMap() {
         // Create new marker with updated data
         pointData.marker = createPointMarker(pointData);
     }
+    
+    // Function to open photo viewer
+    function openPhotoViewer(photos, startIndex = 0) {
+        photoViewerPhotos = photos;
+        photoViewerCurrentIndex = startIndex;
+        
+        const photoViewerModal = document.getElementById('photo-viewer-modal');
+        const photoViewerImg = document.getElementById('photo-viewer-img');
+        const photoViewerPrev = document.getElementById('photo-viewer-prev');
+        const photoViewerNext = document.getElementById('photo-viewer-next');
+        
+        if (photoViewerPhotos.length === 0) return;
+        
+        // Показываем/скрываем кнопки навигации в зависимости от количества фото
+        if (photoViewerPhotos.length > 1) {
+            photoViewerPrev.style.display = 'block';
+            photoViewerNext.style.display = 'block';
+        } else {
+            photoViewerPrev.style.display = 'none';
+            photoViewerNext.style.display = 'none';
+        }
+        
+        updatePhotoViewer();
+        photoViewerModal.style.display = 'flex';
+    }
+    
+    // Function to update photo viewer
+    function updatePhotoViewer() {
+        const photoViewerImg = document.getElementById('photo-viewer-img');
+        if (photoViewerPhotos.length > 0 && photoViewerCurrentIndex >= 0 && photoViewerCurrentIndex < photoViewerPhotos.length) {
+            photoViewerImg.src = photoViewerPhotos[photoViewerCurrentIndex];
+        }
+    }
+    
+    // Function to close photo viewer
+    function closePhotoViewer() {
+        const photoViewerModal = document.getElementById('photo-viewer-modal');
+        photoViewerModal.style.display = 'none';
+        photoViewerPhotos = [];
+        photoViewerCurrentIndex = 0;
+    }
+    
+    // Function to show next photo
+    function showNextPhoto() {
+        if (photoViewerPhotos.length > 0) {
+            photoViewerCurrentIndex = (photoViewerCurrentIndex + 1) % photoViewerPhotos.length;
+            updatePhotoViewer();
+        }
+    }
+    
+    // Function to show previous photo
+    function showPreviousPhoto() {
+        if (photoViewerPhotos.length > 0) {
+            photoViewerCurrentIndex = (photoViewerCurrentIndex - 1 + photoViewerPhotos.length) % photoViewerPhotos.length;
+            updatePhotoViewer();
+        }
+    }
+    
+    // Initialize photo viewer event handlers
+    const photoViewerModal = document.getElementById('photo-viewer-modal');
+    const photoViewerCloseBtn = document.getElementById('photo-viewer-close-btn');
+    const photoViewerPrev = document.getElementById('photo-viewer-prev');
+    const photoViewerNext = document.getElementById('photo-viewer-next');
+    
+    if (photoViewerCloseBtn) {
+        photoViewerCloseBtn.addEventListener('click', closePhotoViewer);
+    }
+    
+    if (photoViewerModal) {
+        photoViewerModal.addEventListener('click', function(e) {
+            if (e.target === photoViewerModal) {
+                closePhotoViewer();
+            }
+        });
+    }
+    
+    if (photoViewerPrev) {
+        photoViewerPrev.addEventListener('click', function(e) {
+            e.stopPropagation();
+            showPreviousPhoto();
+        });
+    }
+    
+    if (photoViewerNext) {
+        photoViewerNext.addEventListener('click', function(e) {
+            e.stopPropagation();
+            showNextPhoto();
+        });
+    }
+    
+    // Keyboard navigation for photo viewer
+    document.addEventListener('keydown', function(e) {
+        if (photoViewerModal && photoViewerModal.style.display === 'flex') {
+            if (e.key === 'Escape') {
+                closePhotoViewer();
+            } else if (e.key === 'ArrowLeft') {
+                showPreviousPhoto();
+            } else if (e.key === 'ArrowRight') {
+                showNextPhoto();
+            }
+        }
+    });
     
     // Function to handle map click when placing points
     function onMapClickForPoint(e) {
@@ -3410,9 +3545,8 @@ function initMap() {
         pointLatInput.value = '';
         pointLngInput.value = '';
         pointPhotoInput.value = '';
-        currentPhotoData = null;
-        pointPhotoPreview.style.display = 'none';
-        pointPhotoPreviewImg.src = '';
+        currentPhotosData = [];
+        renderPhotosPreview();
         // Hide coordinate inputs when adding new point (coordinates come from map click)
         pointLatInput.style.display = 'none';
         pointLngInput.style.display = 'none';
@@ -3669,9 +3803,8 @@ function initMap() {
         pointLatInput.value = '';
         pointLngInput.value = '';
         pointPhotoInput.value = '';
-        currentPhotoData = null;
-        pointPhotoPreview.style.display = 'none';
-        pointPhotoPreviewImg.src = '';
+        currentPhotosData = [];
+        renderPhotosPreview();
         // Hide coordinate inputs when adding new point (coordinates already entered)
         pointLatInput.style.display = 'none';
         pointLngInput.style.display = 'none';
@@ -3693,34 +3826,35 @@ function initMap() {
         });
     }
     
+    // Handle photo upload button click
+    pointPhotoUploadBtn.addEventListener('click', function() {
+        pointPhotoInput.click();
+    });
+    
     // Handle photo input change
     pointPhotoInput.addEventListener('change', async function(e) {
-        const file = e.target.files[0];
-        if (file) {
-            if (file.type.startsWith('image/')) {
-                try {
-                    currentPhotoData = await fileToBase64(file);
-                    pointPhotoPreviewImg.src = currentPhotoData;
-                    pointPhotoPreview.style.display = 'block';
-                } catch (error) {
-                    alert('Ошибка при загрузке фото: ' + error.message);
-                    pointPhotoInput.value = '';
-                }
-            } else {
-                alert('Пожалуйста, выберите файл изображения');
-                pointPhotoInput.value = '';
+        const files = Array.from(e.target.files);
+        const imageFiles = files.filter(file => file.type.startsWith('image/'));
+        if (imageFiles.length === 0) {
+            alert('Пожалуйста, выберите файлы изображений');
+            pointPhotoInput.value = '';
+            return;
+        }
+        
+        try {
+            for (const file of imageFiles) {
+                const photoData = await fileToBase64(file);
+                currentPhotosData.push(photoData);
             }
+            renderPhotosPreview();
+            pointPhotoInput.value = '';
+        } catch (error) {
+            alert('Ошибка при загрузке фото: ' + error.message);
+            pointPhotoInput.value = '';
         }
     });
     
-    // Handle photo remove button
-    pointPhotoRemoveBtn.addEventListener('click', function() {
-        currentPhotoData = null;
-        pointPhotoPreview.style.display = 'none';
-        pointPhotoPreviewImg.src = '';
-        pointPhotoInput.value = '';
-    });
-    
+    // Handle save point button
     savePointBtn.addEventListener('click', function() {
         const name = pointNameInput.value.trim();
         const description = pointDescriptionInput.value.trim();
@@ -3745,15 +3879,15 @@ function initMap() {
                 return;
             }
             
-            updatePoint(editingPointData, lat, lng, name, description, currentPhotoData);
+            updatePoint(editingPointData, lat, lng, name, description, currentPhotosData);
             editingPointData = null;
-            currentPhotoData = null;
+            currentPhotosData = [];
         } else {
             // Adding a new point
             if (!pendingPointLatLng) return;
             
-            addPoint(pendingPointLatLng.lat, pendingPointLatLng.lng, name, description, currentPhotoData);
-            currentPhotoData = null;
+            addPoint(pendingPointLatLng.lat, pendingPointLatLng.lng, name, description, currentPhotosData);
+            currentPhotosData = [];
             
             // Reset placement mode if it was active (point was added by clicking on map)
             if (isPlacingPoints) {
@@ -3780,75 +3914,108 @@ function initMap() {
         // Clear editing state
         editingPointData = null;
         pendingPointLatLng = null;
-        currentPhotoData = null;
+        currentPhotosData = [];
         pointPhotoInput.value = '';
-        pointPhotoPreview.style.display = 'none';
-        pointPhotoPreviewImg.src = '';
+        renderPhotosPreview();
     });
     
     // Handle export points button
-    let isExportingPoints = false;
     exportPointsBtn.addEventListener('click', async function() {
-        if (isExportingPoints) return; // Предотвращаем множественные клики
         if (customPoints.length === 0) {
             alert('Нет точек для экспорта');
             return;
         }
-        isExportingPoints = true;
         
-        const headers = ['координаты_точки', 'название_точки', 'описание_точки'];
-        const rows = customPoints.map(point => {
-            // Escape commas and quotes in text fields
-            const escapeCSV = (text) => {
-                if (!text) return '';
-                // If text contains comma, quote or newline, wrap in quotes and escape quotes
-                if (text.includes(',') || text.includes('"') || text.includes('\n')) {
-                    return '"' + text.replace(/"/g, '""') + '"';
-                }
-                return text;
-            };
-            
-            return [
-                `${point.lat.toFixed(6)},${point.lng.toFixed(6)}`,
-                escapeCSV(point.name || ''),
-                escapeCSV(point.description || '')
-            ].join(',');
-        });
-        
-        let csvContent = headers.join(',') + '\n' + rows.join('\n');
+        // Проверяем, есть ли фото в точках
+        const hasPhotos = customPoints.some(point => point.photos && point.photos.length > 0);
         
         // Сохраняем зашифрованные данные в localStorage
+        // Исключаем свойство marker из данных, так как оно содержит циклические ссылки
+        const pointsForStorage = customPoints.map(point => {
+            const { marker, ...pointData } = point;
+            return pointData;
+        });
         try {
+            console.log('🔐 Начинаю шифрование и сохранение точек...');
             await saveEncryptedToLocalStorage('saved_points', {
-                points: customPoints,
+                points: pointsForStorage,
                 timestamp: new Date().toISOString()
             });
+            console.log('✅ Точки успешно сохранены в localStorage (зашифрованы)');
         } catch (error) {
-            // Продолжаем экспорт в файл даже если сохранение в localStorage не удалось
+            console.error('❌ ОШИБКА при сохранении точек в localStorage:', error);
+            console.error('Детали ошибки:', error.message, error.stack);
         }
         
-        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute('href', url);
-        
-        // Создаем уникальное имя файла с timestamp для предотвращения дубликатов на мобильных устройствах
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5); // Формат: 2024-01-15T10-30-45
-        link.setAttribute('download', `points_${timestamp}.csv`);
-        link.style.display = 'none';
-        link.style.position = 'absolute';
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        
-        // Освобождаем URL и удаляем ссылку после небольшой задержки
-        // Это важно для мобильных устройств, чтобы браузер успел обработать скачивание
-        setTimeout(() => {
+        if (hasPhotos) {
+            // Экспортируем в JSON, если есть фото
+            // Исключаем свойство marker из данных, так как оно содержит циклические ссылки
+            const pointsForExport = customPoints.map(point => {
+                const { marker, ...pointData } = point;
+                return pointData;
+            });
+            const jsonData = {
+                points: pointsForExport,
+                timestamp: new Date().toISOString(),
+                version: '1.0'
+            };
+            const jsonContent = JSON.stringify(jsonData, null, 2);
+            const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            link.setAttribute('download', `points_${timestamp}.json`);
+            document.body.appendChild(link);
+            link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
-            // Разрешаем следующий экспорт через небольшую задержку
-            isExportingPoints = false;
-        }, 500);
+        } else {
+            // Экспортируем в CSV, если нет фото
+            const headers = ['координаты_точки', 'название_точки', 'описание_точки'];
+            const rows = customPoints.map(point => {
+                // Escape commas and quotes in text fields
+                const escapeCSV = (text) => {
+                    if (!text) return '';
+                    // If text contains comma, quote or newline, wrap in quotes and escape quotes
+                    if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+                        return '"' + text.replace(/"/g, '""') + '"';
+                    }
+                    return text;
+                };
+                
+                return [
+                    `${point.lat.toFixed(6)},${point.lng.toFixed(6)}`,
+                    escapeCSV(point.name || ''),
+                    escapeCSV(point.description || '')
+                ].join(',');
+            });
+            
+            let csvContent = headers.join(',') + '\n' + rows.join('\n');
+            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            
+            // Создаем уникальное имя файла с timestamp для предотвращения дубликатов на мобильных устройствах
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5); // Формат: 2024-01-15T10-30-45
+            link.setAttribute('download', `points_${timestamp}.csv`);
+            link.style.display = 'none';
+            link.style.position = 'absolute';
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            
+            // Освобождаем URL и удаляем ссылку после небольшой задержки
+            // Это важно для мобильных устройств, чтобы браузер успел обработать скачивание
+            setTimeout(() => {
+                URL.revokeObjectURL(url);
+                document.body.removeChild(link);
+            }, 100);
+        }
+        
+        // Show export button if we have points
+        updateExportButtonVisibility();
     });
     
     // Handle reset points button
@@ -3880,7 +4047,8 @@ function initMap() {
                 // Remove existing points if needed (or merge)
                 // For now, we'll add to existing points
                 parsedPoints.forEach(point => {
-                    addPoint(point.lat, point.lng, point.name, point.description, point.photo || null);
+                    const photos = point.photos ? (Array.isArray(point.photos) ? point.photos : [point.photos]) : (point.photo ? [point.photo] : []);
+                    addPoint(point.lat, point.lng, point.name, point.description, photos.length > 0 ? photos : null);
                 });
                 
                 updateExportButtonVisibility();
