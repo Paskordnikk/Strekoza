@@ -10,11 +10,11 @@
     <meta name="slurp" content="noindex, nofollow">
     <meta name="duckduckbot" content="noindex, nofollow">
     <title>Interactive Map</title>
-    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
      crossorigin=""/>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="./style.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet.polylinemeasure/Leaflet.PolylineMeasure.css" />
 </head>
 <body>
@@ -56,8 +56,8 @@
         <button id="reset-points-btn" class="map-control-btn" style="display: none;">Сбросить точки</button>
         <button id="export-points-btn" class="map-control-btn" style="display: none;">Выгрузить точки</button>
     </div>
-    <input type="file" id="csv-importer" accept="route*.csv,.csv" style="display: none;" multiple="false">
-    <input type="file" id="points-csv-importer" accept=".csv" style="display: none;">
+    <input type="file" id="csv-importer" accept=".csv" style="display: none;">
+    <input type="file" id="points-csv-importer" accept=".csv,.json" style="display: none;">
     <div id="hamburger-menu" class="menu-button">
         <span></span>
         <span></span>
@@ -244,7 +244,7 @@
         <!-- Краткая инструкция -->
         <div class="menu-section">
             <div class="menu-item instruction-item">
-                <label class="instruction-label" id="instruction-label">Информация о приложении</label>
+                <label class="instruction-label" id="instruction-label">Краткая инструкция</label>
             </div>
         </div>
 
@@ -273,7 +273,7 @@
      crossorigin=""></script>
     <script src="https://unpkg.com/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet.polylinemeasure@latest/Leaflet.PolylineMeasure.js"></script>
-    <script src="script.js?v=5.4"></script>
+    <script type="module" src="./script.js"></script>
 
     <div id="geo-error-modal" class="hidden">
         <p>Не удалось определить ваше местоположение. Включите геолокацию в настройках браузера.</p>
@@ -300,6 +300,16 @@
         </div>
     </div>
 
+    <!-- Модальное окно с инструкцией -->
+    <div id="instruction-modal" class="instruction-modal" style="display: none;">
+        <div class="instruction-modal-content">
+            <div class="instruction-modal-close" id="instruction-close-btn">&times;</div>
+            <div class="instruction-modal-text">
+                <p>Это тестовый текст для краткой инструкции. Здесь будет размещена информация о том, как пользоваться приложением.</p>
+            </div>
+        </div>
+    </div>
+
     <!-- Модальное окно для просмотра фото -->
     <div id="photo-viewer-modal" class="photo-viewer-modal" style="display: none;">
         <div class="photo-viewer-close" id="photo-viewer-close-btn">&times;</div>
@@ -308,29 +318,6 @@
         </div>
         <button id="photo-viewer-prev" class="photo-viewer-nav-btn" style="left: 10px;">‹</button>
         <button id="photo-viewer-next" class="photo-viewer-nav-btn" style="right: 10px;">›</button>
-    </div>
-
-    <!-- Модальное окно с инструкцией -->
-    <div id="instruction-modal" class="instruction-modal" style="display: none;">
-        <div class="instruction-modal-content">
-            <div class="instruction-modal-close" id="instruction-close-btn">&times;</div>
-            <div class="instruction-modal-text">
-                <p>
-                Цвет линии маршрута можно менять - для темных и для светлых карт (В боковом меню сверху).<br><br>
-                Линии маршрутов визуально искривлены - это не ошибка, это учет кривизны Земли для более точного расчета. <br><br>
-                Данные по высотам загружены в отдельную базу и имеются для всей территории УГИЛа и чуть восточнее, что исключает применение по нам, если программа попадет не в те руки. <br><br>
-                Каждый час программа просит авторизоваться - мера предосторожности. <br><br>
-                При выгрузке данных (маршрутов с профилем высоты или точек) - данные шифруются, что исключает возможность их перехвата. <br><br>
-                Выгруженные данные сохраняются в файл .csv, который можно открыть в любом текстовом редакторе. <br><br>
-                Файл маршрута представляет из себя таблицу с колонками: широта, долгота, высота, расстояние, признак ключевой точки (1 - точка, отмеченная при построении маршрута, 0 - нет точки - просто линия маршрута). <br><br>
-                Дискретизация данных в файле зависит от выбранного шага при построении маршрута (25м, 50м, 100м). <br><br>
-                Для тех, кто сомневается в порядочности разработчика и в неприкосновенности данных - проект открыт, можно посмотреть код и оценить его надежность. <br>
-                https://github.com/Paskordnikk/Strekoza <br><br>
-
-                Для обратной связи, предложений и замечаний: bwxzaklg@strekozoid.anonaddy.me
-                </p>
-            </div>
-        </div>
     </div>
 </body>
 </html>

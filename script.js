@@ -68,6 +68,12 @@ async function getEncryptionKey() {
         encryptionKeyCache = cryptoKey;
         return cryptoKey;
     } catch (error) {
+        console.error('❌ Ошибка при получении ключа шифрования:', error);
+        console.error('Детали:', {
+            message: error.message,
+            stack: error.stack,
+            name: error.name
+        });
         throw error;
     }
 }
@@ -103,23 +109,16 @@ async function encryptData(plaintext) {
         combined.set(new Uint8Array(encryptedData), iv.length);
         
         // Преобразуем в base64 для хранения
-        // Используем безопасный метод для больших массивов (избегаем spread operator и apply)
-        // Обрабатываем по частям через цикл для надежности
-        const chunks = [];
-        const chunkSize = 8192; // Размер чанка для обработки
-        for (let i = 0; i < combined.length; i += chunkSize) {
-            const chunk = combined.slice(i, Math.min(i + chunkSize, combined.length));
-            let chunkString = '';
-            for (let j = 0; j < chunk.length; j++) {
-                chunkString += String.fromCharCode(chunk[j]);
-            }
-            chunks.push(chunkString);
-        }
-        const binaryString = chunks.join('');
-        const base64 = btoa(binaryString);
+        const base64 = btoa(String.fromCharCode(...combined));
         
         return base64;
     } catch (error) {
+        console.error('❌ Ошибка при шифровании данных:', error);
+        console.error('Детали ошибки:', {
+            message: error.message,
+            stack: error.stack,
+            name: error.name
+        });
         throw new Error(`Не удалось зашифровать данные: ${error.message}`);
     }
 }
@@ -155,6 +154,7 @@ async function decryptData(encryptedBase64) {
         
         return plaintext;
     } catch (error) {
+        console.error('Ошибка при расшифровке данных:', error);
         throw new Error('Не удалось расшифровать данные. Возможно, данные повреждены или ключ изменился.');
     }
 }
@@ -167,85 +167,47 @@ async function decryptData(encryptedBase64) {
  * @returns {Promise<void>}
  */
 async function saveEncryptedToLocalStorage(key, data) {
-    let jsonData = null;
-    
     try {
-        // Безопасная сериализация с обработкой циклических ссылок и больших структур
-        const seen = new WeakSet();
-        jsonData = JSON.stringify(data, (key, value) => {
-            if (typeof value === 'object' && value !== null) {
-                if (seen.has(value)) {
-                    return '[Circular]';
-                }
-                seen.add(value);
-            }
-            return value;
-        });
-    } catch (stringifyError) {
-        // Если сериализация не удалась из-за переполнения стека или других причин
-        const errorData = {
-            _unencrypted: true,
-            _error: `Не удалось сериализовать данные: ${stringifyError.message}`,
-            _errorDetails: {
-                name: stringifyError.name,
-                message: stringifyError.message
-            },
-            _dataSize: Array.isArray(data) ? data.length : typeof data === 'object' ? Object.keys(data).length : 'unknown'
-        };
-            try {
-                localStorage.setItem(key, JSON.stringify(errorData));
-            } catch (storageError) {
-                // Критическая ошибка сохранения
-            }
-        return;
-    }
-    
-    try {
-        const encrypted = await encryptData(jsonData);
-        
-        // Проверка: зашифрованные данные должны быть в base64 и не содержать читаемый JSON
-        const isEncrypted = encrypted.length > 50 && !encrypted.includes('"lat"') && !encrypted.includes('"lng"');
-        
-        localStorage.setItem(key, encrypted);
-    } catch (encryptionError) {
-        // Если шифрование не удалось (сервер недоступен, ошибка сети и т.д.)
-        // Сохраняем незашифрованные данные с пометкой, используя уже сериализованные данные
+        const jsonData = JSON.stringify(data);
         
         try {
-            // Используем уже сериализованные данные вместо повторной сериализации
-            // Извлекаем оригинальное сообщение об ошибке (убираем префикс, если он есть)
-            const errorMessage = encryptionError.message.startsWith('Не удалось зашифровать данные: ') 
-                ? encryptionError.message.substring('Не удалось зашифровать данные: '.length)
-                : encryptionError.message;
+            const encrypted = await encryptData(jsonData);
             
+            // Проверка: зашифрованные данные должны быть в base64 и не содержать читаемый JSON
+            const isEncrypted = encrypted.length > 50 && !encrypted.includes('"lat"') && !encrypted.includes('"lng"');
+            
+            if (!isEncrypted) {
+                console.warn('⚠️ Предупреждение: данные могут быть не зашифрованы!');
+            }
+            
+            localStorage.setItem(key, encrypted);
+            console.log(`✅ Данные сохранены в localStorage (ключ: ${key}, размер: ${encrypted.length} символов)`);
+            console.log(`🔒 Первые 50 символов зашифрованных данных: ${encrypted.substring(0, 50)}...`);
+        } catch (encryptionError) {
+            // Если шифрование не удалось (сервер недоступен, ошибка сети и т.д.)
+            // Сохраняем незашифрованные данные с пометкой
+            console.error('❌ ОШИБКА при шифровании данных:', encryptionError);
+            console.error('Детали ошибки:', {
+                message: encryptionError.message,
+                stack: encryptionError.stack,
+                name: encryptionError.name
+            });
+            console.warn('⚠️ Не удалось зашифровать данные. Сохраняю незашифрованными:', encryptionError.message);
             const unencryptedData = {
                 _unencrypted: true,
-                _error: `Не удалось зашифровать данные: ${errorMessage}`,
+                _error: encryptionError.message || 'Неизвестная ошибка шифрования',
                 _errorDetails: {
                     name: encryptionError.name,
-                    message: errorMessage
+                    message: encryptionError.message
                 },
-                data: JSON.parse(jsonData) // Парсим обратно для сохранения структуры
+                data: data
             };
             localStorage.setItem(key, JSON.stringify(unencryptedData));
-        } catch (parseError) {
-            // Если даже парсинг не удался, сохраняем как строку
-            // Извлекаем оригинальное сообщение об ошибке (убираем префикс, если он есть)
-            const errorMessage = encryptionError.message.startsWith('Не удалось зашифровать данные: ') 
-                ? encryptionError.message.substring('Не удалось зашифровать данные: '.length)
-                : encryptionError.message;
-            
-            const fallbackData = {
-                _unencrypted: true,
-                _error: `Не удалось зашифровать данные: ${errorMessage}`,
-                _errorDetails: {
-                    name: encryptionError.name,
-                    message: errorMessage
-                },
-                _rawData: jsonData.substring(0, 1000) + (jsonData.length > 1000 ? '... (truncated)' : '')
-            };
-            localStorage.setItem(key, JSON.stringify(fallbackData));
+            console.log(`⚠️ Данные сохранены БЕЗ шифрования (ключ: ${key})`);
         }
+    } catch (error) {
+        console.error('❌ Критическая ошибка при сохранении данных:', error);
+        throw error;
     }
 }
 
@@ -265,6 +227,7 @@ async function loadDecryptedFromLocalStorage(key) {
         try {
             const parsed = JSON.parse(stored);
             if (parsed._unencrypted === true) {
+                console.warn(`⚠️ Загружены незашифрованные данные (ключ: ${key})`);
                 return parsed.data || parsed;
             }
         } catch (e) {
@@ -275,16 +238,20 @@ async function loadDecryptedFromLocalStorage(key) {
         const isLikelyEncrypted = stored.length > 50 && !stored.includes('"lat"') && !stored.includes('"lng"');
         
         if (isLikelyEncrypted) {
+            console.log(`🔓 Расшифровка данных из localStorage (ключ: ${key})...`);
             try {
                 const decrypted = await decryptData(stored);
                 const parsed = JSON.parse(decrypted);
+                console.log(`✅ Данные успешно расшифрованы и загружены (ключ: ${key})`);
                 return parsed;
             } catch (decryptError) {
+                console.error('❌ Ошибка при расшифровке:', decryptError);
                 // Если не удалось расшифровать, возможно это старые незашифрованные данные
                 // Попробуем загрузить как обычный JSON
                 try {
                     const plainData = localStorage.getItem(key);
                     if (plainData) {
+                        console.warn('⚠️ Загружены незашифрованные данные (старый формат)');
                         return JSON.parse(plainData);
                     }
                 } catch (e) {
@@ -294,9 +261,11 @@ async function loadDecryptedFromLocalStorage(key) {
             }
         } else {
             // Похоже на незашифрованные данные
+            console.warn('⚠️ Данные в localStorage могут быть не зашифрованы!');
             return JSON.parse(stored);
         }
     } catch (error) {
+        console.error('❌ Ошибка при загрузке данных:', error);
         throw error;
     }
 }
@@ -323,33 +292,37 @@ function isDataEncrypted(key) {
 
 // Добавляем функцию в глобальную область для проверки в консоли
 window.checkEncryption = function() {
+    console.log('🔍 Проверка шифрования данных в localStorage:');
+    console.log('─'.repeat(50));
+    
     const routeKey = 'saved_route';
     const pointsKey = 'saved_points';
     
-    const routeData = localStorage.getItem(routeKey);
-    const pointsData = localStorage.getItem(pointsKey);
+    const routeEncrypted = isDataEncrypted(routeKey);
+    const pointsEncrypted = isDataEncrypted(pointsKey);
     
-    const result = {};
-    
-    if (routeData) {
-        const routeEncrypted = isDataEncrypted(routeKey);
-        result.route = {
-            encrypted: routeEncrypted,
-            size: routeData.length,
-            preview: routeData.substring(0, 80) + '...'
-        };
+    if (localStorage.getItem(routeKey)) {
+        const routeData = localStorage.getItem(routeKey);
+        console.log(`📌 Маршрут (${routeKey}):`);
+        console.log(`   Зашифровано: ${routeEncrypted ? '✅ ДА' : '❌ НЕТ'}`);
+        console.log(`   Размер: ${routeData.length} символов`);
+        console.log(`   Превью: ${routeData.substring(0, 80)}...`);
+    } else {
+        console.log(`📌 Маршрут (${routeKey}): не найден`);
     }
     
-    if (pointsData) {
-        const pointsEncrypted = isDataEncrypted(pointsKey);
-        result.points = {
-            encrypted: pointsEncrypted,
-            size: pointsData.length,
-            preview: pointsData.substring(0, 80) + '...'
-        };
+    if (localStorage.getItem(pointsKey)) {
+        const pointsData = localStorage.getItem(pointsKey);
+        console.log(`📌 Точки (${pointsKey}):`);
+        console.log(`   Зашифровано: ${pointsEncrypted ? '✅ ДА' : '❌ НЕТ'}`);
+        console.log(`   Размер: ${pointsData.length} символов`);
+        console.log(`   Превью: ${pointsData.substring(0, 80)}...`);
+    } else {
+        console.log(`📌 Точки (${pointsKey}): не найдены`);
     }
     
-    return result;
+    console.log('─'.repeat(50));
+    console.log('💡 Для проверки введите: checkEncryption()');
 };
 
 // Authentication functions
@@ -674,7 +647,7 @@ function initMap() {
                 subdomains: 'abcd',
                 maxZoom: 20
             }),
-            gray: () => L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+            gray: () => L.tileLayer('http://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
                 attribution: 'Tiles &copy; Esri &mdash; Source: Esri',
                 maxZoom: 16
             }),
@@ -1709,21 +1682,10 @@ function initMap() {
         const chartWidth = width - margin.left - margin.right;
         const chartHeight = height - margin.top - margin.bottom;
 
-        // Фильтруем валидные значения elevation (исключаем null, undefined, NaN)
-        const validElevations = elevationData
-            .map(d => d.elevation)
-            .filter(elev => elev !== null && elev !== undefined && !isNaN(elev) && isFinite(elev));
-        
-        // Если нет валидных значений elevation, используем 0
-        const elevations = validElevations.length > 0 ? validElevations : [0];
-        const minElev = validElevations.length > 0 ? Math.min(...validElevations) : 0;
-        const maxElev = validElevations.length > 0 ? Math.max(...validElevations) : 0;
-        
-        // Фильтруем валидные значения distance
-        const validDistances = elevationData
-            .map(d => d.distance)
-            .filter(dist => dist !== null && dist !== undefined && !isNaN(dist) && isFinite(dist));
-        const maxDist = validDistances.length > 0 ? Math.max(...validDistances) : 0;
+        const elevations = elevationData.map(d => d.elevation);
+        const minElev = Math.min(...elevations);
+        const maxElev = Math.max(...elevations);
+        const maxDist = Math.max(...elevationData.map(d => d.distance));
 
         const elevationRange = maxElev - minElev;
         let yScale;
@@ -1756,12 +1718,7 @@ function initMap() {
             }
         }
 
-        // Строим полилинию, используя валидные значения (заменяем null/undefined на 0)
-        const points = elevationData.map(d => {
-            const dist = (d.distance !== null && d.distance !== undefined && !isNaN(d.distance)) ? d.distance : 0;
-            const elev = (d.elevation !== null && d.elevation !== undefined && !isNaN(d.elevation) && isFinite(d.elevation)) ? d.elevation : minElev;
-            return `${xScale(dist)},${yScale(elev)}`;
-        }).join(' ');
+        const points = elevationData.map(d => `${xScale(d.distance)},${yScale(d.elevation)}`).join(' ');
         svgContent += `<polyline points="${points}" fill="none" stroke="darkorange" stroke-width="3"/>`;
 
         svgNode.innerHTML = svgContent;
@@ -1772,9 +1729,7 @@ function initMap() {
         const labelPadding = 10; // Min padding between labels
 
         waypoints.forEach((point, index) => {
-            // Проверяем валидность distance
-            const dist = (point.distance !== null && point.distance !== undefined && !isNaN(point.distance) && isFinite(point.distance)) ? point.distance : 0;
-            const x = xScale(dist);
+            const x = xScale(point.distance);
             const isLastWaypoint = index === waypoints.length - 1;
             
             const textNode = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -1784,7 +1739,7 @@ function initMap() {
             textNode.setAttribute('font-size', '12');
             // Последнюю метку выравниваем по правому краю
             textNode.setAttribute('text-anchor', isLastWaypoint ? 'end' : 'middle');
-            textNode.textContent = `${dist.toFixed(1)} км`;
+            textNode.textContent = `${point.distance.toFixed(1)} км`;
             
             svgNode.appendChild(textNode);
             
@@ -2654,12 +2609,16 @@ function initMap() {
 
         // Сохраняем зашифрованные данные в localStorage
         try {
+            console.log('🔐 Начинаю шифрование и сохранение маршрута...');
             await saveEncryptedToLocalStorage('saved_route', {
                 data: dataToExport,
                 step: currentSampleStep,
                 timestamp: new Date().toISOString()
             });
+            console.log('✅ Маршрут успешно сохранен в localStorage (зашифрован)');
         } catch (error) {
+            console.error('❌ ОШИБКА при сохранении маршрута в localStorage:', error);
+            console.error('Детали ошибки:', error.message, error.stack);
             // Продолжаем экспорт в файл даже если сохранение в localStorage не удалось
         }
 
@@ -2667,23 +2626,10 @@ function initMap() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.setAttribute("href", url);
-        
-        // Создаем уникальное имя файла с timestamp для предотвращения дубликатов на мобильных устройствах
-        // На мобильных устройствах браузер может показывать старые файлы в диалоге, поэтому используем уникальное имя
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5); // Формат: 2024-01-15T10-30-45
-        link.setAttribute("download", `route_${timestamp}.csv`);
-        link.style.display = 'none';
-        link.style.position = 'absolute';
-        link.style.visibility = 'hidden';
+        link.setAttribute("download", `route_profile_step${currentSampleStep}m.csv`);
         document.body.appendChild(link);
         link.click();
-        
-        // Освобождаем URL и удаляем ссылку после небольшой задержки
-        // Это важно для мобильных устройств, чтобы браузер успел обработать скачивание
-        setTimeout(() => {
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-        }, 500);
+        document.body.removeChild(link);
     }
 
     function resetRouteBuilding() {
@@ -2795,19 +2741,11 @@ function initMap() {
         // Keep button visible while profile is open to show active state
     });
     
-    let isExporting = false;
     exportRouteBtn.addEventListener('click', async function() {
-        if (isExporting) return; // Предотвращаем множественные клики
-        isExporting = true;
         try {
             await exportRouteToCSV();
         } catch (error) {
-            // Ошибка при экспорте маршрута
-        } finally {
-            // Разрешаем следующий экспорт через небольшую задержку
-            setTimeout(() => {
-                isExporting = false;
-            }, 500);
+            console.error('❌ Ошибка при экспорте маршрута:', error);
         }
     });
 
@@ -2820,9 +2758,33 @@ function initMap() {
 
     // --- IMPORT LOGIC ---
     importRouteBtn.addEventListener('click', async () => {
-        // Очищаем значение input перед открытием диалога, чтобы браузер не показывал старые файлы
-        csvImporter.value = '';
-        // Открываем файловый диалог для выбора файла
+        // Сначала пытаемся загрузить из localStorage
+        try {
+            const savedRoute = await loadDecryptedFromLocalStorage('saved_route');
+            if (savedRoute && savedRoute.data && savedRoute.data.length > 0) {
+                const confirmed = confirm('Найден сохраненный маршрут в localStorage. Загрузить его?');
+                if (confirmed) {
+                    // Восстанавливаем маршрут из сохраненных данных
+                    const waypoints = savedRoute.data.filter(p => p.isWaypoint);
+                    if (waypoints.length >= 2) {
+                        await reconstructRouteFromData(waypoints.map(p => ({ lat: p.lat, lng: p.lng })));
+                        // Восстанавливаем данные профиля высоты
+                        if (savedRoute.step) {
+                            currentSampleStep = savedRoute.step;
+                        }
+                        currentRouteData = savedRoute.data;
+                        buildElevationProfile(savedRoute.data);
+                        setupRouteToChartInteraction(savedRoute.data);
+                        elevationProfile.classList.add('visible');
+                        return;
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Ошибка при загрузке маршрута из localStorage:', error);
+        }
+        
+        // Если не удалось загрузить из localStorage, открываем файловый диалог
         csvImporter.click();
     });
 
@@ -3321,13 +3283,13 @@ function initMap() {
     }
     
     // Function to add a point to the map
-    function addPoint(lat, lng, name = '', description = '', photos = null) {
+    function addPoint(lat, lng, name = '', description = '', photos = []) {
         const pointData = {
             lat: lat,
             lng: lng,
             name: name || '',
             description: description || '',
-            photos: photos !== null ? (Array.isArray(photos) ? photos : (photos ? [photos] : [])) : [],
+            photos: Array.isArray(photos) ? photos : (photos ? [photos] : []),
             marker: null
         };
         
@@ -3354,6 +3316,108 @@ function initMap() {
         // Update add points button active state
         updateAddPointsButtonState();
     }
+    
+    // Function to open photo viewer
+    function openPhotoViewer(photos, startIndex = 0) {
+        photoViewerPhotos = photos;
+        photoViewerCurrentIndex = startIndex;
+        
+        const photoViewerModal = document.getElementById('photo-viewer-modal');
+        const photoViewerImg = document.getElementById('photo-viewer-img');
+        const photoViewerPrev = document.getElementById('photo-viewer-prev');
+        const photoViewerNext = document.getElementById('photo-viewer-next');
+        
+        if (photoViewerPhotos.length === 0) return;
+        
+        // Показываем/скрываем кнопки навигации в зависимости от количества фото
+        if (photoViewerPhotos.length > 1) {
+            photoViewerPrev.style.display = 'block';
+            photoViewerNext.style.display = 'block';
+        } else {
+            photoViewerPrev.style.display = 'none';
+            photoViewerNext.style.display = 'none';
+        }
+        
+        updatePhotoViewer();
+        photoViewerModal.style.display = 'flex';
+    }
+    
+    // Function to update photo viewer
+    function updatePhotoViewer() {
+        const photoViewerImg = document.getElementById('photo-viewer-img');
+        if (photoViewerPhotos.length > 0 && photoViewerCurrentIndex >= 0 && photoViewerCurrentIndex < photoViewerPhotos.length) {
+            photoViewerImg.src = photoViewerPhotos[photoViewerCurrentIndex];
+        }
+    }
+    
+    // Function to close photo viewer
+    function closePhotoViewer() {
+        const photoViewerModal = document.getElementById('photo-viewer-modal');
+        photoViewerModal.style.display = 'none';
+        photoViewerPhotos = [];
+        photoViewerCurrentIndex = 0;
+    }
+    
+    // Function to show next photo
+    function showNextPhoto() {
+        if (photoViewerPhotos.length > 0) {
+            photoViewerCurrentIndex = (photoViewerCurrentIndex + 1) % photoViewerPhotos.length;
+            updatePhotoViewer();
+        }
+    }
+    
+    // Function to show previous photo
+    function showPrevPhoto() {
+        if (photoViewerPhotos.length > 0) {
+            photoViewerCurrentIndex = (photoViewerCurrentIndex - 1 + photoViewerPhotos.length) % photoViewerPhotos.length;
+            updatePhotoViewer();
+        }
+    }
+    
+    // Initialize photo viewer event handlers
+    const photoViewerModal = document.getElementById('photo-viewer-modal');
+    const photoViewerCloseBtn = document.getElementById('photo-viewer-close-btn');
+    const photoViewerPrev = document.getElementById('photo-viewer-prev');
+    const photoViewerNext = document.getElementById('photo-viewer-next');
+    
+    if (photoViewerCloseBtn) {
+        photoViewerCloseBtn.addEventListener('click', closePhotoViewer);
+    }
+    
+    if (photoViewerModal) {
+        photoViewerModal.addEventListener('click', function(e) {
+            if (e.target === photoViewerModal) {
+                closePhotoViewer();
+            }
+        });
+    }
+    
+    if (photoViewerPrev) {
+        photoViewerPrev.addEventListener('click', function(e) {
+            e.stopPropagation();
+            showPrevPhoto();
+        });
+    }
+    
+    if (photoViewerNext) {
+        photoViewerNext.addEventListener('click', function(e) {
+            e.stopPropagation();
+            showNextPhoto();
+        });
+    }
+    
+    // Keyboard navigation for photo viewer
+    document.addEventListener('keydown', function(e) {
+        if (photoViewerModal && photoViewerModal.style.display === 'flex') {
+            if (e.key === 'Escape') {
+                closePhotoViewer();
+            } else if (e.key === 'ArrowLeft') {
+                showPrevPhoto();
+            } else if (e.key === 'ArrowRight') {
+                showNextPhoto();
+            }
+        }
+    });
     
     // Function to render photos preview
     function renderPhotosPreview() {
@@ -3420,108 +3484,6 @@ function initMap() {
         // Create new marker with updated data
         pointData.marker = createPointMarker(pointData);
     }
-    
-    // Function to open photo viewer
-    function openPhotoViewer(photos, startIndex = 0) {
-        photoViewerPhotos = photos;
-        photoViewerCurrentIndex = startIndex;
-        
-        const photoViewerModal = document.getElementById('photo-viewer-modal');
-        const photoViewerImg = document.getElementById('photo-viewer-img');
-        const photoViewerPrev = document.getElementById('photo-viewer-prev');
-        const photoViewerNext = document.getElementById('photo-viewer-next');
-        
-        if (photoViewerPhotos.length === 0) return;
-        
-        // Показываем/скрываем кнопки навигации в зависимости от количества фото
-        if (photoViewerPhotos.length > 1) {
-            photoViewerPrev.style.display = 'block';
-            photoViewerNext.style.display = 'block';
-        } else {
-            photoViewerPrev.style.display = 'none';
-            photoViewerNext.style.display = 'none';
-        }
-        
-        updatePhotoViewer();
-        photoViewerModal.style.display = 'flex';
-    }
-    
-    // Function to update photo viewer
-    function updatePhotoViewer() {
-        const photoViewerImg = document.getElementById('photo-viewer-img');
-        if (photoViewerPhotos.length > 0 && photoViewerCurrentIndex >= 0 && photoViewerCurrentIndex < photoViewerPhotos.length) {
-            photoViewerImg.src = photoViewerPhotos[photoViewerCurrentIndex];
-        }
-    }
-    
-    // Function to close photo viewer
-    function closePhotoViewer() {
-        const photoViewerModal = document.getElementById('photo-viewer-modal');
-        photoViewerModal.style.display = 'none';
-        photoViewerPhotos = [];
-        photoViewerCurrentIndex = 0;
-    }
-    
-    // Function to show next photo
-    function showNextPhoto() {
-        if (photoViewerPhotos.length > 0) {
-            photoViewerCurrentIndex = (photoViewerCurrentIndex + 1) % photoViewerPhotos.length;
-            updatePhotoViewer();
-        }
-    }
-    
-    // Function to show previous photo
-    function showPreviousPhoto() {
-        if (photoViewerPhotos.length > 0) {
-            photoViewerCurrentIndex = (photoViewerCurrentIndex - 1 + photoViewerPhotos.length) % photoViewerPhotos.length;
-            updatePhotoViewer();
-        }
-    }
-    
-    // Initialize photo viewer event handlers
-    const photoViewerModal = document.getElementById('photo-viewer-modal');
-    const photoViewerCloseBtn = document.getElementById('photo-viewer-close-btn');
-    const photoViewerPrev = document.getElementById('photo-viewer-prev');
-    const photoViewerNext = document.getElementById('photo-viewer-next');
-    
-    if (photoViewerCloseBtn) {
-        photoViewerCloseBtn.addEventListener('click', closePhotoViewer);
-    }
-    
-    if (photoViewerModal) {
-        photoViewerModal.addEventListener('click', function(e) {
-            if (e.target === photoViewerModal) {
-                closePhotoViewer();
-            }
-        });
-    }
-    
-    if (photoViewerPrev) {
-        photoViewerPrev.addEventListener('click', function(e) {
-            e.stopPropagation();
-            showPreviousPhoto();
-        });
-    }
-    
-    if (photoViewerNext) {
-        photoViewerNext.addEventListener('click', function(e) {
-            e.stopPropagation();
-            showNextPhoto();
-        });
-    }
-    
-    // Keyboard navigation for photo viewer
-    document.addEventListener('keydown', function(e) {
-        if (photoViewerModal && photoViewerModal.style.display === 'flex') {
-            if (e.key === 'Escape') {
-                closePhotoViewer();
-            } else if (e.key === 'ArrowLeft') {
-                showPreviousPhoto();
-            } else if (e.key === 'ArrowRight') {
-                showNextPhoto();
-            }
-        }
-    });
     
     // Function to handle map click when placing points
     function onMapClickForPoint(e) {
@@ -3815,7 +3777,6 @@ function initMap() {
         map.setView([lat, lng], map.getZoom());
     });
     
-    // Handle save point button
     // Function to convert file to base64
     function fileToBase64(file) {
         return new Promise((resolve, reject) => {
@@ -3834,6 +3795,8 @@ function initMap() {
     // Handle photo input change
     pointPhotoInput.addEventListener('change', async function(e) {
         const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+        
         const imageFiles = files.filter(file => file.type.startsWith('image/'));
         if (imageFiles.length === 0) {
             alert('Пожалуйста, выберите файлы изображений');
@@ -3996,26 +3959,13 @@ function initMap() {
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.setAttribute('href', url);
-            
-            // Создаем уникальное имя файла с timestamp для предотвращения дубликатов на мобильных устройствах
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5); // Формат: 2024-01-15T10-30-45
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
             link.setAttribute('download', `points_${timestamp}.csv`);
-            link.style.display = 'none';
-            link.style.position = 'absolute';
-            link.style.visibility = 'hidden';
             document.body.appendChild(link);
             link.click();
-            
-            // Освобождаем URL и удаляем ссылку после небольшой задержки
-            // Это важно для мобильных устройств, чтобы браузер успел обработать скачивание
-            setTimeout(() => {
-                URL.revokeObjectURL(url);
-                document.body.removeChild(link);
-            }, 100);
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
         }
-        
-        // Show export button if we have points
-        updateExportButtonVisibility();
     });
     
     // Handle reset points button
@@ -4028,12 +3978,12 @@ function initMap() {
     });
     
     // Handle import points button
-    importPointsBtn.addEventListener('click', async function() {
-        // Открываем файловый диалог для выбора файла
+    importPointsBtn.addEventListener('click', function() {
+        // Сразу открываем файловый диалог для выбора файла
         pointsCsvImporter.click();
     });
     
-    // Handle CSV file import
+    // Handle file import (CSV or JSON)
     pointsCsvImporter.addEventListener('change', function(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -4042,18 +3992,38 @@ function initMap() {
         reader.onload = function(e) {
             const text = e.target.result;
             try {
-                const parsedPoints = parsePointsCsv(text);
+                let parsedPoints = [];
+                
+                // Определяем тип файла по расширению или содержимому
+                const fileName = file.name.toLowerCase();
+                const isJson = fileName.endsWith('.json') || (text.trim().startsWith('{') || text.trim().startsWith('['));
+                
+                if (isJson) {
+                    // Импорт из JSON
+                    const jsonData = JSON.parse(text);
+                    if (jsonData.points && Array.isArray(jsonData.points)) {
+                        parsedPoints = jsonData.points;
+                    } else if (Array.isArray(jsonData)) {
+                        parsedPoints = jsonData;
+                    } else {
+                        throw new Error('Неверный формат JSON файла');
+                    }
+                } else {
+                    // Импорт из CSV
+                    parsedPoints = parsePointsCsv(text);
+                }
                 
                 // Remove existing points if needed (or merge)
                 // For now, we'll add to existing points
                 parsedPoints.forEach(point => {
-                    const photos = point.photos ? (Array.isArray(point.photos) ? point.photos : [point.photos]) : (point.photo ? [point.photo] : []);
-                    addPoint(point.lat, point.lng, point.name, point.description, photos.length > 0 ? photos : null);
+                    // Поддержка старого формата (photo) и нового (photos)
+                    const photos = point.photos || (point.photo ? [point.photo] : []);
+                    addPoint(point.lat, point.lng, point.name, point.description, photos);
                 });
                 
                 updateExportButtonVisibility();
             } catch (error) {
-                alert(`Не удалось прочитать файл. Убедитесь, что это корректный CSV-файл.\nДетали: ${error.message}`);
+                alert(`Не удалось прочитать файл. Убедитесь, что это корректный CSV или JSON файл.\nДетали: ${error.message}`);
             }
         };
         reader.readAsText(file);

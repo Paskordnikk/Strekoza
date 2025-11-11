@@ -929,7 +929,17 @@ body, html {
     padding: 20px;
     min-width: 300px;
     max-width: 90%;
+    max-height: 90vh;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-sizing: border-box;
+}
+
+.point-info-content {
+    max-height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .point-info-content h3 {
@@ -1080,10 +1090,10 @@ body, html {
 /* Instruction modal styles */
 .instruction-modal {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
     z-index: 10000;
     display: none;
     align-items: center;
@@ -1092,9 +1102,8 @@ body, html {
 
 .instruction-modal-content {
     position: relative;
-    max-width: 500px; /* Ограничиваем ширину модального окна */
-    width: auto; /* Позволяет контенту определять ширину */
-    max-height: 80vh; /* Ограничиваем высоту */
+    width: 100%;
+    height: 100%;
     background-color: rgba(50, 51, 61, 0.85);
     border: 2px solid darkorange;
     border-radius: 10px;
@@ -1133,7 +1142,6 @@ body, html {
     color: white;
     font-family: sans-serif;
     font-size: 14px;
-    text-align: justify;
     line-height: 1.6;
     padding-top: 10px;
 }
@@ -1148,7 +1156,6 @@ body, html {
 
 @media (max-width: 768px) {
     .instruction-modal-content {
-        max-width: 90%;
         padding: 15px;
     }
     
@@ -1168,7 +1175,6 @@ body, html {
 
 @media (max-width: 480px) {
     .instruction-modal-content {
-        max-width: 95%;
         padding: 12px;
     }
     
@@ -1183,5 +1189,145 @@ body, html {
     .instruction-modal-text {
         font-size: 12px;
         padding-top: 6px;
+    }
+}
+
+/* Photo viewer modal styles */
+.photo-viewer-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 20000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.9);
+    cursor: pointer;
+}
+
+.photo-viewer-content {
+    position: relative;
+    max-width: 90%;
+    max-height: 90%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+}
+
+.photo-viewer-content img {
+    max-width: 100%;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 5px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.photo-viewer-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    color: white;
+    font-size: 36px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    z-index: 20001;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    background-color: rgba(0, 0, 0, 0.5);
+    border-radius: 50%;
+    transition: background-color 0.3s;
+}
+
+.photo-viewer-close:hover {
+    background-color: rgba(255, 140, 0, 0.8);
+    color: #32333d;
+}
+
+.photo-viewer-nav-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 50px;
+    height: 50px;
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    border: 2px solid darkorange;
+    border-radius: 50%;
+    font-size: 32px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 20001;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    transition: background-color 0.3s, border-color 0.3s;
+    padding: 0;
+    line-height: 1;
+}
+
+.photo-viewer-nav-btn:hover {
+    background-color: rgba(255, 140, 0, 0.8);
+    border-color: #ffaa33;
+    color: #32333d;
+}
+
+.photo-viewer-nav-btn:active {
+    background-color: rgba(255, 140, 0, 1);
+}
+
+@media (max-width: 768px) {
+    .photo-viewer-close {
+        top: 10px;
+        right: 10px;
+        width: 35px;
+        height: 35px;
+        font-size: 30px;
+    }
+    
+    .photo-viewer-nav-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 28px;
+    }
+    
+    .photo-viewer-content {
+        max-width: 95%;
+        max-height: 95%;
+    }
+}
+
+@media (max-width: 480px) {
+    .photo-viewer-close {
+        top: 5px;
+        right: 5px;
+        width: 30px;
+        height: 30px;
+        font-size: 26px;
+    }
+    
+    .photo-viewer-nav-btn {
+        width: 35px;
+        height: 35px;
+        font-size: 24px;
+    }
+    
+    .photo-viewer-content {
+        max-width: 98%;
+        max-height: 98%;
     }
 }
