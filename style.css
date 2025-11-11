@@ -1331,3 +1331,63 @@ body, html {
         max-height: 98%;
     }
 }
+
+/* Leaflet popup styles for photos container */
+.leaflet-popup-content-wrapper {
+    max-height: 500px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.leaflet-popup-content {
+    max-width: 300px;
+    margin: 0;
+    padding: 10px;
+}
+
+.photos-container {
+    max-height: 250px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    padding-right: 5px;
+}
+
+/* Custom scrollbar for photos container */
+.photos-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.photos-container::-webkit-scrollbar-track {
+    background: rgba(50, 51, 61, 0.3);
+    border-radius: 4px;
+}
+
+.photos-container::-webkit-scrollbar-thumb {
+    background: darkorange;
+    border-radius: 4px;
+}
+
+.photos-container::-webkit-scrollbar-thumb:hover {
+    background: #ffaa33;
+}
+
+/* Custom scrollbar for popup content */
+.leaflet-popup-content-wrapper::-webkit-scrollbar {
+    width: 8px;
+}
+
+.leaflet-popup-content-wrapper::-webkit-scrollbar-track {
+    background: rgba(50, 51, 61, 0.3);
+    border-radius: 4px;
+}
+
+.leaflet-popup-content-wrapper::-webkit-scrollbar-thumb {
+    background: darkorange;
+    border-radius: 4px;
+}
+
+.leaflet-popup-content-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #ffaa33;
+}

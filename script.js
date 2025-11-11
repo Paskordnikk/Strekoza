@@ -68,12 +68,6 @@ async function getEncryptionKey() {
         encryptionKeyCache = cryptoKey;
         return cryptoKey;
     } catch (error) {
-        console.error('❌ Ошибка при получении ключа шифрования:', error);
-        console.error('Детали:', {
-            message: error.message,
-            stack: error.stack,
-            name: error.name
-        });
         throw error;
     }
 }
@@ -109,16 +103,23 @@ async function encryptData(plaintext) {
         combined.set(new Uint8Array(encryptedData), iv.length);
         
         // Преобразуем в base64 для хранения
-        const base64 = btoa(String.fromCharCode(...combined));
+        // Используем безопасный метод для больших массивов (избегаем spread operator и apply)
+        // Обрабатываем по частям через цикл для надежности
+        const chunks = [];
+        const chunkSize = 8192; // Размер чанка для обработки
+        for (let i = 0; i < combined.length; i += chunkSize) {
+            const chunk = combined.slice(i, Math.min(i + chunkSize, combined.length));
+            let chunkString = '';
+            for (let j = 0; j < chunk.length; j++) {
+                chunkString += String.fromCharCode(chunk[j]);
+            }
+            chunks.push(chunkString);
+        }
+        const binaryString = chunks.join('');
+        const base64 = btoa(binaryString);
         
         return base64;
     } catch (error) {
-        console.error('❌ Ошибка при шифровании данных:', error);
-        console.error('Детали ошибки:', {
-            message: error.message,
-            stack: error.stack,
-            name: error.name
-        });
         throw new Error(`Не удалось зашифровать данные: ${error.message}`);
     }
 }
@@ -154,7 +155,6 @@ async function decryptData(encryptedBase64) {
         
         return plaintext;
     } catch (error) {
-        console.error('Ошибка при расшифровке данных:', error);
         throw new Error('Не удалось расшифровать данные. Возможно, данные повреждены или ключ изменился.');
     }
 }
@@ -167,47 +167,85 @@ async function decryptData(encryptedBase64) {
  * @returns {Promise<void>}
  */
 async function saveEncryptedToLocalStorage(key, data) {
+    let jsonData = null;
+    
     try {
-        const jsonData = JSON.stringify(data);
+        // Безопасная сериализация с обработкой циклических ссылок и больших структур
+        const seen = new WeakSet();
+        jsonData = JSON.stringify(data, (key, value) => {
+            if (typeof value === 'object' && value !== null) {
+                if (seen.has(value)) {
+                    return '[Circular]';
+                }
+                seen.add(value);
+            }
+            return value;
+        });
+    } catch (stringifyError) {
+        // Если сериализация не удалась из-за переполнения стека или других причин
+        const errorData = {
+            _unencrypted: true,
+            _error: `Не удалось сериализовать данные: ${stringifyError.message}`,
+            _errorDetails: {
+                name: stringifyError.name,
+                message: stringifyError.message
+            },
+            _dataSize: Array.isArray(data) ? data.length : typeof data === 'object' ? Object.keys(data).length : 'unknown'
+        };
+            try {
+                localStorage.setItem(key, JSON.stringify(errorData));
+            } catch (storageError) {
+                // Критическая ошибка сохранения
+            }
+        return;
+    }
+    
+    try {
+        const encrypted = await encryptData(jsonData);
+        
+        // Проверка: зашифрованные данные должны быть в base64 и не содержать читаемый JSON
+        const isEncrypted = encrypted.length > 50 && !encrypted.includes('"lat"') && !encrypted.includes('"lng"');
+        
+        localStorage.setItem(key, encrypted);
+    } catch (encryptionError) {
+        // Если шифрование не удалось (сервер недоступен, ошибка сети и т.д.)
+        // Сохраняем незашифрованные данные с пометкой, используя уже сериализованные данные
         
         try {
-            const encrypted = await encryptData(jsonData);
+            // Используем уже сериализованные данные вместо повторной сериализации
+            // Извлекаем оригинальное сообщение об ошибке (убираем префикс, если он есть)
+            const errorMessage = encryptionError.message.startsWith('Не удалось зашифровать данные: ') 
+                ? encryptionError.message.substring('Не удалось зашифровать данные: '.length)
+                : encryptionError.message;
             
-            // Проверка: зашифрованные данные должны быть в base64 и не содержать читаемый JSON
-            const isEncrypted = encrypted.length > 50 && !encrypted.includes('"lat"') && !encrypted.includes('"lng"');
-            
-            if (!isEncrypted) {
-                console.warn('⚠️ Предупреждение: данные могут быть не зашифрованы!');
-            }
-            
-            localStorage.setItem(key, encrypted);
-            console.log(`✅ Данные сохранены в localStorage (ключ: ${key}, размер: ${encrypted.length} символов)`);
-            console.log(`🔒 Первые 50 символов зашифрованных данных: ${encrypted.substring(0, 50)}...`);
-        } catch (encryptionError) {
-            // Если шифрование не удалось (сервер недоступен, ошибка сети и т.д.)
-            // Сохраняем незашифрованные данные с пометкой
-            console.error('❌ ОШИБКА при шифровании данных:', encryptionError);
-            console.error('Детали ошибки:', {
-                message: encryptionError.message,
-                stack: encryptionError.stack,
-                name: encryptionError.name
-            });
-            console.warn('⚠️ Не удалось зашифровать данные. Сохраняю незашифрованными:', encryptionError.message);
             const unencryptedData = {
                 _unencrypted: true,
-                _error: encryptionError.message || 'Неизвестная ошибка шифрования',
+                _error: `Не удалось зашифровать данные: ${errorMessage}`,
                 _errorDetails: {
                     name: encryptionError.name,
-                    message: encryptionError.message
+                    message: errorMessage
                 },
-                data: data
+                data: JSON.parse(jsonData) // Парсим обратно для сохранения структуры
             };
             localStorage.setItem(key, JSON.stringify(unencryptedData));
-            console.log(`⚠️ Данные сохранены БЕЗ шифрования (ключ: ${key})`);
+        } catch (parseError) {
+            // Если даже парсинг не удался, сохраняем как строку
+            // Извлекаем оригинальное сообщение об ошибке (убираем префикс, если он есть)
+            const errorMessage = encryptionError.message.startsWith('Не удалось зашифровать данные: ') 
+                ? encryptionError.message.substring('Не удалось зашифровать данные: '.length)
+                : encryptionError.message;
+            
+            const fallbackData = {
+                _unencrypted: true,
+                _error: `Не удалось зашифровать данные: ${errorMessage}`,
+                _errorDetails: {
+                    name: encryptionError.name,
+                    message: errorMessage
+                },
+                _rawData: jsonData.substring(0, 1000) + (jsonData.length > 1000 ? '... (truncated)' : '')
+            };
+            localStorage.setItem(key, JSON.stringify(fallbackData));
         }
-    } catch (error) {
-        console.error('❌ Критическая ошибка при сохранении данных:', error);
-        throw error;
     }
 }
 
@@ -227,7 +265,6 @@ async function loadDecryptedFromLocalStorage(key) {
         try {
             const parsed = JSON.parse(stored);
             if (parsed._unencrypted === true) {
-                console.warn(`⚠️ Загружены незашифрованные данные (ключ: ${key})`);
                 return parsed.data || parsed;
             }
         } catch (e) {
@@ -238,20 +275,16 @@ async function loadDecryptedFromLocalStorage(key) {
         const isLikelyEncrypted = stored.length > 50 && !stored.includes('"lat"') && !stored.includes('"lng"');
         
         if (isLikelyEncrypted) {
-            console.log(`🔓 Расшифровка данных из localStorage (ключ: ${key})...`);
             try {
                 const decrypted = await decryptData(stored);
                 const parsed = JSON.parse(decrypted);
-                console.log(`✅ Данные успешно расшифрованы и загружены (ключ: ${key})`);
                 return parsed;
             } catch (decryptError) {
-                console.error('❌ Ошибка при расшифровке:', decryptError);
                 // Если не удалось расшифровать, возможно это старые незашифрованные данные
                 // Попробуем загрузить как обычный JSON
                 try {
                     const plainData = localStorage.getItem(key);
                     if (plainData) {
-                        console.warn('⚠️ Загружены незашифрованные данные (старый формат)');
                         return JSON.parse(plainData);
                     }
                 } catch (e) {
@@ -261,11 +294,9 @@ async function loadDecryptedFromLocalStorage(key) {
             }
         } else {
             // Похоже на незашифрованные данные
-            console.warn('⚠️ Данные в localStorage могут быть не зашифрованы!');
             return JSON.parse(stored);
         }
     } catch (error) {
-        console.error('❌ Ошибка при загрузке данных:', error);
         throw error;
     }
 }
@@ -292,37 +323,33 @@ function isDataEncrypted(key) {
 
 // Добавляем функцию в глобальную область для проверки в консоли
 window.checkEncryption = function() {
-    console.log('🔍 Проверка шифрования данных в localStorage:');
-    console.log('─'.repeat(50));
-    
     const routeKey = 'saved_route';
     const pointsKey = 'saved_points';
     
-    const routeEncrypted = isDataEncrypted(routeKey);
-    const pointsEncrypted = isDataEncrypted(pointsKey);
+    const routeData = localStorage.getItem(routeKey);
+    const pointsData = localStorage.getItem(pointsKey);
     
-    if (localStorage.getItem(routeKey)) {
-        const routeData = localStorage.getItem(routeKey);
-        console.log(`📌 Маршрут (${routeKey}):`);
-        console.log(`   Зашифровано: ${routeEncrypted ? '✅ ДА' : '❌ НЕТ'}`);
-        console.log(`   Размер: ${routeData.length} символов`);
-        console.log(`   Превью: ${routeData.substring(0, 80)}...`);
-    } else {
-        console.log(`📌 Маршрут (${routeKey}): не найден`);
+    const result = {};
+    
+    if (routeData) {
+        const routeEncrypted = isDataEncrypted(routeKey);
+        result.route = {
+            encrypted: routeEncrypted,
+            size: routeData.length,
+            preview: routeData.substring(0, 80) + '...'
+        };
     }
     
-    if (localStorage.getItem(pointsKey)) {
-        const pointsData = localStorage.getItem(pointsKey);
-        console.log(`📌 Точки (${pointsKey}):`);
-        console.log(`   Зашифровано: ${pointsEncrypted ? '✅ ДА' : '❌ НЕТ'}`);
-        console.log(`   Размер: ${pointsData.length} символов`);
-        console.log(`   Превью: ${pointsData.substring(0, 80)}...`);
-    } else {
-        console.log(`📌 Точки (${pointsKey}): не найдены`);
+    if (pointsData) {
+        const pointsEncrypted = isDataEncrypted(pointsKey);
+        result.points = {
+            encrypted: pointsEncrypted,
+            size: pointsData.length,
+            preview: pointsData.substring(0, 80) + '...'
+        };
     }
     
-    console.log('─'.repeat(50));
-    console.log('💡 Для проверки введите: checkEncryption()');
+    return result;
 };
 
 // Authentication functions
@@ -393,6 +420,7 @@ async function checkAuthentication() {
 
 function initMap() {
     // Инициализация карты происходит здесь, когда DOM уже загружен
+    console.log('✅ Скрипт загружен с поддержкой нумерации точек и пеленгов. Версия: 2024-12-19');
     const map = L.map('map', { zoomControl: false }).setView([55.751244, 37.618423], 10); // Default to Moscow
     map.createPane('routeHoverPane');
     map.getPane('routeHoverPane').style.zIndex = 650;
@@ -647,7 +675,7 @@ function initMap() {
                 subdomains: 'abcd',
                 maxZoom: 20
             }),
-            gray: () => L.tileLayer('http://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+            gray: () => L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
                 attribution: 'Tiles &copy; Esri &mdash; Source: Esri',
                 maxZoom: 16
             }),
@@ -1682,10 +1710,21 @@ function initMap() {
         const chartWidth = width - margin.left - margin.right;
         const chartHeight = height - margin.top - margin.bottom;
 
-        const elevations = elevationData.map(d => d.elevation);
-        const minElev = Math.min(...elevations);
-        const maxElev = Math.max(...elevations);
-        const maxDist = Math.max(...elevationData.map(d => d.distance));
+        // Фильтруем валидные значения elevation (исключаем null, undefined, NaN)
+        const validElevations = elevationData
+            .map(d => d.elevation)
+            .filter(elev => elev !== null && elev !== undefined && !isNaN(elev) && isFinite(elev));
+        
+        // Если нет валидных значений elevation, используем 0
+        const elevations = validElevations.length > 0 ? validElevations : [0];
+        const minElev = validElevations.length > 0 ? Math.min(...validElevations) : 0;
+        const maxElev = validElevations.length > 0 ? Math.max(...validElevations) : 0;
+        
+        // Фильтруем валидные значения distance
+        const validDistances = elevationData
+            .map(d => d.distance)
+            .filter(dist => dist !== null && dist !== undefined && !isNaN(dist) && isFinite(dist));
+        const maxDist = validDistances.length > 0 ? Math.max(...validDistances) : 0;
 
         const elevationRange = maxElev - minElev;
         let yScale;
@@ -1718,7 +1757,12 @@ function initMap() {
             }
         }
 
-        const points = elevationData.map(d => `${xScale(d.distance)},${yScale(d.elevation)}`).join(' ');
+        // Строим полилинию, используя валидные значения (заменяем null/undefined на 0)
+        const points = elevationData.map(d => {
+            const dist = (d.distance !== null && d.distance !== undefined && !isNaN(d.distance)) ? d.distance : 0;
+            const elev = (d.elevation !== null && d.elevation !== undefined && !isNaN(d.elevation) && isFinite(d.elevation)) ? d.elevation : minElev;
+            return `${xScale(dist)},${yScale(elev)}`;
+        }).join(' ');
         svgContent += `<polyline points="${points}" fill="none" stroke="darkorange" stroke-width="3"/>`;
 
         svgNode.innerHTML = svgContent;
@@ -1729,7 +1773,9 @@ function initMap() {
         const labelPadding = 10; // Min padding between labels
 
         waypoints.forEach((point, index) => {
-            const x = xScale(point.distance);
+            // Проверяем валидность distance
+            const dist = (point.distance !== null && point.distance !== undefined && !isNaN(point.distance) && isFinite(point.distance)) ? point.distance : 0;
+            const x = xScale(dist);
             const isLastWaypoint = index === waypoints.length - 1;
             
             const textNode = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -1739,7 +1785,7 @@ function initMap() {
             textNode.setAttribute('font-size', '12');
             // Последнюю метку выравниваем по правому краю
             textNode.setAttribute('text-anchor', isLastWaypoint ? 'end' : 'middle');
-            textNode.textContent = `${point.distance.toFixed(1)} км`;
+            textNode.textContent = `${dist.toFixed(1)} км`;
             
             svgNode.appendChild(textNode);
             
@@ -2609,16 +2655,12 @@ function initMap() {
 
         // Сохраняем зашифрованные данные в localStorage
         try {
-            console.log('🔐 Начинаю шифрование и сохранение маршрута...');
             await saveEncryptedToLocalStorage('saved_route', {
                 data: dataToExport,
                 step: currentSampleStep,
                 timestamp: new Date().toISOString()
             });
-            console.log('✅ Маршрут успешно сохранен в localStorage (зашифрован)');
         } catch (error) {
-            console.error('❌ ОШИБКА при сохранении маршрута в localStorage:', error);
-            console.error('Детали ошибки:', error.message, error.stack);
             // Продолжаем экспорт в файл даже если сохранение в localStorage не удалось
         }
 
@@ -2626,10 +2668,23 @@ function initMap() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.setAttribute("href", url);
-        link.setAttribute("download", `route_profile_step${currentSampleStep}m.csv`);
+        
+        // Создаем уникальное имя файла с timestamp для предотвращения дубликатов на мобильных устройствах
+        // На мобильных устройствах браузер может показывать старые файлы в диалоге, поэтому используем уникальное имя
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5); // Формат: 2024-01-15T10-30-45
+        link.setAttribute("download", `route_${timestamp}.csv`);
+        link.style.display = 'none';
+        link.style.position = 'absolute';
+        link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link);
+        
+        // Освобождаем URL и удаляем ссылку после небольшой задержки
+        // Это важно для мобильных устройств, чтобы браузер успел обработать скачивание
+        setTimeout(() => {
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }, 500);
     }
 
     function resetRouteBuilding() {
@@ -2741,11 +2796,19 @@ function initMap() {
         // Keep button visible while profile is open to show active state
     });
     
+    let isExporting = false;
     exportRouteBtn.addEventListener('click', async function() {
+        if (isExporting) return; // Предотвращаем множественные клики
+        isExporting = true;
         try {
             await exportRouteToCSV();
         } catch (error) {
-            console.error('❌ Ошибка при экспорте маршрута:', error);
+            // Ошибка при экспорте маршрута
+        } finally {
+            // Разрешаем следующий экспорт через небольшую задержку
+            setTimeout(() => {
+                isExporting = false;
+            }, 500);
         }
     });
 
@@ -2758,33 +2821,9 @@ function initMap() {
 
     // --- IMPORT LOGIC ---
     importRouteBtn.addEventListener('click', async () => {
-        // Сначала пытаемся загрузить из localStorage
-        try {
-            const savedRoute = await loadDecryptedFromLocalStorage('saved_route');
-            if (savedRoute && savedRoute.data && savedRoute.data.length > 0) {
-                const confirmed = confirm('Найден сохраненный маршрут в localStorage. Загрузить его?');
-                if (confirmed) {
-                    // Восстанавливаем маршрут из сохраненных данных
-                    const waypoints = savedRoute.data.filter(p => p.isWaypoint);
-                    if (waypoints.length >= 2) {
-                        await reconstructRouteFromData(waypoints.map(p => ({ lat: p.lat, lng: p.lng })));
-                        // Восстанавливаем данные профиля высоты
-                        if (savedRoute.step) {
-                            currentSampleStep = savedRoute.step;
-                        }
-                        currentRouteData = savedRoute.data;
-                        buildElevationProfile(savedRoute.data);
-                        setupRouteToChartInteraction(savedRoute.data);
-                        elevationProfile.classList.add('visible');
-                        return;
-                    }
-                }
-            }
-        } catch (error) {
-            console.error('Ошибка при загрузке маршрута из localStorage:', error);
-        }
-        
-        // Если не удалось загрузить из localStorage, открываем файловый диалог
+        // Очищаем значение input перед открытием диалога, чтобы браузер не показывал старые файлы
+        csvImporter.value = '';
+        // Открываем файловый диалог для выбора файла
         csvImporter.click();
     });
 
@@ -3141,75 +3180,121 @@ function initMap() {
             })
         }).addTo(map);
         
-        // Create popup content using DOM elements for better event handling
-        const popupDiv = L.DomUtil.create('div');
-        popupDiv.innerHTML = '';
-        
-        if (pointData.name) {
-            const nameDiv = L.DomUtil.create('strong', '', popupDiv);
-            nameDiv.textContent = pointData.name;
-            L.DomUtil.create('br', '', popupDiv);
-        }
-        if (pointData.description) {
-            const descDiv = L.DomUtil.create('div', '', popupDiv);
-            descDiv.textContent = pointData.description;
-            L.DomUtil.create('br', '', popupDiv);
-        }
-        if (pointData.photos && pointData.photos.length > 0) {
-            pointData.photos.forEach((photo, index) => {
-                const photoImg = L.DomUtil.create('img', '', popupDiv);
-                photoImg.src = photo;
-                photoImg.style.cssText = 'max-width: 100%; max-height: 200px; border-radius: 5px; margin-top: 10px; margin-bottom: 10px; border: 1px solid #ccc; display: block; cursor: pointer;';
-                photoImg.alt = `Фото точки ${index + 1}`;
-                photoImg.title = 'Нажмите для просмотра в полном размере';
+        // Функция для создания актуального содержимого попапа
+        const createPopupContent = () => {
+            const currentPopupDiv = L.DomUtil.create('div');
+            currentPopupDiv.innerHTML = '';
+            
+            if (pointData.name) {
+                const nameDiv = L.DomUtil.create('strong', '', currentPopupDiv);
+                nameDiv.textContent = pointData.name;
+                L.DomUtil.create('br', '', currentPopupDiv);
+            }
+            if (pointData.description) {
+                const descDiv = L.DomUtil.create('div', '', currentPopupDiv);
+                descDiv.textContent = pointData.description;
+                L.DomUtil.create('br', '', currentPopupDiv);
+            }
+            if (pointData.photos && pointData.photos.length > 0) {
+                const photosContainer = L.DomUtil.create('div', 'photos-container', currentPopupDiv);
+                photosContainer.style.cssText = 'max-height: 250px; overflow-y: auto; overflow-x: hidden; margin-top: 10px; margin-bottom: 10px;';
                 
-                // Добавляем обработчик клика для просмотра фото
-                L.DomEvent.on(photoImg, 'click', function(e) {
-                    L.DomEvent.stopPropagation(e);
-                    openPhotoViewer(pointData.photos, index);
+                pointData.photos.forEach((photo, index) => {
+                    const photoImg = L.DomUtil.create('img', '', photosContainer);
+                    photoImg.src = photo;
+                    photoImg.style.cssText = 'max-width: 100%; max-height: 200px; border-radius: 5px; margin-top: 10px; margin-bottom: 10px; border: 1px solid #ccc; display: block; cursor: pointer;';
+                    photoImg.alt = `Фото точки ${index + 1}`;
+                    photoImg.title = 'Нажмите для просмотра в полном размере';
+                    
+                    L.DomEvent.on(photoImg, 'click', function(e) {
+                        L.DomEvent.stopPropagation(e);
+                        openPhotoViewer(pointData.photos, index);
+                    });
                 });
+            }
+            
+            // Отображение номера точки
+            // Всегда показываем номер, если он есть, или используем индекс + 1
+            let pointNumber = pointData.number;
+            if (!pointNumber || pointNumber <= 0) {
+                const index = customPoints.indexOf(pointData);
+                pointNumber = index >= 0 ? index + 1 : customPoints.length + 1;
+            }
+            // Всегда показываем номер
+            const numberDiv = L.DomUtil.create('div', '', currentPopupDiv);
+            numberDiv.style.cssText = 'margin-top: 10px; font-size: 14px; font-weight: bold; color: darkorange;';
+            numberDiv.textContent = `Точка №${pointNumber}`;
+            
+            // Отображение координат в двух системах
+            const coordsDiv = L.DomUtil.create('div', '', currentPopupDiv);
+            coordsDiv.style.cssText = 'margin-top: 10px; font-size: 12px; line-height: 1.5;';
+            
+            const sk42Coords = convertWGS84ToSK42(pointData.lat, pointData.lng);
+            
+            const sk42Label = L.DomUtil.create('div', '', coordsDiv);
+            sk42Label.style.cssText = 'font-weight: bold; margin-bottom: 4px;';
+            sk42Label.textContent = 'СК-42:';
+            
+            const sk42Value = L.DomUtil.create('div', '', coordsDiv);
+            sk42Value.style.cssText = 'margin-left: 10px; margin-bottom: 8px;';
+            sk42Value.textContent = `X: ${sk42Coords.x.toFixed(2)}, Y: ${sk42Coords.y.toFixed(2)} (зона ${sk42Coords.zone})`;
+            
+            const wgs84Label = L.DomUtil.create('div', '', coordsDiv);
+            wgs84Label.style.cssText = 'font-weight: bold; margin-bottom: 4px;';
+            wgs84Label.textContent = 'WGS84:';
+            
+            const wgs84Value = L.DomUtil.create('div', '', coordsDiv);
+            wgs84Value.style.cssText = 'margin-left: 10px;';
+            wgs84Value.textContent = `${pointData.lat.toFixed(6)}, ${pointData.lng.toFixed(6)}`;
+            
+            // Отображение пеленга и дистанции до других точек
+            // Показываем пеленги и дистанции, если текущая точка сохранена (имеет данные) И есть другие сохраненные точки
+            const isPointSaved = pointData.name || pointData.description || (pointData.photos && pointData.photos.length > 0);
+            const otherSavedPoints = customPoints.filter(p => p !== pointData && (p.name || p.description || (p.photos && p.photos.length > 0)));
+            const hasOtherSavedPoints = otherSavedPoints.length > 0;
+            
+            console.log('Проверка пеленгов:', { isPointSaved, hasOtherSavedPoints, totalPoints: customPoints.length, otherSavedPoints: otherSavedPoints.length }); // Отладка
+            
+            if (isPointSaved && hasOtherSavedPoints) {
+                const bearingsDiv = L.DomUtil.create('div', '', currentPopupDiv);
+                bearingsDiv.style.cssText = 'margin-top: 15px; font-size: 12px; line-height: 1.8;';
                 
-                L.DomUtil.create('br', '', popupDiv);
+                const bearingsLabel = L.DomUtil.create('div', '', bearingsDiv);
+                bearingsLabel.style.cssText = 'font-weight: bold; margin-bottom: 6px;';
+                bearingsLabel.textContent = 'Пеленг и дистанция:';
+                
+                otherSavedPoints.forEach(otherPoint => {
+                    const otherPointNumber = otherPoint.number || (customPoints.indexOf(otherPoint) + 1);
+                    const bearing = calculateBearing(pointData.lat, pointData.lng, otherPoint.lat, otherPoint.lng);
+                    const distance = L.latLng(pointData.lat, pointData.lng).distanceTo(L.latLng(otherPoint.lat, otherPoint.lng)) / 1000;
+                    
+                    const bearingItem = L.DomUtil.create('div', '', bearingsDiv);
+                    bearingItem.style.cssText = 'margin-left: 10px; margin-bottom: 4px;';
+                    bearingItem.textContent = `Точка №${otherPointNumber}: Пеленг ${bearing.toFixed(1)}°, Дистанция ${distance.toFixed(2)} км`;
+                });
+            }
+            
+            const editBtn = L.DomUtil.create('button', 'edit-point-btn', currentPopupDiv);
+            editBtn.textContent = 'Изменить';
+            editBtn.style.cssText = 'margin-top: 10px; padding: 5px 10px; background-color: darkorange; color: #32333d; border: 1px solid #2f2f38; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%;';
+            
+            L.DomEvent.on(editBtn, 'click', function(e) {
+                L.DomEvent.stopPropagation(e);
+                map.closePopup(marker.getPopup());
+                openEditPointPopup(pointData);
             });
-        }
-        // Отображение координат в двух системах
-        const coordsDiv = L.DomUtil.create('div', '', popupDiv);
-        coordsDiv.style.cssText = 'margin-top: 10px; font-size: 12px; line-height: 1.5;';
+            
+            return currentPopupDiv;
+        };
         
-        // Преобразуем координаты в СК-42
-        const sk42Coords = convertWGS84ToSK42(pointData.lat, pointData.lng);
-        
-        // Координаты СК-42
-        const sk42Label = L.DomUtil.create('div', '', coordsDiv);
-        sk42Label.style.cssText = 'font-weight: bold; margin-bottom: 4px;';
-        sk42Label.textContent = 'СК-42:';
-        
-        const sk42Value = L.DomUtil.create('div', '', coordsDiv);
-        sk42Value.style.cssText = 'margin-left: 10px; margin-bottom: 8px;';
-        sk42Value.textContent = `X: ${sk42Coords.x.toFixed(2)}, Y: ${sk42Coords.y.toFixed(2)} (зона ${sk42Coords.zone})`;
-        
-        // Координаты WGS84
-        const wgs84Label = L.DomUtil.create('div', '', coordsDiv);
-        wgs84Label.style.cssText = 'font-weight: bold; margin-bottom: 4px;';
-        wgs84Label.textContent = 'WGS84:';
-        
-        const wgs84Value = L.DomUtil.create('div', '', coordsDiv);
-        wgs84Value.style.cssText = 'margin-left: 10px;';
-        wgs84Value.textContent = `${pointData.lat.toFixed(6)}, ${pointData.lng.toFixed(6)}`;
-        
-        const editBtn = L.DomUtil.create('button', 'edit-point-btn', popupDiv);
-        editBtn.textContent = 'Изменить';
-        editBtn.style.cssText = 'margin-top: 10px; padding: 5px 10px; background-color: darkorange; color: #32333d; border: 1px solid #2f2f38; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%;';
-        
-        L.DomEvent.on(editBtn, 'click', function(e) {
-            L.DomEvent.stopPropagation(e);
-            map.closePopup(marker.getPopup());
-            openEditPointPopup(pointData);
-        });
-        
-        marker.bindPopup(popupDiv, {
+        marker.bindPopup(createPopupContent, {
             closeOnClick: false,
             autoClose: false
+        });
+        
+        // Обновляем попап при каждом открытии, чтобы информация была актуальной
+        marker.on('popupopen', function() {
+            marker.setPopupContent(createPopupContent());
         });
         
         // Prevent popup from opening when measuring distance or building route
@@ -3283,15 +3368,19 @@ function initMap() {
     }
     
     // Function to add a point to the map
-    function addPoint(lat, lng, name = '', description = '', photos = []) {
+    function addPoint(lat, lng, name = '', description = '', photos = null) {
+        const pointNumber = customPoints.length + 1;
         const pointData = {
             lat: lat,
             lng: lng,
             name: name || '',
             description: description || '',
-            photos: Array.isArray(photos) ? photos : (photos ? [photos] : []),
-            marker: null
+            photos: photos !== null ? (Array.isArray(photos) ? photos : (photos ? [photos] : [])) : [],
+            marker: null,
+            number: pointNumber
         };
+        
+        console.log('Добавление точки:', pointData); // Отладка
         
         pointData.marker = createPointMarker(pointData);
         customPoints.push(pointData);
@@ -3311,113 +3400,23 @@ function initMap() {
         if (index > -1) {
             customPoints.splice(index, 1);
         }
+        
+        // Перенумеровываем оставшиеся точки
+        customPoints.forEach((point, idx) => {
+            point.number = idx + 1;
+            // Обновляем маркер, чтобы отобразить новый номер
+            if (point.marker) {
+                const oldMarker = point.marker;
+                point.marker = createPointMarker(point);
+                map.removeLayer(oldMarker);
+            }
+        });
+        
         updateExportButtonVisibility();
         
         // Update add points button active state
         updateAddPointsButtonState();
     }
-    
-    // Function to open photo viewer
-    function openPhotoViewer(photos, startIndex = 0) {
-        photoViewerPhotos = photos;
-        photoViewerCurrentIndex = startIndex;
-        
-        const photoViewerModal = document.getElementById('photo-viewer-modal');
-        const photoViewerImg = document.getElementById('photo-viewer-img');
-        const photoViewerPrev = document.getElementById('photo-viewer-prev');
-        const photoViewerNext = document.getElementById('photo-viewer-next');
-        
-        if (photoViewerPhotos.length === 0) return;
-        
-        // Показываем/скрываем кнопки навигации в зависимости от количества фото
-        if (photoViewerPhotos.length > 1) {
-            photoViewerPrev.style.display = 'block';
-            photoViewerNext.style.display = 'block';
-        } else {
-            photoViewerPrev.style.display = 'none';
-            photoViewerNext.style.display = 'none';
-        }
-        
-        updatePhotoViewer();
-        photoViewerModal.style.display = 'flex';
-    }
-    
-    // Function to update photo viewer
-    function updatePhotoViewer() {
-        const photoViewerImg = document.getElementById('photo-viewer-img');
-        if (photoViewerPhotos.length > 0 && photoViewerCurrentIndex >= 0 && photoViewerCurrentIndex < photoViewerPhotos.length) {
-            photoViewerImg.src = photoViewerPhotos[photoViewerCurrentIndex];
-        }
-    }
-    
-    // Function to close photo viewer
-    function closePhotoViewer() {
-        const photoViewerModal = document.getElementById('photo-viewer-modal');
-        photoViewerModal.style.display = 'none';
-        photoViewerPhotos = [];
-        photoViewerCurrentIndex = 0;
-    }
-    
-    // Function to show next photo
-    function showNextPhoto() {
-        if (photoViewerPhotos.length > 0) {
-            photoViewerCurrentIndex = (photoViewerCurrentIndex + 1) % photoViewerPhotos.length;
-            updatePhotoViewer();
-        }
-    }
-    
-    // Function to show previous photo
-    function showPrevPhoto() {
-        if (photoViewerPhotos.length > 0) {
-            photoViewerCurrentIndex = (photoViewerCurrentIndex - 1 + photoViewerPhotos.length) % photoViewerPhotos.length;
-            updatePhotoViewer();
-        }
-    }
-    
-    // Initialize photo viewer event handlers
-    const photoViewerModal = document.getElementById('photo-viewer-modal');
-    const photoViewerCloseBtn = document.getElementById('photo-viewer-close-btn');
-    const photoViewerPrev = document.getElementById('photo-viewer-prev');
-    const photoViewerNext = document.getElementById('photo-viewer-next');
-    
-    if (photoViewerCloseBtn) {
-        photoViewerCloseBtn.addEventListener('click', closePhotoViewer);
-    }
-    
-    if (photoViewerModal) {
-        photoViewerModal.addEventListener('click', function(e) {
-            if (e.target === photoViewerModal) {
-                closePhotoViewer();
-            }
-        });
-    }
-    
-    if (photoViewerPrev) {
-        photoViewerPrev.addEventListener('click', function(e) {
-            e.stopPropagation();
-            showPrevPhoto();
-        });
-    }
-    
-    if (photoViewerNext) {
-        photoViewerNext.addEventListener('click', function(e) {
-            e.stopPropagation();
-            showNextPhoto();
-        });
-    }
-    
-    // Keyboard navigation for photo viewer
-    document.addEventListener('keydown', function(e) {
-        if (photoViewerModal && photoViewerModal.style.display === 'flex') {
-            if (e.key === 'Escape') {
-                closePhotoViewer();
-            } else if (e.key === 'ArrowLeft') {
-                showPrevPhoto();
-            } else if (e.key === 'ArrowRight') {
-                showNextPhoto();
-            }
-        }
-    });
     
     // Function to render photos preview
     function renderPhotosPreview() {
@@ -3475,6 +3474,11 @@ function initMap() {
         if (newPhotos !== null) {
             pointData.photos = Array.isArray(newPhotos) ? newPhotos : (newPhotos ? [newPhotos] : []);
         }
+        // Сохраняем номер точки при обновлении
+        if (!pointData.number || pointData.number <= 0) {
+            const index = customPoints.indexOf(pointData);
+            pointData.number = index >= 0 ? index + 1 : customPoints.length;
+        }
         
         // Remove old marker
         if (pointData.marker) {
@@ -3484,6 +3488,108 @@ function initMap() {
         // Create new marker with updated data
         pointData.marker = createPointMarker(pointData);
     }
+    
+    // Function to open photo viewer
+    function openPhotoViewer(photos, startIndex = 0) {
+        photoViewerPhotos = photos;
+        photoViewerCurrentIndex = startIndex;
+        
+        const photoViewerModal = document.getElementById('photo-viewer-modal');
+        const photoViewerImg = document.getElementById('photo-viewer-img');
+        const photoViewerPrev = document.getElementById('photo-viewer-prev');
+        const photoViewerNext = document.getElementById('photo-viewer-next');
+        
+        if (photoViewerPhotos.length === 0) return;
+        
+        // Показываем/скрываем кнопки навигации в зависимости от количества фото
+        if (photoViewerPhotos.length > 1) {
+            photoViewerPrev.style.display = 'block';
+            photoViewerNext.style.display = 'block';
+        } else {
+            photoViewerPrev.style.display = 'none';
+            photoViewerNext.style.display = 'none';
+        }
+        
+        updatePhotoViewer();
+        photoViewerModal.style.display = 'flex';
+    }
+    
+    // Function to update photo viewer
+    function updatePhotoViewer() {
+        const photoViewerImg = document.getElementById('photo-viewer-img');
+        if (photoViewerPhotos.length > 0 && photoViewerCurrentIndex >= 0 && photoViewerCurrentIndex < photoViewerPhotos.length) {
+            photoViewerImg.src = photoViewerPhotos[photoViewerCurrentIndex];
+        }
+    }
+    
+    // Function to close photo viewer
+    function closePhotoViewer() {
+        const photoViewerModal = document.getElementById('photo-viewer-modal');
+        photoViewerModal.style.display = 'none';
+        photoViewerPhotos = [];
+        photoViewerCurrentIndex = 0;
+    }
+    
+    // Function to show next photo
+    function showNextPhoto() {
+        if (photoViewerPhotos.length > 0) {
+            photoViewerCurrentIndex = (photoViewerCurrentIndex + 1) % photoViewerPhotos.length;
+            updatePhotoViewer();
+        }
+    }
+    
+    // Function to show previous photo
+    function showPreviousPhoto() {
+        if (photoViewerPhotos.length > 0) {
+            photoViewerCurrentIndex = (photoViewerCurrentIndex - 1 + photoViewerPhotos.length) % photoViewerPhotos.length;
+            updatePhotoViewer();
+        }
+    }
+    
+    // Initialize photo viewer event handlers
+    const photoViewerModal = document.getElementById('photo-viewer-modal');
+    const photoViewerCloseBtn = document.getElementById('photo-viewer-close-btn');
+    const photoViewerPrev = document.getElementById('photo-viewer-prev');
+    const photoViewerNext = document.getElementById('photo-viewer-next');
+    
+    if (photoViewerCloseBtn) {
+        photoViewerCloseBtn.addEventListener('click', closePhotoViewer);
+    }
+    
+    if (photoViewerModal) {
+        photoViewerModal.addEventListener('click', function(e) {
+            if (e.target === photoViewerModal) {
+                closePhotoViewer();
+            }
+        });
+    }
+    
+    if (photoViewerPrev) {
+        photoViewerPrev.addEventListener('click', function(e) {
+            e.stopPropagation();
+            showPreviousPhoto();
+        });
+    }
+    
+    if (photoViewerNext) {
+        photoViewerNext.addEventListener('click', function(e) {
+            e.stopPropagation();
+            showNextPhoto();
+        });
+    }
+    
+    // Keyboard navigation for photo viewer
+    document.addEventListener('keydown', function(e) {
+        if (photoViewerModal && photoViewerModal.style.display === 'flex') {
+            if (e.key === 'Escape') {
+                closePhotoViewer();
+            } else if (e.key === 'ArrowLeft') {
+                showPreviousPhoto();
+            } else if (e.key === 'ArrowRight') {
+                showNextPhoto();
+            }
+        }
+    });
     
     // Function to handle map click when placing points
     function onMapClickForPoint(e) {
@@ -3777,6 +3883,7 @@ function initMap() {
         map.setView([lat, lng], map.getZoom());
     });
     
+    // Handle save point button
     // Function to convert file to base64
     function fileToBase64(file) {
         return new Promise((resolve, reject) => {
@@ -3795,8 +3902,6 @@ function initMap() {
     // Handle photo input change
     pointPhotoInput.addEventListener('change', async function(e) {
         const files = Array.from(e.target.files);
-        if (files.length === 0) return;
-        
         const imageFiles = files.filter(file => file.type.startsWith('image/'));
         if (imageFiles.length === 0) {
             alert('Пожалуйста, выберите файлы изображений');
@@ -3842,14 +3947,23 @@ function initMap() {
                 return;
             }
             
-            updatePoint(editingPointData, lat, lng, name, description, currentPhotosData);
+            const updatedPoint = editingPointData;
+            updatePoint(updatedPoint, lat, lng, name, description, currentPhotosData);
+            // Обновляем попап, если он открыт - пересоздаем маркер, что автоматически обновит попап
+            if (updatedPoint.marker && updatedPoint.marker.isPopupOpen()) {
+                // Закрываем и открываем попап заново, чтобы он обновился
+                updatedPoint.marker.closePopup();
+                setTimeout(() => {
+                    updatedPoint.marker.openPopup();
+                }, 100);
+            }
             editingPointData = null;
             currentPhotosData = [];
         } else {
             // Adding a new point
             if (!pendingPointLatLng) return;
             
-            addPoint(pendingPointLatLng.lat, pendingPointLatLng.lng, name, description, currentPhotosData);
+            const newPoint = addPoint(pendingPointLatLng.lat, pendingPointLatLng.lng, name, description, currentPhotosData);
             currentPhotosData = [];
             
             // Reset placement mode if it was active (point was added by clicking on map)
@@ -3959,13 +4073,26 @@ function initMap() {
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.setAttribute('href', url);
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            
+            // Создаем уникальное имя файла с timestamp для предотвращения дубликатов на мобильных устройствах
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5); // Формат: 2024-01-15T10-30-45
             link.setAttribute('download', `points_${timestamp}.csv`);
+            link.style.display = 'none';
+            link.style.position = 'absolute';
+            link.style.visibility = 'hidden';
             document.body.appendChild(link);
             link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
+            
+            // Освобождаем URL и удаляем ссылку после небольшой задержки
+            // Это важно для мобильных устройств, чтобы браузер успел обработать скачивание
+            setTimeout(() => {
+                URL.revokeObjectURL(url);
+                document.body.removeChild(link);
+            }, 100);
         }
+        
+        // Show export button if we have points
+        updateExportButtonVisibility();
     });
     
     // Handle reset points button
@@ -3978,12 +4105,12 @@ function initMap() {
     });
     
     // Handle import points button
-    importPointsBtn.addEventListener('click', function() {
-        // Сразу открываем файловый диалог для выбора файла
+    importPointsBtn.addEventListener('click', async function() {
+        // Открываем файловый диалог для выбора файла
         pointsCsvImporter.click();
     });
     
-    // Handle file import (CSV or JSON)
+    // Handle CSV file import
     pointsCsvImporter.addEventListener('change', function(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -3992,38 +4119,27 @@ function initMap() {
         reader.onload = function(e) {
             const text = e.target.result;
             try {
-                let parsedPoints = [];
-                
-                // Определяем тип файла по расширению или содержимому
-                const fileName = file.name.toLowerCase();
-                const isJson = fileName.endsWith('.json') || (text.trim().startsWith('{') || text.trim().startsWith('['));
-                
-                if (isJson) {
-                    // Импорт из JSON
-                    const jsonData = JSON.parse(text);
-                    if (jsonData.points && Array.isArray(jsonData.points)) {
-                        parsedPoints = jsonData.points;
-                    } else if (Array.isArray(jsonData)) {
-                        parsedPoints = jsonData;
-                    } else {
-                        throw new Error('Неверный формат JSON файла');
-                    }
-                } else {
-                    // Импорт из CSV
-                    parsedPoints = parsePointsCsv(text);
-                }
+                const parsedPoints = parsePointsCsv(text);
                 
                 // Remove existing points if needed (or merge)
                 // For now, we'll add to existing points
                 parsedPoints.forEach(point => {
-                    // Поддержка старого формата (photo) и нового (photos)
-                    const photos = point.photos || (point.photo ? [point.photo] : []);
-                    addPoint(point.lat, point.lng, point.name, point.description, photos);
+                    const photos = point.photos ? (Array.isArray(point.photos) ? point.photos : [point.photos]) : (point.photo ? [point.photo] : []);
+                    const newPoint = addPoint(point.lat, point.lng, point.name, point.description, photos.length > 0 ? photos : null);
+                    // Если в импортированных данных был номер, сохраняем его, иначе будет установлен автоматически
+                    if (point.number && typeof point.number === 'number') {
+                        newPoint.number = point.number;
+                        // Обновляем маркер с новым номером
+                        if (newPoint.marker) {
+                            map.removeLayer(newPoint.marker);
+                            newPoint.marker = createPointMarker(newPoint);
+                        }
+                    }
                 });
                 
                 updateExportButtonVisibility();
             } catch (error) {
-                alert(`Не удалось прочитать файл. Убедитесь, что это корректный CSV или JSON файл.\nДетали: ${error.message}`);
+                alert(`Не удалось прочитать файл. Убедитесь, что это корректный CSV-файл.\nДетали: ${error.message}`);
             }
         };
         reader.readAsText(file);

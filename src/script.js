@@ -393,6 +393,7 @@ async function checkAuthentication() {
 
 function initMap() {
     // Инициализация карты происходит здесь, когда DOM уже загружен
+    console.log('✅ Скрипт загружен с поддержкой нумерации точек и пеленгов. Версия: 2024-12-19');
     const map = L.map('map', { zoomControl: false }).setView([55.751244, 37.618423], 10); // Default to Moscow
     map.createPane('routeHoverPane');
     map.getPane('routeHoverPane').style.zIndex = 650;
@@ -3141,75 +3142,117 @@ function initMap() {
             })
         }).addTo(map);
         
-        // Create popup content using DOM elements for better event handling
-        const popupDiv = L.DomUtil.create('div');
-        popupDiv.innerHTML = '';
-        
-        if (pointData.name) {
-            const nameDiv = L.DomUtil.create('strong', '', popupDiv);
-            nameDiv.textContent = pointData.name;
-            L.DomUtil.create('br', '', popupDiv);
-        }
-        if (pointData.description) {
-            const descDiv = L.DomUtil.create('div', '', popupDiv);
-            descDiv.textContent = pointData.description;
-            L.DomUtil.create('br', '', popupDiv);
-        }
-        if (pointData.photos && pointData.photos.length > 0) {
-            pointData.photos.forEach((photo, index) => {
-                const photoImg = L.DomUtil.create('img', '', popupDiv);
-                photoImg.src = photo;
-                photoImg.style.cssText = 'max-width: 100%; max-height: 200px; border-radius: 5px; margin-top: 10px; margin-bottom: 10px; border: 1px solid #ccc; display: block; cursor: pointer;';
-                photoImg.alt = `Фото точки ${index + 1}`;
-                photoImg.title = 'Нажмите для просмотра в полном размере';
+        // Функция для создания актуального содержимого попапа
+        const createPopupContent = () => {
+            const currentPopupDiv = L.DomUtil.create('div');
+            currentPopupDiv.innerHTML = '';
+            
+            if (pointData.name) {
+                const nameDiv = L.DomUtil.create('strong', '', currentPopupDiv);
+                nameDiv.textContent = pointData.name;
+                L.DomUtil.create('br', '', currentPopupDiv);
+            }
+            if (pointData.description) {
+                const descDiv = L.DomUtil.create('div', '', currentPopupDiv);
+                descDiv.textContent = pointData.description;
+                L.DomUtil.create('br', '', currentPopupDiv);
+            }
+            if (pointData.photos && pointData.photos.length > 0) {
+                const photosContainer = L.DomUtil.create('div', 'photos-container', currentPopupDiv);
+                photosContainer.style.cssText = 'max-height: 250px; overflow-y: auto; overflow-x: hidden; margin-top: 10px; margin-bottom: 10px;';
                 
-                // Добавляем обработчик клика для просмотра фото
-                L.DomEvent.on(photoImg, 'click', function(e) {
-                    L.DomEvent.stopPropagation(e);
-                    openPhotoViewer(pointData.photos, index);
+                pointData.photos.forEach((photo, index) => {
+                    const photoImg = L.DomUtil.create('img', '', photosContainer);
+                    photoImg.src = photo;
+                    photoImg.style.cssText = 'max-width: 100%; max-height: 200px; border-radius: 5px; margin-top: 10px; margin-bottom: 10px; border: 1px solid #ccc; display: block; cursor: pointer;';
+                    photoImg.alt = `Фото точки ${index + 1}`;
+                    photoImg.title = 'Нажмите для просмотра в полном размере';
+                    
+                    L.DomEvent.on(photoImg, 'click', function(e) {
+                        L.DomEvent.stopPropagation(e);
+                        openPhotoViewer(pointData.photos, index);
+                    });
                 });
+            }
+            
+            // Отображение номера точки
+            let pointNumber = pointData.number;
+            if (!pointNumber || pointNumber <= 0) {
+                const index = customPoints.indexOf(pointData);
+                pointNumber = index >= 0 ? index + 1 : customPoints.length + 1;
+            }
+            // Всегда показываем номер
+            const numberDiv = L.DomUtil.create('div', '', currentPopupDiv);
+            numberDiv.style.cssText = 'margin-top: 10px; font-size: 14px; font-weight: bold; color: darkorange;';
+            numberDiv.textContent = `Точка №${pointNumber}`;
+            
+            // Отображение координат в двух системах
+            const coordsDiv = L.DomUtil.create('div', '', currentPopupDiv);
+            coordsDiv.style.cssText = 'margin-top: 10px; font-size: 12px; line-height: 1.5;';
+            
+            const sk42Coords = convertWGS84ToSK42(pointData.lat, pointData.lng);
+            
+            const sk42Label = L.DomUtil.create('div', '', coordsDiv);
+            sk42Label.style.cssText = 'font-weight: bold; margin-bottom: 4px;';
+            sk42Label.textContent = 'СК-42:';
+            
+            const sk42Value = L.DomUtil.create('div', '', coordsDiv);
+            sk42Value.style.cssText = 'margin-left: 10px; margin-bottom: 8px;';
+            sk42Value.textContent = `X: ${sk42Coords.x.toFixed(2)}, Y: ${sk42Coords.y.toFixed(2)} (зона ${sk42Coords.zone})`;
+            
+            const wgs84Label = L.DomUtil.create('div', '', coordsDiv);
+            wgs84Label.style.cssText = 'font-weight: bold; margin-bottom: 4px;';
+            wgs84Label.textContent = 'WGS84:';
+            
+            const wgs84Value = L.DomUtil.create('div', '', coordsDiv);
+            wgs84Value.style.cssText = 'margin-left: 10px;';
+            wgs84Value.textContent = `${pointData.lat.toFixed(6)}, ${pointData.lng.toFixed(6)}`;
+            
+            // Отображение пеленга и дистанции до других точек
+            const isPointSaved = pointData.name || pointData.description || (pointData.photos && pointData.photos.length > 0);
+            const otherSavedPoints = customPoints.filter(p => p !== pointData && (p.name || p.description || (p.photos && p.photos.length > 0)));
+            const hasOtherSavedPoints = otherSavedPoints.length > 0;
+            
+            if (isPointSaved && hasOtherSavedPoints) {
+                const bearingsDiv = L.DomUtil.create('div', '', currentPopupDiv);
+                bearingsDiv.style.cssText = 'margin-top: 15px; font-size: 12px; line-height: 1.8;';
                 
-                L.DomUtil.create('br', '', popupDiv);
+                const bearingsLabel = L.DomUtil.create('div', '', bearingsDiv);
+                bearingsLabel.style.cssText = 'font-weight: bold; margin-bottom: 6px;';
+                bearingsLabel.textContent = 'Пеленг и дистанция:';
+                
+                otherSavedPoints.forEach(otherPoint => {
+                    const otherPointNumber = otherPoint.number || (customPoints.indexOf(otherPoint) + 1);
+                    const bearing = calculateBearing(pointData.lat, pointData.lng, otherPoint.lat, otherPoint.lng);
+                    const distance = L.latLng(pointData.lat, pointData.lng).distanceTo(L.latLng(otherPoint.lat, otherPoint.lng)) / 1000;
+                    
+                    const bearingItem = L.DomUtil.create('div', '', bearingsDiv);
+                    bearingItem.style.cssText = 'margin-left: 10px; margin-bottom: 4px;';
+                    bearingItem.textContent = `Точка №${otherPointNumber}: Пеленг ${bearing.toFixed(1)}°, Дистанция ${distance.toFixed(2)} км`;
+                });
+            }
+            
+            const editBtn = L.DomUtil.create('button', 'edit-point-btn', currentPopupDiv);
+            editBtn.textContent = 'Изменить';
+            editBtn.style.cssText = 'margin-top: 10px; padding: 5px 10px; background-color: darkorange; color: #32333d; border: 1px solid #2f2f38; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%;';
+            
+            L.DomEvent.on(editBtn, 'click', function(e) {
+                L.DomEvent.stopPropagation(e);
+                map.closePopup(marker.getPopup());
+                openEditPointPopup(pointData);
             });
-        }
-        // Отображение координат в двух системах
-        const coordsDiv = L.DomUtil.create('div', '', popupDiv);
-        coordsDiv.style.cssText = 'margin-top: 10px; font-size: 12px; line-height: 1.5;';
+            
+            return currentPopupDiv;
+        };
         
-        // Преобразуем координаты в СК-42
-        const sk42Coords = convertWGS84ToSK42(pointData.lat, pointData.lng);
-        
-        // Координаты СК-42
-        const sk42Label = L.DomUtil.create('div', '', coordsDiv);
-        sk42Label.style.cssText = 'font-weight: bold; margin-bottom: 4px;';
-        sk42Label.textContent = 'СК-42:';
-        
-        const sk42Value = L.DomUtil.create('div', '', coordsDiv);
-        sk42Value.style.cssText = 'margin-left: 10px; margin-bottom: 8px;';
-        sk42Value.textContent = `X: ${sk42Coords.x.toFixed(2)}, Y: ${sk42Coords.y.toFixed(2)} (зона ${sk42Coords.zone})`;
-        
-        // Координаты WGS84
-        const wgs84Label = L.DomUtil.create('div', '', coordsDiv);
-        wgs84Label.style.cssText = 'font-weight: bold; margin-bottom: 4px;';
-        wgs84Label.textContent = 'WGS84:';
-        
-        const wgs84Value = L.DomUtil.create('div', '', coordsDiv);
-        wgs84Value.style.cssText = 'margin-left: 10px;';
-        wgs84Value.textContent = `${pointData.lat.toFixed(6)}, ${pointData.lng.toFixed(6)}`;
-        
-        const editBtn = L.DomUtil.create('button', 'edit-point-btn', popupDiv);
-        editBtn.textContent = 'Изменить';
-        editBtn.style.cssText = 'margin-top: 10px; padding: 5px 10px; background-color: darkorange; color: #32333d; border: 1px solid #2f2f38; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%;';
-        
-        L.DomEvent.on(editBtn, 'click', function(e) {
-            L.DomEvent.stopPropagation(e);
-            map.closePopup(marker.getPopup());
-            openEditPointPopup(pointData);
-        });
-        
-        marker.bindPopup(popupDiv, {
+        marker.bindPopup(createPopupContent, {
             closeOnClick: false,
             autoClose: false
+        });
+        
+        // Обновляем попап при каждом открытии, чтобы информация была актуальной
+        marker.on('popupopen', function() {
+            marker.setPopupContent(createPopupContent());
         });
         
         // Prevent popup from opening when measuring distance or building route
@@ -3284,14 +3327,18 @@ function initMap() {
     
     // Function to add a point to the map
     function addPoint(lat, lng, name = '', description = '', photos = []) {
+        const pointNumber = customPoints.length + 1;
         const pointData = {
             lat: lat,
             lng: lng,
             name: name || '',
             description: description || '',
             photos: Array.isArray(photos) ? photos : (photos ? [photos] : []),
-            marker: null
+            marker: null,
+            number: pointNumber
         };
+        
+        console.log('Добавление точки:', pointData); // Отладка
         
         pointData.marker = createPointMarker(pointData);
         customPoints.push(pointData);
@@ -3311,6 +3358,18 @@ function initMap() {
         if (index > -1) {
             customPoints.splice(index, 1);
         }
+        
+        // Перенумеровываем оставшиеся точки
+        customPoints.forEach((point, idx) => {
+            point.number = idx + 1;
+            // Обновляем маркер, чтобы отобразить новый номер
+            if (point.marker) {
+                const oldMarker = point.marker;
+                point.marker = createPointMarker(point);
+                map.removeLayer(oldMarker);
+            }
+        });
+        
         updateExportButtonVisibility();
         
         // Update add points button active state
@@ -3474,6 +3533,11 @@ function initMap() {
         pointData.description = newDescription || '';
         if (newPhotos !== null) {
             pointData.photos = Array.isArray(newPhotos) ? newPhotos : (newPhotos ? [newPhotos] : []);
+        }
+        // Сохраняем номер точки при обновлении
+        if (!pointData.number || pointData.number <= 0) {
+            const index = customPoints.indexOf(pointData);
+            pointData.number = index >= 0 ? index + 1 : customPoints.length;
         }
         
         // Remove old marker
@@ -3842,14 +3906,23 @@ function initMap() {
                 return;
             }
             
-            updatePoint(editingPointData, lat, lng, name, description, currentPhotosData);
+            const updatedPoint = editingPointData;
+            updatePoint(updatedPoint, lat, lng, name, description, currentPhotosData);
+            // Обновляем попап, если он открыт - пересоздаем маркер, что автоматически обновит попап
+            if (updatedPoint.marker && updatedPoint.marker.isPopupOpen()) {
+                // Закрываем и открываем попап заново, чтобы он обновился
+                updatedPoint.marker.closePopup();
+                setTimeout(() => {
+                    updatedPoint.marker.openPopup();
+                }, 100);
+            }
             editingPointData = null;
             currentPhotosData = [];
         } else {
             // Adding a new point
             if (!pendingPointLatLng) return;
             
-            addPoint(pendingPointLatLng.lat, pendingPointLatLng.lng, name, description, currentPhotosData);
+            const newPoint = addPoint(pendingPointLatLng.lat, pendingPointLatLng.lng, name, description, currentPhotosData);
             currentPhotosData = [];
             
             // Reset placement mode if it was active (point was added by clicking on map)
@@ -4018,7 +4091,16 @@ function initMap() {
                 parsedPoints.forEach(point => {
                     // Поддержка старого формата (photo) и нового (photos)
                     const photos = point.photos || (point.photo ? [point.photo] : []);
-                    addPoint(point.lat, point.lng, point.name, point.description, photos);
+                    const newPoint = addPoint(point.lat, point.lng, point.name, point.description, photos);
+                    // Если в импортированных данных был номер, сохраняем его, иначе будет установлен автоматически
+                    if (point.number && typeof point.number === 'number') {
+                        newPoint.number = point.number;
+                        // Обновляем маркер с новым номером
+                        if (newPoint.marker) {
+                            map.removeLayer(newPoint.marker);
+                            newPoint.marker = createPointMarker(newPoint);
+                        }
+                    }
                 });
                 
                 updateExportButtonVisibility();
